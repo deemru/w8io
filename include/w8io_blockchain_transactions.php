@@ -619,6 +619,13 @@ class w8io_blockchain_transactions
 
     public function update( $upcontext )
     {
+        // TODO
+        {
+            $this->pairs_addresses->set_pair( 0, 'GENESIS' );
+            $this->pairs_addresses->set_pair( -1, 'GENERATOR' );
+            $this->pairs_addresses->set_pair( -2, 'MATCHER' );
+        }
+
         $blockchain = $upcontext['blockchain'];
         $from = $upcontext['from'];
         $to = $upcontext['to'];

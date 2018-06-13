@@ -17,15 +17,10 @@ class w8io_api
 
     private function get_aid( $address )
     {
-        $aid = $this->get_pairs_addresses()->get_id( $address );
-        if( $aid !== false )
-            return $aid;
-
-        $aid = $this->get_pairs_aliases()->get_value( $address );
-        if( $aid !== false )
-            return $aid;
-
-        return false;
+        if( $address === preg_replace( '/[^\-.0123456789@_abcdefghijklmnopqrstuvwxyz\-.]/', '', $address ) )
+            return $this->get_pairs_aliases()->get_value( $address );
+        else // if( $address === preg_replace( '/[^123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]/', '', $address ) )
+            return $this->get_pairs_addresses()->get_id( $address );
     }
 
     public function get_address_balance( $address )
@@ -34,7 +29,12 @@ class w8io_api
         if( $aid === false )
             return false;
 
-        return $this->get_balances()->get_balance( $aid );
+        $balance = $this->get_balances()->get_balance( $aid );
+        if( $balance === false )
+            return false;
+
+        $balance['balance'] = json_decode( $balance['balance'], true, 512, JSON_BIGINT_AS_STRING );
+        return $balance;
     }
 
     public function get_address_transactions( $address, $height, $limit = 100 )
