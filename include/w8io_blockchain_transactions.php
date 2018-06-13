@@ -423,7 +423,7 @@ class w8io_blockchain_transactions
                     break;
                 case 3: // issue
                     $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = false;
+                    $wtx['b'] = 'NULL';
                     $wtx['amount'] = $tx['quantity'];
                     {
                         $asset = $this->get_assetid( $tx['assetId'], true );
