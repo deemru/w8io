@@ -94,6 +94,7 @@ class w8io_blockchain
                     w8io_error( 'set_block() failed' );
 
                 $shift = 1;
+                $signature = $nodes_block['signature'];
             }
             else // fork (fallback -100)
             for( ;; )
@@ -109,6 +110,7 @@ class w8io_blockchain
                 if( serialize( $nodes_block ) == serialize( $local_block ) )
                 {
                     $shift = 1;
+                    $signature = $nodes_block['signature'];
                     break;
                 }
 
@@ -133,17 +135,28 @@ class w8io_blockchain
                 return false;
             }
 
+            if( isset( $signature ) && $nodes_block['reference'] != $signature )
+            {
+                w8io_trace( 'w', "fork at $i" );
+                break;
+            }
+
             w8io_trace( 'i', "$i (blockchain)" );          
 
             if( !$this->set_block( $nodes_block ) )
                 w8io_error( 'set_block() failed' );
+
+            $signature = $nodes_block['signature'];
         }
 
-        if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN, $to ) )
+        if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN, $i - 1 ) )
             w8io_error( 'set checkpoint_transactions failed' );
 
         if( !$this->blocks->commit() )
             w8io_error( 'unexpected commit() error' );
+
+        if( $i <= $to )
+            return false;
 
         return array( 'blockchain' => $this, 'from' => $from, 'to' => $to, 'height' => $height );
     }
