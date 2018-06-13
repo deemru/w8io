@@ -1,3 +1,4 @@
 .vscode
 *_config.php
 var/
+*.log
