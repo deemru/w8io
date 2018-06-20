@@ -91,6 +91,7 @@ function w8io_tx_type( $type )
 {
     switch( $type )
     {
+        case 0: return 'fees';
         case 1: return 'genesis';
         case 2: return 'payment';
         case 3: return 'issue';
