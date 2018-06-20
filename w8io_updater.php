@@ -198,9 +198,10 @@ $balances = new w8io_blockchain_balances();
 
 for( ;; )
 {
+    update_proc( $blockchain, $transactions, $balances );
+    
     update_tickers( $transactions );
     update_scam( $transactions );
-    update_proc( $blockchain, $transactions, $balances );
 
     if( sleep( 17 ) )
         w8io_error( "signal" );
