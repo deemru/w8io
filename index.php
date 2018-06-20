@@ -88,6 +88,17 @@ else
     echo 'balance:' . PHP_EOL;
     $tickers = array();
     $unlisted = array();
+
+    if( isset( $balance[0] ) )
+    {
+        $asset = "           Waves";
+        $amount = number_format( $balance[0] / 100000000, 8, '.', '' );
+
+        $furl = W8IO_ROOT . "$address/f/Waves";
+
+        $tickers[] = $record = array( 'asset' => $asset, 'amount' => $amount, 'furl' => $furl );
+    }
+
     foreach( $balance as $asset => $amount )
     {
         if( $asset )
@@ -109,21 +120,12 @@ else
             else
                 $unlisted[] = $record;
         }
-        else
-        {
-            $asset = "           Waves";
-            $amount = number_format( $amount / 100000000, 8, '.', '' );
-
-            $furl = W8IO_ROOT . "$address/f/Waves";
-
-            $tickers[] = $record = array( 'asset' => $asset, 'amount' => $amount, 'furl' => $furl );
-        }
     }
 
     foreach( $tickers as $record )
         echo "    {$record['asset']} = <a href=\"{$record['furl']}\">{$record['amount']}</a>" . PHP_EOL;
 
-    echo "--------------------------------------" . PHP_EOL;
+    echo "------------------------------------------" . PHP_EOL;
 
     foreach( $unlisted as $record )
         echo "    {$record['asset']} = <a href=\"{$record['furl']}\">{$record['amount']}</a>" . PHP_EOL;
