@@ -80,9 +80,9 @@ else
 
     $height = $balance['height'];
     $balance = $balance['balance'];
-    $full_address = $full_address !== $address ? " / $full_address" : '';
+    $full_address = $full_address !== $address ? " / <a href=\"". W8IO_ROOT . $full_address ."\">$full_address</a>" : '';
 
-    echo "<a href=\"". W8IO_ROOT . $address ."\">$address$full_address</a> @ $height" . PHP_EOL . PHP_EOL;
+    echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height" . PHP_EOL . PHP_EOL;
     echo '<table><tr><td valign="top"><pre>';
 
     echo 'balance:' . PHP_EOL;
@@ -211,7 +211,14 @@ else
 }
 
 echo '</pre></td></tr></table>'. PHP_EOL . PHP_EOL;
-echo '<small>' . sprintf( '%.02f ms', 1000 * ( microtime( true ) - $_SERVER['REQUEST_TIME_FLOAT'] ) );
+
+echo '<small>';
+if( file_exists( '.git/FETCH_HEAD' ) )
+{
+    $rev = file_get_contents( '.git/FETCH_HEAD', null, null, 0, 40 );
+    echo "<a href=\"https://github.com/deemru/w8io\">github/deemru/w8io</a>/<a href=\"https://github.com/deemru/w8io/commit/$rev\">" . substr( $rev, 0, 7 ) . '</a>';
+}
+echo PHP_EOL . sprintf( '%.02f ms', 1000 * ( microtime( true ) - $_SERVER['REQUEST_TIME_FLOAT'] ) );
 echo '</small>';
 ?>
 
