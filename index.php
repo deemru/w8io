@@ -91,8 +91,8 @@ else
 
     if( isset( $balance[0] ) )
     {
-        $asset = "           Waves";
-        $amount = number_format( $balance[0] / 100000000, 8, '.', '' );
+        $asset = "Waves";
+        $amount = str_pad( number_format( $balance[0] / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
 
         $furl = W8IO_ROOT . "$address/f/Waves";
 
@@ -107,9 +107,9 @@ else
             if( isset( $info['scam'] ) )
                 continue;
 
-            $asset = mb_str_pad( $info['name'], 16, ' ', STR_PAD_LEFT );
+            $asset = $info['name'];
             $decimals = $info['decimals'];
-            $amount = number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' );
+            $amount = str_pad( number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' ), 24, ' ', STR_PAD_LEFT );
 
             $furl = W8IO_ROOT . "$address/f/{$info['id']}";
 
@@ -123,12 +123,12 @@ else
     }
 
     foreach( $tickers as $record )
-        echo "    {$record['asset']} = <a href=\"{$record['furl']}\">{$record['amount']}</a>" . PHP_EOL;
+        echo "{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>" . PHP_EOL;
 
     echo "------------------------------------------" . PHP_EOL;
 
     foreach( $unlisted as $record )
-        echo "    {$record['asset']} = <a href=\"{$record['furl']}\">{$record['amount']}</a>" . PHP_EOL;
+        echo "{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>" . PHP_EOL;
 
 
     if( $f === 'f' )
