@@ -102,8 +102,11 @@ function update_tickers( $transactions )
             $temp = array();
             foreach( $last_tickers as $ticker )
             {
-                $temp[] = $ticker['amountAssetID'];
-                $temp[] = $ticker['priceAssetID'];
+                if( $ticker['24h_volume'] > 0 )
+                {
+                    $temp[] = $ticker['amountAssetID'];
+                    $temp[] = $ticker['priceAssetID'];
+                }
             }
 
             $last_tickers = array_unique( $temp );
@@ -130,8 +133,11 @@ function update_tickers( $transactions )
     $temp = array();
     foreach( $tickers as $ticker )
     {
-        $temp[] = $ticker['amountAssetID'];
-        $temp[] = $ticker['priceAssetID'];
+        if( $ticker['24h_volume'] > 0 )
+        {
+            $temp[] = $ticker['amountAssetID'];
+            $temp[] = $ticker['priceAssetID'];
+        }
     }
     $tickers = array_unique( $temp );
 
@@ -199,7 +205,7 @@ $balances = new w8io_blockchain_balances();
 for( ;; )
 {
     update_proc( $blockchain, $transactions, $balances );
-    
+
     update_tickers( $transactions );
     update_scam( $transactions );
 

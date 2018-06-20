@@ -231,13 +231,23 @@ class w8io_blockchain_transactions
             return;
 
         $info = $this->pairs_asset_info->get_value( $id, 'j' );
-        if( $info === false || isset( $info['scam'] ) )
+        if( $info === false )
             return;
 
         if( $mark )
+        {
+            if( isset( $info['scam'] ) )
+                return;
+
             $info['scam'] = 1;
+        }
         else
+        {
+            if( !isset( $info['scam'] ) )
+                return;
+
             unset( $info['scam'] );
+        }
 
         $this->pairs_asset_info->set_pair( $id, $info, 'j' );
     }
@@ -249,13 +259,23 @@ class w8io_blockchain_transactions
             return;
 
         $info = $this->pairs_asset_info->get_value( $id, 'j' );
-        if( $info === false || isset( $info['ticker'] ) )
+        if( $info === false )
             return;
 
         if( $mark )
+        {
+            if( isset( $info['ticker'] ) )
+                return;
+
             $info['ticker'] = 1;
+        }
         else
+        {
+            if( !isset( $info['ticker'] ) )
+                return;
+
             unset( $info['ticker'] );
+        }
 
         $this->pairs_asset_info->set_pair( $id, $info, 'j' );
     }

@@ -152,14 +152,16 @@ else
             if( isset( $info['scam'] ) )
                 continue;
                 
-            $asset = $info['name'];
+            $asset = "<a href=\"" . W8IO_ROOT . "$address/f/{$info['id']}\">{$info['name']}</a>";
             $decimals = $info['decimals'];
             $amount = number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' );
+            $furl = W8IO_ROOT . "$address/f/{$info['id']}";
         }
         else
         {
-            $asset = "Waves";
+            $asset = "<a href=\"" . W8IO_ROOT . "$address/f/Waves\">Waves</a>";
             $amount = number_format( $amount / 100000000, 8, '.', '' );
+            $furl = W8IO_ROOT . "$address/f/Waves";
         }
 
         $a = (int)$wtx['a'];
@@ -167,8 +169,10 @@ else
 
         $asset = $asset ? " ($asset)" : '';
         $amount = ( $b == $aid ? '+' : '-' ) . $amount;
-        $a = $a === $aid ? $address : $api->get_address( $a );
-        $b = $b === $aid ? $address : $api->get_address( $b );
+        $isa = $a === $aid;
+        $isb = $b === $aid;
+        $a = $isa ? $address : $api->get_address( $a );
+        $b = $isb ? $address : $api->get_address( $b );
 
         $fee = $wtx['fee'];
 
@@ -206,7 +210,10 @@ else
 
         $type = w8io_tx_type( $wtx['type'] );
 
-        echo "    <small>" . date( 'Y.m.d H:i:s', $wtx['timestamp'] ) ."</small> ($type) <a href=\"". W8IO_ROOT . $a ."\">$a</a> >> <a href=\"". W8IO_ROOT . $b ."\">$b</a> $amount$asset$fee" . PHP_EOL;
+        $ashow = $isa ? "<b>$a</b>" : $a;
+        $bshow = $isb ? "<b>$b</b>" : $b;
+
+        echo "    <small>" . date( 'Y.m.d H:i:s', $wtx['timestamp'] ) ."</small> ($type) <a href=\"". W8IO_ROOT . $a ."\">$ashow</a> >> <a href=\"". W8IO_ROOT . $b ."\">$bshow</a> $amount$asset$fee" . PHP_EOL;
     }
 }
 
