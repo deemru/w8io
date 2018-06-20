@@ -381,7 +381,8 @@ class w8io_blockchain_transactions
                         $fee = $fee - intdiv( $fee * 2, 5 );
                 }
 
-                $fees[$asset] = $fee + ( isset( $fees[$asset] ) ? $fees[$asset] : 0 );
+                if( $fee )
+                    $fees[$asset] = $fee + ( isset( $fees[$asset] ) ? $fees[$asset] : 0 );
             }
 
             if( $i == 1 )
