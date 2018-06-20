@@ -28,7 +28,7 @@ echo sprintf( '
     <style>
         body, table
         {
-            font-size: 12pt; font-size: 0.96vw; font-family: "Courier New", Courier, monospace;
+            font-size: 12pt; font-size: 0.90vw; font-family: "Courier New", Courier, monospace;
             background-color: #404840;
             color: #A0A8C0;
             overflow-y: scroll;
@@ -132,9 +132,9 @@ else
 
 
     if( $f === 'f' )
-        $wtxs = $api->get_address_transactions_asset( $aid, $height, $arg, 100 );
+        $wtxs = $api->get_address_transactions_asset( $aid, $height, $arg, 1000 );
     else
-        $wtxs = $api->get_address_transactions( $aid, $height, 100 );
+        $wtxs = $api->get_address_transactions( $aid, $height, 1000 );
 
     if( $wtxs === false )
         w8io_error( "get_address_transactions( $aid ) failed" );
@@ -167,7 +167,6 @@ else
         $a = (int)$wtx['a'];
         $b = (int)$wtx['b'];
 
-        $asset = $asset ? " ($asset)" : '';
         $amount = ( $b == $aid ? '+' : '-' ) . $amount;
         $isa = $a === $aid;
         $isb = $b === $aid;
@@ -186,14 +185,14 @@ else
                 $afee = $info['name'];
                 $decimals = $info['decimals'];
                 $fee = number_format( $fee / pow( 10, $decimals ), $decimals, '.', '' );
+                $fee = " ($fee <a href=\"" . W8IO_ROOT . "$address/f/{$info['id']}\">$afee</a> fee)";
             }
             else
             {
                 $afee = "Waves";
                 $fee = number_format( $fee / 100000000, 8, '.', '' );
+                $fee = " ($fee <a href=\"" . W8IO_ROOT . "$address/f/Waves\">Waves</a> fee)";
             }
-
-            $fee = " (-$fee ($afee))";
         }
         else
             $fee = '';
@@ -213,7 +212,7 @@ else
         $ashow = $isa ? "<b>$a</b>" : $a;
         $bshow = $isb ? "<b>$b</b>" : $b;
 
-        echo "    <small>" . date( 'Y.m.d H:i:s', $wtx['timestamp'] ) ."</small> ($type) <a href=\"". W8IO_ROOT . $a ."\">$ashow</a> >> <a href=\"". W8IO_ROOT . $b ."\">$bshow</a> $amount$asset$fee" . PHP_EOL;
+        echo "    <small>" . date( 'Y.m.d H:i:s', $wtx['timestamp'] ) ."</small> ($type) <a href=\"". W8IO_ROOT . $a ."\">$ashow</a> >> <a href=\"". W8IO_ROOT . $b ."\">$bshow</a> $amount $asset$fee" . PHP_EOL;
     }
 }
 

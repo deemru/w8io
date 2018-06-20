@@ -178,7 +178,7 @@ class w8io_blockchain_transactions
             $this->query_get_txs = $this->transactions->prepare( 
                 "SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid ORDER BY uid DESC LIMIT :limit )
                  UNION
-                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND b = :aid ORDER BY uid DESC LIMIT :limit ) ORDER BY uid DESC" );
+                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND b = :aid ORDER BY uid DESC LIMIT :limit ) ORDER BY uid DESC LIMIT :limit" );
             if( !is_object( $this->query_get_txs ) )
                 return false;
         }
@@ -196,9 +196,9 @@ class w8io_blockchain_transactions
             $this->query_get_txs_asset = $this->transactions->prepare( 
                 "SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit )
                  UNION
-                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND afee = :asset ORDER BY uid DESC LIMIT :limit )
+                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND afee = :asset AND fee != 0 ORDER BY uid DESC LIMIT :limit )
                  UNION
-                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND b = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit ) ORDER BY uid DESC" );
+                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND b = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit ) ORDER BY uid DESC LIMIT :limit" );
             if( !is_object( $this->query_get_txs_asset ) )
                 return false;
         }
