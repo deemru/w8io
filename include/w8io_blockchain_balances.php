@@ -57,17 +57,9 @@ class w8io_blockchain_balances
 
     private function commit_balance( $aid, $procs )
     {
-        $balance = $this->balances->get_value( $aid );
+        $balance = $this->balances->get_value( $aid, 'j' );
         if( $balance === false )
-        {
             $balance = array();
-        }
-        else
-        {
-            $balance = json_decode( $balance, true, 512, JSON_BIGINT_AS_STRING );
-            if( $balance === false )
-                return false;
-        }
 
         foreach( $procs as $asset => $amount )
         {
@@ -86,7 +78,7 @@ class w8io_blockchain_balances
             }
         }
 
-        return $this->balances->set_pair( $aid, json_encode( $balance ) );
+        return $this->balances->set_pair( $aid, $balance, 'j' );
     }
 
     public function update_balances( $wtx )

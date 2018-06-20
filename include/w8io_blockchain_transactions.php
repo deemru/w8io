@@ -8,6 +8,7 @@ class w8io_blockchain_transactions
     private $checkpoint;
     
     private $query_get_txs = false;
+    private $query_get_txs_asset = false;
     private $query_get_txid = false;
     private $query_set_tx = false;
     private $query_clear = false;
@@ -19,7 +20,7 @@ class w8io_blockchain_transactions
     private $pairs_addresses;
     private $pairs_pubkey_addresses;
     private $pairs_assets;
-    private $pairs_assets_info;
+    private $pairs_asset_info;
     private $pairs_balances;
     private $pairs_aliases;
     private $pairs_data;
@@ -30,23 +31,18 @@ class w8io_blockchain_transactions
         if( !$this->transactions->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING ) )
             w8io_error( 'PDO->setAttribute()' );
 
-        $this->checkpoint = new w8io_pairs( $this->transactions, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-
         if( $writable )
         {
+            $this->checkpoint = new w8io_pairs( $this->transactions, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
             $this->pairs_txids = new w8io_pairs( $this->transactions, 'txids', true );
             $this->pairs_addresses = new w8io_pairs( $this->transactions, 'addresses', true );
             $this->pairs_pubkey_addresses = new w8io_pairs( $this->transactions, 'pubkey_addresses', true, 'TEXT PRIMARY KEY|INTEGER|0|0' );
             $this->pairs_assets = new w8io_pairs( $this->transactions, 'assets', true );
-            $this->pairs_assets_info = new w8io_pairs( $this->transactions, 'asset_info', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->pairs_asset_info = new w8io_pairs( $this->transactions, 'asset_info', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
             $this->pairs_aliases = new w8io_pairs( $this->transactions, 'aliases', true, 'TEXT PRIMARY KEY|INTEGER|0|1' );
             $this->pairs_addons = new w8io_pairs( $this->transactions, 'addons', true );
-        }
 
-        if( $writable )
-        {
             $this->transactions->exec( W8IO_DB_PRAGMAS );
-
             $this->transactions->exec( "CREATE TABLE IF NOT EXISTS transactions (
                 uid INTEGER PRIMARY KEY AUTOINCREMENT,
                 txid INTEGER,
@@ -60,11 +56,13 @@ class w8io_blockchain_transactions
                 fee INTEGER,
                 afee INTEGER,
                 data TEXT )" );
-
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_txid    ON transactions( txid )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_block   ON transactions( block )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_a       ON transactions( a )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_b       ON transactions( b )" );
+            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_txid  ON transactions( txid )" );
+            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_block ON transactions( block )" );
+            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_a     ON transactions( a )" );
+            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_b     ON transactions( b )" );
+            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_a_fa  ON transactions( a, asset )" );
+            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_b_fa  ON transactions( b, asset )" );
+            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_a_ff  ON transactions( a, afee )" );
         }
     }
 
@@ -118,7 +116,7 @@ class w8io_blockchain_transactions
 
     public function get_height()
     {
-        $height = json_decode( $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS ), true, 512, JSON_BIGINT_AS_STRING );
+        $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS );
         if( !$height )
             return 0;
     
@@ -191,6 +189,26 @@ class w8io_blockchain_transactions
         return $this->query_get_txs;
     }
 
+    public function get_txs_asset( $aid, $height, $asset, $limit = 100 )
+    {
+        if( $this->query_get_txs_asset == false )
+        {
+            $this->query_get_txs_asset = $this->transactions->prepare( 
+                "SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit )
+                 UNION
+                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND afee = :asset ORDER BY uid DESC LIMIT :limit )
+                 UNION
+                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND b = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit ) ORDER BY uid DESC" );
+            if( !is_object( $this->query_get_txs_asset ) )
+                return false;
+        }
+
+        if( $this->query_get_txs_asset->execute( array( 'aid' => $aid, 'height' => $height, 'asset' => $asset, 'limit' => $limit ) ) === false )
+            return false;
+
+        return $this->query_get_txs_asset;
+    }
+
     public function get_from_to( $from, $to )
     {
         if( $this->query_from_to == false )
@@ -204,6 +222,42 @@ class w8io_blockchain_transactions
             return false;
 
         return $this->query_from_to;
+    }
+
+    public function mark_scam( $scam, $mark )
+    {
+        $id = $this->pairs_assets->get_id( $scam );
+        if( $id === false )
+            return;
+
+        $info = $this->pairs_asset_info->get_value( $id, 'j' );
+        if( $info === false || isset( $info['scam'] ) )
+            return;
+
+        if( $mark )
+            $info['scam'] = 1;
+        else
+            unset( $info['scam'] );
+
+        $this->pairs_asset_info->set_pair( $id, $info, 'j' );
+    }
+
+    public function mark_tickers( $ticker, $mark )
+    {
+        $id = $this->pairs_assets->get_id( $ticker );
+        if( $id === false )
+            return;
+
+        $info = $this->pairs_asset_info->get_value( $id, 'j' );
+        if( $info === false || isset( $info['ticker'] ) )
+            return;
+
+        if( $mark )
+            $info['ticker'] = 1;
+        else
+            unset( $info['ticker'] );
+
+        $this->pairs_asset_info->set_pair( $id, $info, 'j' );
     }
 
     private function set_tx( $wtx )
@@ -428,7 +482,7 @@ class w8io_blockchain_transactions
                     {
                         $asset = $this->get_assetid( $tx['assetId'], true );
 
-                        if( $this->pairs_assets_info->set_pair( $asset, json_encode( $tx ) ) === false )
+                        if( $this->pairs_asset_info->set_pair( $asset, $tx, 'j' ) === false )
                             w8io_error();
 
                         $wtx['asset'] = $asset;
@@ -624,6 +678,7 @@ class w8io_blockchain_transactions
             $this->pairs_addresses->set_pair( 0, 'GENESIS' );
             $this->pairs_addresses->set_pair( -1, 'GENERATOR' );
             $this->pairs_addresses->set_pair( -2, 'MATCHER' );
+            $this->pairs_addresses->set_pair( -3, 'NULL' );
         }
 
         $blockchain = $upcontext['blockchain'];
@@ -664,7 +719,7 @@ class w8io_blockchain_transactions
             $prev_block = $block;
         }
 
-        if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, json_encode( $to ) ) )
+        if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, $to ) )
             w8io_error( 'set checkpoint_transactions failed' );
 
         if( !$this->transactions->commit() )

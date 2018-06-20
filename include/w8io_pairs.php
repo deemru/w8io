@@ -30,7 +30,6 @@ class w8io_pairs
         $this->name = $name;
         $this->cache_size = $cache_size;
         $this->cache_by_id = array();
-        $this->cache_by_value = array();
 
         if( $writable )
         {
@@ -45,6 +44,8 @@ class w8io_pairs
 
             if( $type[3] )
                 $this->db->exec( "CREATE INDEX IF NOT EXISTS {$this->name}_value_index ON {$this->name}( value )" );
+
+            $this->cache_by_value = array();
         }
     }
 
@@ -108,27 +109,7 @@ class w8io_pairs
         return $id;
     }
 
-    public function max_id()
-    {
-        if( $this->query_max_id === false )
-        {
-            $this->query_max_id = $this->db->prepare( "SELECT id FROM {$this->name} ORDER BY id DESC LIMIT 1" );
-            if( $this->query_max_id === false )
-                return false;
-        }
-
-        if( $this->query_max_id->execute() === false )
-            return false;
-
-        $id = $this->query_max_id->fetchAll( PDO::FETCH_ASSOC );
-
-        if( !isset( $id[0]['id'] ) )
-            return false;
-
-        return intval( $id[0]['id'] );
-    }
-
-    public function get_value( $id )
+    public function get_value( $id, $type = false )
     {
         if( isset( $this->cache_by_id[$id] ) )
             return $this->cache_by_id[$id];
@@ -149,11 +130,19 @@ class w8io_pairs
             return false;
 
         $value = $value[0]['value'];
+
+        if( $type === 'i' )
+            $value = (int)$value;
+        else if( $type === 'j' )
+            $value = json_decode( $value, true, 512, JSON_BIGINT_AS_STRING );
+        else if( $type === 'jz' )
+            $value = json_decode( gzinflate( $value ), true, 512, JSON_BIGINT_AS_STRING );
+
         self::set_cache( $id, $value );
         return $value;
     }
 
-    public function set_value( $value )
+    private function set_value( $value )
     {
         if( $this->query_set_value === false )
         {
@@ -162,14 +151,13 @@ class w8io_pairs
                 return false;
         }
 
-        if( $this->query_set_value->execute( array( 'value' => $value, ) ) === false )
-            return false;
-
-        return true;
+        return $this->query_set_value->execute( array( 'value' => $value, ) );
     }
 
-    public function set_pair( $id, $value )
+    public function set_pair( $id, $value, $type = false )
     {
+        self::set_cache( $id, $value );
+
         if( $this->query_set_pair === false )
         {
             $this->query_set_pair = $this->db->prepare( "INSERT OR REPLACE INTO {$this->name}( id, value ) VALUES( :id, :value )" );
@@ -177,11 +165,12 @@ class w8io_pairs
                 return false;
         }
 
-        if( $this->query_set_pair->execute( array( 'id' => $id, 'value' => $value, ) ) === false )
-            return false;
+        if( $type === 'j' )
+            $value = json_encode( $value );
+        else if( $type === 'jz' )
+            $value = gzdeflate( json_encode( $value ), 9 );
 
-        self::set_cache( $id, $value );
-        return true;
+        return $this->query_set_pair->execute( array( 'id' => $id, 'value' => $value, ) );
     }
 
     private function set_cache( $id, $value )
@@ -193,6 +182,8 @@ class w8io_pairs
         }
 
         $this->cache_by_id[$id] = $value;
-        $this->cache_by_value[$value] = $id;
+
+        if( isset( $this->cache_by_value ) && !is_array( $value ) )
+            $this->cache_by_value[$value] = $id;
     }
 }

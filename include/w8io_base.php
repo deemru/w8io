@@ -81,3 +81,27 @@ function w8io_error( $message = false )
 {
     trigger_error( $message ? w8io_log( 'e', $message ) : '(no message)', E_USER_ERROR );
 }
+
+function mb_str_pad( $input, $pad_length, $pad_string, $pad_style )
+{ 
+    return str_pad( $input, strlen( $input ) - mb_strlen( $input,'UTF-8' ) + $pad_length, $pad_string, $pad_style );
+}
+
+function w8io_tx_type( $type )
+{
+    switch( $type )
+    {
+        case 1: return 'genesis';
+        case 2: return 'payment';
+        case 3: return 'issue';
+        case 4: return 'transfer';
+        case 5: return 'reissue';
+        case 6: return 'burn';
+        case 7: return 'exchange';
+        case 8: return 'lease';
+        case 9: return 'cancel lease';
+        case 10: return 'alias';
+        case 11: return 'mass transfer';
+        default: return 'unkonwn';
+    }
+}

@@ -78,12 +78,128 @@ function update_proc( $blockchain, $transactions, $balances )
         w8io_trace( 's', "{$balances_from_to['from']} >> {$balances_from_to['to']} (" . w8io_ms( w8io_timer( $timer ) ) . ' ms)' );
 }
 
+function update_tickers( $transactions )
+{
+    $tickers_file = './var/tickers.txt';
+
+    if( file_exists( $tickers_file ) )
+    {
+        if( time() - filemtime( $tickers_file ) < 7200 )
+            return;
+
+        $last_tickers = file_get_contents( $tickers_file );
+        if( $last_tickers === false )
+        {
+            w8io_warning( 'file_get_contents() failed' );
+            return;
+        }
+
+        $last_tickers = json_decode( $last_tickers, true, 512, JSON_BIGINT_AS_STRING );
+        if( $last_tickers === false )
+            $last_tickers = array();
+        else
+        {
+            $temp = array();
+            foreach( $last_tickers as $ticker )
+            {
+                $temp[] = $ticker['amountAssetID'];
+                $temp[] = $ticker['priceAssetID'];
+            }
+
+            $last_tickers = array_unique( $temp );
+        }
+    }
+    else
+        $last_tickers = array();
+
+    $fresh_tickers = new w8io_nodes( array( 'marketdata.wavesplatform.com' ) );
+    $fresh_tickers = $fresh_tickers->get( '/api/tickers' );
+    if( $fresh_tickers === false )
+    {
+        w8io_trace( 'w', 'fresh_tickers->get() failed' );
+        return;
+    }
+
+    $tickers = json_decode( $fresh_tickers, true, 512, JSON_BIGINT_AS_STRING );
+    if( !is_array( $tickers ) )
+    {
+        w8io_trace( 'w', 'json_decode( fresh_tickers ) failed' );
+        return;
+    }
+
+    $temp = array();
+    foreach( $tickers as $ticker )
+    {
+        $temp[] = $ticker['amountAssetID'];
+        $temp[] = $ticker['priceAssetID'];
+    }
+    $tickers = array_unique( $temp );
+
+    $mark_tickers = array_diff( $tickers, $last_tickers );
+    $unset_tickers = array_diff( $last_tickers, $tickers );
+
+    foreach( $mark_tickers as $ticker )
+        $transactions->mark_tickers( $ticker, true );
+
+    foreach( $unset_tickers as $ticker )
+        $transactions->mark_tickers( $ticker, false );
+
+    file_put_contents( $tickers_file, $fresh_tickers );
+}
+
+function update_scam( $transactions )
+{
+    $scam_file = './var/scam.txt';
+
+    if( file_exists( $scam_file ) )
+    {
+        if( time() - filemtime( $scam_file ) < 3600 )
+            return;
+
+        $last_scam = file_get_contents( $scam_file );
+        if( $last_scam === false )
+        {
+            w8io_warning( 'file_get_contents() failed' );
+            return;
+        }
+
+        $last_scam = explode( "\n", $last_scam );
+    }
+    else
+        $last_scam = array();
+
+    $fresh_scam = new w8io_nodes( array( 'raw.githubusercontent.com' ) );
+    $fresh_scam = $fresh_scam->get( '/wavesplatform/waves-community/master/Scam%20tokens%20according%20to%20the%20opinion%20of%20Waves%20Community.csv' );
+    if( $fresh_scam === false )
+    {
+        w8io_warning( 'fresh_scam->get() failed' );
+        return;
+    }
+
+    $scam = explode( "\n", $fresh_scam );
+    $scam = array_unique( $scam );
+    $fresh_scam = implode( "\n", $scam );
+
+    $mark_scam = array_diff( $scam, $last_scam );
+    $unset_scam = array_diff( $last_scam, $scam );
+
+    foreach( $mark_scam as $scamid )
+        $transactions->mark_scam( explode( ',', $scamid )[0], true );
+
+    foreach( $unset_scam as $scamid )
+        $transactions->mark_scam( explode( ',', $scamid )[0], false );
+
+    file_put_contents( $scam_file, $fresh_scam );
+}
+
 $blockchain = new w8io_blockchain();
 $transactions = new w8io_blockchain_transactions();
 $balances = new w8io_blockchain_balances();
 
 for( ;; )
 {
+    update_tickers( $transactions );
+    update_scam( $transactions );
     update_proc( $blockchain, $transactions, $balances );
 
     if( sleep( 17 ) )

@@ -20,10 +20,6 @@ class w8io_blockchain
     {
         $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN );
 
-        $height_backup = json_decode( $height, true );
-        if( isset( $height_backup['height'] ) )
-            return $height_backup['height'];
-
         if( !$height )
             return 0;
     
@@ -32,25 +28,12 @@ class w8io_blockchain
 
     public function get_block( $at )
     {
-        $block = $this->blocks->get_value( $at );
-        if( $block === false )
-            return false;
-
-        $block = json_decode( gzinflate( $block ), true, 512, JSON_BIGINT_AS_STRING );
-        if( $block === false )
-            return false;
-
-        return $block;
+        return $this->blocks->get_value( $at, 'jz' );
     }
 
     private function set_block( $block )
     {
-        $height = $block['height'];
-        $block = gzdeflate( json_encode( $block ), 9 );
-        if( $block === false )
-            return false;
-
-        return $this->blocks->set_pair( $height, $block );
+        return $this->blocks->set_pair( $block['height'], $block, 'jz' );
     }
 
     public function update()

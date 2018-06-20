@@ -19,7 +19,7 @@ class w8io_nodes
             
         if( false === curl_setopt_array( $ch, array (
             CURLOPT_CONNECTTIMEOUT  => 1,
-            CURLOPT_TIMEOUT         => 5,
+            CURLOPT_TIMEOUT         => 15,
             CURLOPT_URL             => $host,
             CURLOPT_CONNECT_ONLY    => true,
             CURLOPT_CAINFO          => './third_party/ca-bundle/res/cacert.pem',
@@ -92,16 +92,19 @@ class w8io_nodes
         }
     }
 
-    public function get( $url, $trace = false, $api = false )
+    public function get( $url, $method = 'GET', $api = false )
     {
         $c = $this->connector();
         $host = $c['host'];
         $ch = $c['curl'];
+        $post = $method === 'POST';
 
-        if( false === curl_setopt_array( $ch, array (
-            CURLOPT_HTTPHEADER      => array( 'Content-Type: application/json', 'Accept: application/json', $api ? "X-API-Key: $api" : '', ),
+        if( false === curl_setopt_array( $ch, array(
+            CURLOPT_HTTPHEADER      => $post ? array( 'Content-Type: application/json', 'Accept: application/json', $api ? "X-API-Key: $api" : '', ) : array(),
             CURLOPT_URL             => $host . $url,
-            CURLOPT_POST            => false,
+            CURLOPT_POST            => $post,
+            CURLOPT_FOLLOWLOCATION  => true,
+            CURLOPT_MAXREDIRS       => 3,
         ) ) )
             w8io_error( 'curl_setopt_array() failed' );
 
@@ -109,58 +112,25 @@ class w8io_nodes
         w8io_timer( $ms );
         {
             $data = curl_exec( $ch );
+            $code = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
         }
         $ms = w8io_ms( w8io_timer( $ms ) );
 
-        if( 0 != ( $errno = curl_errno( $ch ) ) )
+        if( 0 != ( $errno = curl_errno( $ch ) ) || $code !== 200 )
         {
             w8io_trace( 'w', "$host error $errno: " . curl_error( $ch ) );
             curl_close( $ch );
             return false;
         }
 
-        if( $trace )
-            w8io_trace( 'i', "$host GET $url ($ms ms)" );
+        w8io_trace( 'i', "$host $method $url ($ms ms)" );
         
-        return $data;
-    }
-
-    public function post( $url, $data, $api )
-    {
-        $c = $this->connector();
-        $host = $c['host'];
-        $ch = $c['curl'];
-
-        if( false === curl_setopt_array( $ch, array (
-            CURLOPT_HTTPHEADER      => array( 'Content-Type: application/json', 'Accept: application/json', $api ? "X-API-Key: $api" : '', ),
-            CURLOPT_URL             => $host . $url,
-            CURLOPT_POST            => true,
-            CURLOPT_POSTFIELDS      => $data,
-        ) ) )
-            w8io_error( 'curl_setopt_array() failed' );
-
-        $ms = 0;
-        w8io_timer( $ms );
-        {
-            $data = curl_exec( $ch );
-        }
-        $ms = w8io_ms( w8io_timer( $ms ) );
-
-        if( 0 != ( $errno = curl_errno( $ch ) ) )
-        {
-            w8io_trace( 'w', "$host error $errno: " . curl_error( $ch ) );
-            curl_close( $ch );
-            return false;
-        }
-
-        w8io_trace( 'i', "$host POST $url ($ms ms)" );
-
         return $data;
     }
 
     public function get_height()
     {
-        $json = json_decode( self::get( '/blocks/height', true ), true, 512, JSON_BIGINT_AS_STRING );
+        $json = json_decode( self::get( '/blocks/height' ), true, 512, JSON_BIGINT_AS_STRING );
 
         if( !isset( $json['height'] ) )
             return false;
@@ -170,7 +140,7 @@ class w8io_nodes
 
     public function get_block( $at )
     {
-        $json = json_decode( self::get( "/blocks/at/$at", true ), true, 512, JSON_BIGINT_AS_STRING );
+        $json = json_decode( self::get( "/blocks/at/$at" ), true, 512, JSON_BIGINT_AS_STRING );
 
         if( !isset( $json['generator'] ) )
             return false;
