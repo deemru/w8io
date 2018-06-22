@@ -60,9 +60,9 @@ class w8io_blockchain_transactions
             $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_block ON transactions( block )" );
             $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_a     ON transactions( a )" );
             $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_b     ON transactions( b )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_a_fa  ON transactions( a, asset )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_b_fa  ON transactions( b, asset )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_a_fee ON transactions( a, afee, fee )" );
+            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_asa   ON transactions( a, asset )" );
+            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_asb   ON transactions( b, asset )" );
+            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_afa   ON transactions( a, afee )" );
         }
     }
 
@@ -196,7 +196,7 @@ class w8io_blockchain_transactions
             $this->query_get_txs_asset = $this->transactions->prepare( 
                 "SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit )
                  UNION
-                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND afee = :asset AND fee > 0 ORDER BY uid DESC LIMIT :limit )
+                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND afee = :asset ORDER BY uid DESC LIMIT :limit )
                  UNION
                  SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND b = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit ) ORDER BY uid DESC LIMIT :limit" );
             if( !is_object( $this->query_get_txs_asset ) )
@@ -369,6 +369,9 @@ class w8io_blockchain_transactions
 
         if( $wtx['data'] !== false )
             $wtx['data'] = json_encode( $wtx['data'] );
+
+        if( $wtx['fee'] === 0 )
+            $wtx['afee'] = -1;
 
         if( $this->query_set_tx->execute( $wtx ) === false )
             return false;
