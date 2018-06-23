@@ -5,7 +5,8 @@ if( PHP_INT_SIZE < 8 )
 
 define( 'W8IO_NODES', 'https://nodes.wavesnodes.com' );
 define( 'W8IO_DB_DIR', './var/db/' );
-define( 'W8IO_DB_PRAGMAS', 'PRAGMA synchronous = NORMAL; PRAGMA journal_mode = WAL; PRAGMA temp_store = MEMORY;' );
+define( 'W8IO_DB_PRAGMAS', 'PRAGMA temp_store = MEMORY;' );
+define( 'W8IO_DB_WRITE_PRAGMAS', 'PRAGMA synchronous = NORMAL; PRAGMA journal_mode = WAL; PRAGMA cache_size = 10000; PRAGMA optimize;' );
 define( 'W8IO_DB_BLOCKCHAIN', W8IO_DB_DIR . 'blockchain.sqlite3' );
 define( 'W8IO_DB_BLOCKCHAIN_TRANSACTIONS', W8IO_DB_DIR . 'blockchain_transactions.sqlite3' );
 define( 'W8IO_DB_BLOCKCHAIN_BALANCES', W8IO_DB_DIR . 'blockchain_balances.sqlite3' );

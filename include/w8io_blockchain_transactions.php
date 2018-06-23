@@ -31,6 +31,8 @@ class w8io_blockchain_transactions
         if( !$this->transactions->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING ) )
             w8io_error( 'PDO->setAttribute()' );
 
+        $this->transactions->exec( W8IO_DB_PRAGMAS );
+
         if( $writable )
         {
             $this->checkpoint = new w8io_pairs( $this->transactions, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
@@ -42,7 +44,7 @@ class w8io_blockchain_transactions
             $this->pairs_aliases = new w8io_pairs( $this->transactions, 'aliases', true, 'TEXT PRIMARY KEY|INTEGER|0|1' );
             $this->pairs_addons = new w8io_pairs( $this->transactions, 'addons', true );
 
-            $this->transactions->exec( W8IO_DB_PRAGMAS );
+            $this->transactions->exec( W8IO_DB_WRITE_PRAGMAS );
             $this->transactions->exec( "CREATE TABLE IF NOT EXISTS transactions (
                 uid INTEGER PRIMARY KEY AUTOINCREMENT,
                 txid INTEGER,

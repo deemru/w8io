@@ -25,6 +25,8 @@ class w8io_pairs
             $this->db = new PDO( "sqlite:$db" );
             if( !$this->db->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING ) )
                 w8io_error( 'PDO->setAttribute()' );
+
+            $this->db->exec( W8IO_DB_PRAGMAS );
         }
         
         $this->name = $name;
@@ -33,7 +35,7 @@ class w8io_pairs
 
         if( $writable )
         {
-            $this->db->exec( W8IO_DB_PRAGMAS );
+            $this->db->exec( W8IO_DB_WRITE_PRAGMAS );
 
             $type = explode( '|', $type );
 
