@@ -684,6 +684,10 @@ class w8io_blockchain_transactions
                     }
                     $saved = true;
                     break;
+                case 12: // data
+                    $wtx['b'] = 'NULL';
+                    $wtx['data'] = array( 'd' => $this->get_dataid( json_encode( $tx['data'] ), true ) );
+                    break;
 
                 default:
                     var_dump( $tx );

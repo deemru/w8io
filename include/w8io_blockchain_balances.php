@@ -126,6 +126,7 @@ class w8io_blockchain_balances
             case 8:
             case 9:
             case 10:
+            case 12:
                 $procs_a[$afee] = -$fee;
                 break;
 

@@ -103,6 +103,7 @@ function w8io_tx_type( $type )
         case 9: return 'cancel lease';
         case 10: return 'alias';
         case 11: return 'mass transfer';
+        case 12: return 'data';
         default: return 'unkonwn';
     }
 }
