@@ -92,7 +92,6 @@ class w8io_blockchain
 
                 if( serialize( $nodes_block ) == serialize( $local_block ) )
                 {
-                    $shift = 1;
                     $signature = $nodes_block['signature'];
                     break;
                 }
