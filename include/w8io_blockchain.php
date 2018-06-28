@@ -82,6 +82,8 @@ class w8io_blockchain
             else // fork (fallback -100)
             for( ;; )
             {
+                w8io_trace( 'w', "fork at $from" );
+
                 $nodes_block = $this->nodes->get_block( $from );
                 if( $nodes_block === false )
                 {
@@ -96,9 +98,7 @@ class w8io_blockchain
                     break;
                 }
 
-                w8io_trace( 'w', "fork at $from (-100)" );
                 $from = max( 0, $from - 100 );
-
                 if( $from == 0 )
                     break;
 
@@ -119,7 +119,7 @@ class w8io_blockchain
 
             if( isset( $signature ) && $nodes_block['reference'] != $signature )
             {
-                w8io_trace( 'w', "fork at $i" );
+                w8io_trace( 'w', "fork at $i (break)" );
                 break;
             }
 
