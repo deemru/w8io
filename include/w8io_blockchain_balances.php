@@ -175,6 +175,30 @@ class w8io_blockchain_balances
         {
             if( $local_height > $from )
             {
+                $backup = W8IO_DB_BLOCKCHAIN_BALANCES . '.backup';
+                if( file_exists( $backup ) )
+                {
+                    unset( $this->checkpoint );
+                    unset( $this->balances );
+
+                    $backup_diff = md5_file( $backup ) != md5_file( W8IO_DB_BLOCKCHAIN_BALANCES );
+
+                    if( $backup_diff )
+                    {
+                        unlink( W8IO_DB_BLOCKCHAIN_BALANCES );
+                        copy( $backup, W8IO_DB_BLOCKCHAIN_BALANCES );
+                    }
+
+                    $this->__construct();
+
+                    if( $backup_diff )
+                    {
+                        w8io_warning( 'restoring from backup (balances)' );
+                        return $this->update( $upcontext );
+                    }
+                }
+
+                w8io_warning( 'full reset (balances)' );
                 $this->balances->reset();
                 $local_height = 0;
 
