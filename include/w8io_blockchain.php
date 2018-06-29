@@ -84,6 +84,10 @@ class w8io_blockchain
             {
                 w8io_trace( 'w', "fork at $from" );
 
+                if( --$from == 0 )
+                    break;
+
+                $local_block = $this->get_block( $from );
                 $nodes_block = $this->nodes->get_block( $from );
                 if( $nodes_block === false )
                 {
@@ -95,14 +99,9 @@ class w8io_blockchain
                 if( serialize( $nodes_block ) == serialize( $local_block ) )
                 {
                     $signature = $nodes_block['signature'];
+                    w8io_trace( 'w', "no fork at $from" );
                     break;
                 }
-
-                $from = max( 0, $from - 100 );
-                if( $from == 0 )
-                    break;
-
-                $local_block = $this->get_block( $from );
             }
         }
 
