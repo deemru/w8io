@@ -77,6 +77,11 @@ function w8io_trace( $level, $message )
     echo w8io_log( $level, $message );
 }
 
+function w8io_warning( $message )
+{
+    w8io_trace( 'w', $message );
+}
+
 function w8io_error( $message = false )
 {
     trigger_error( $message ? w8io_log( 'e', $message ) : '(no message)', E_USER_ERROR );
