@@ -720,6 +720,7 @@ class w8io_blockchain_transactions
         if( $local_height != $from )
         {
             $from = min( $local_height, $from );
+            w8io_warning( "clear_transactions( $from )" );
             if( !$this->clear_transactions( $from ) )
                 w8io_error( 'unexpected clear_transactions() error' );
         }
