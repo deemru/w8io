@@ -187,6 +187,7 @@ class w8io_blockchain_balances
                     {
                         unlink( W8IO_DB_BLOCKCHAIN_BALANCES );
                         copy( $backup, W8IO_DB_BLOCKCHAIN_BALANCES );
+                        chmod( W8IO_DB_BLOCKCHAIN_BALANCES, 0666 );
                     }
 
                     $this->__construct();
