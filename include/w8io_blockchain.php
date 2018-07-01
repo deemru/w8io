@@ -48,7 +48,7 @@ class w8io_blockchain
             return false;
         }
 
-        $to--; // highest stable block
+        $to -= 3; // highest stable block
         $height = $to;
 
         if( $to <= $from ) // no new blocks
