@@ -1,5 +1,11 @@
 <?php
 
+define( 'W8IO_NG_ACTIVE', W8IO_NETWORK == 'W' ? 805001 : 171001 );
+define( 'W8IO_ASSET_EMPTY', -1 ); // to skip select with empty fee
+define( 'W8IO_ASSET_WAVES_LEASED', -2 ); // to monitor waves leased
+define( 'W8IO_TYPE_FEES', 0 ); // internal tx type for fees
+define( 'W8IO_TYPE_SPONSOR', -1 ); // internal tx type for sponsor
+
 function w8io_err( $errno , $errstr, $errfile, $errline )
 {
     switch( $errno )
@@ -96,7 +102,8 @@ function w8io_tx_type( $type )
 {
     switch( $type )
     {
-        case 0: return 'fees';
+        case W8IO_TYPE_FEES: return 'fees';
+        case W8IO_TYPE_SPONSOR: return 'sponsor';
         case 1: return 'genesis';
         case 2: return 'payment';
         case 3: return 'issue';
@@ -109,6 +116,8 @@ function w8io_tx_type( $type )
         case 10: return 'alias';
         case 11: return 'mass transfer';
         case 12: return 'data';
+        case 13: return 'script';
+        case 14: return 'sponsorship';
         default: return 'unkonwn';
     }
 }

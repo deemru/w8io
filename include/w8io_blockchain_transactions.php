@@ -7,6 +7,7 @@ class w8io_blockchain_transactions
     private $transactions;
     private $checkpoint;
     
+    private $query_get_txs_all = false;
     private $query_get_txs = false;
     private $query_get_txs_asset = false;
     private $query_get_txid = false;
@@ -24,6 +25,7 @@ class w8io_blockchain_transactions
     private $pairs_balances;
     private $pairs_aliases;
     private $pairs_data;
+    private $pairs_lease_info;
 
     public function __construct( $writable = true )
     {
@@ -43,6 +45,7 @@ class w8io_blockchain_transactions
             $this->pairs_asset_info = new w8io_pairs( $this->transactions, 'asset_info', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
             $this->pairs_aliases = new w8io_pairs( $this->transactions, 'aliases', true, 'TEXT PRIMARY KEY|INTEGER|0|1' );
             $this->pairs_addons = new w8io_pairs( $this->transactions, 'addons', true );
+            $this->pairs_lease_info = new w8io_pairs( $this->transactions, 'lease_info', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
 
             $this->transactions->exec( W8IO_DB_WRITE_PRAGMAS );
             $this->transactions->exec( "CREATE TABLE IF NOT EXISTS transactions (
@@ -173,6 +176,22 @@ class w8io_blockchain_transactions
         return $id;
     }
 
+    public function get_txs_all( $limit = 100 )
+    {
+        if( $this->query_get_txs_all == false )
+        {
+            $this->query_get_txs_all = $this->transactions->prepare( 
+                "SELECT * FROM transactions ORDER BY uid DESC LIMIT :limit" );
+            if( !is_object( $this->query_get_txs_all ) )
+                return false;
+        }
+
+        if( $this->query_get_txs_all->execute( array( 'limit' => $limit ) ) === false )
+            return false;
+
+        return $this->query_get_txs_all;
+    }
+
     public function get_txs( $aid, $height, $limit = 100 )
     {
         if( $this->query_get_txs == false )
@@ -282,6 +301,57 @@ class w8io_blockchain_transactions
         $this->pairs_asset_info->set_pair( $id, $info, 'j' );
     }
 
+    private function sponsor_tx( $wtx, $sponsor, $wfee )
+    {
+        // A > SPONSOR
+        $wtx['type'] = W8IO_TYPE_SPONSOR;
+        $wtx['b'] = $sponsor;
+        $wtx['amount'] = $wtx['fee'];
+        $wtx['asset'] = $wtx['afee'];
+        $wtx['fee'] = 0;
+        $wtx['data'] = false;
+
+        if( !$this->set_tx( $wtx ) )
+        {
+            var_dump( $wtx );
+            w8io_error( 'set_tx()' );
+        }
+
+        // SPONSOR > A
+        $wtx['b'] = $wtx['a'];
+        $wtx['a'] = $sponsor;
+        $wtx['amount'] = $wfee;
+        $wtx['asset'] = 0;
+
+        if( !$this->set_tx( $wtx ) )
+        {
+            var_dump( $wtx );
+            w8io_error( 'set_tx()' );
+        }
+    }
+
+    private function get_sponsor( $asset, $height )
+    {
+        $ainfo = $this->pairs_asset_info->get_value( $asset, 'j' );
+
+        if( !isset( $ainfo['sponsor'] ) )
+            return false;
+        
+        $sponsor = false;
+        $lheight = 0;
+
+        foreach( $ainfo['sponsor'] as $sheight => $sinfo )
+        {
+            if( $height > $sheight && $sheight >= $lheight )
+            {
+                $lheight = $sheight;
+                $sponsor = $sinfo['sfee'] ? $sinfo : false;
+            }
+        }
+
+        return $sponsor;
+    }
+
     private function set_tx( $wtx )
     {
         $a = $wtx['a'];
@@ -373,7 +443,24 @@ class w8io_blockchain_transactions
             $wtx['data'] = json_encode( $wtx['data'] );
 
         if( $wtx['fee'] === 0 )
-            $wtx['afee'] = -1;
+            $wtx['afee'] = W8IO_ASSET_EMPTY;
+
+        if( $wtx['afee'] > 0 )
+        {
+            $sponsor = $this->get_sponsor( $wtx['afee'], $wtx['block'] );
+
+            if( $sponsor )
+            {
+                $wfee = gmp_intval( gmp_div( gmp_mul( $wtx['fee'], 100000 ), $sponsor['sfee'] ) );
+
+                // exchange asset on waves
+                $this->sponsor_tx( $wtx, $sponsor['id'], $wfee );
+
+                // real fee in waves
+                $wtx['afee'] = 0;
+                $wtx['fee'] = $wfee;
+            }
+        }
 
         if( $this->query_set_tx->execute( $wtx ) === false )
             return false;
@@ -398,7 +485,7 @@ class w8io_blockchain_transactions
 
                 $fee = $tx['fee'];
 
-                if( $at >= 805001 )
+                if( $at >= W8IO_NG_ACTIVE )
                 {
                     if( $i == 0 )
                         $fee = intdiv( $fee * 2, 5 );
@@ -413,7 +500,7 @@ class w8io_blockchain_transactions
             if( $i == 1 )
                 return $fees;
 
-            if( $at <= 805001 )
+            if( $at <= W8IO_NG_ACTIVE )
                 return $fees;
 
             $txs = $prev_block['transactions'];
@@ -429,11 +516,11 @@ class w8io_blockchain_transactions
         $wtx = array();
         $wtx['txid'] = $this->get_pair_txid( $at, true );
         $wtx['block'] = $at;
-        $wtx['type'] = 0;
+        $wtx['type'] = W8IO_TYPE_FEES;
         $wtx['timestamp'] = $this->timestamp( $block['timestamp'] );
         
         $wtx['fee'] = 0;
-        $wtx['afee'] = 0;
+        $wtx['afee'] = W8IO_ASSET_EMPTY;
         $wtx['data'] = false;
 
         $wtx['a'] = 'GENERATOR';
@@ -450,8 +537,18 @@ class w8io_blockchain_transactions
         else
         foreach( $fees as $asset => $fee )
         {
-            $wtx['amount'] = $fee;
-            $wtx['asset'] = $asset;
+            $sponsor = $this->get_sponsor( $asset, $at );
+
+            if( $sponsor )
+            {
+                $wtx['asset'] = 0;
+                $wtx['amount'] = gmp_intval( gmp_div( gmp_mul( $fee, 100000 ), $sponsor['sfee'] ) );
+            }
+            else
+            {
+                $wtx['asset'] = $asset;
+                $wtx['amount'] = $fee;
+            }
 
             if( !$this->set_tx( $wtx ) )
                 w8io_error();
@@ -508,6 +605,7 @@ class w8io_blockchain_transactions
                     {
                         $asset = $this->get_assetid( $tx['assetId'], true );
 
+                        $tx['name'] = htmlentities( trim( preg_replace( '/\s+/', ' ',  $tx['name'] ) ) );
                         if( $this->pairs_asset_info->set_pair( $asset, $tx, 'j' ) === false )
                             w8io_error();
 
@@ -625,23 +723,39 @@ class w8io_blockchain_transactions
                     break;
                 case 8: // start lease
                     $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = $tx['recipient'];
                     {
-                        if( !$this->set_tx( $wtx ) )
+                        $b = $this->get_aid( $tx['recipient'], true );
+                        if( $b === false )
+                            w8io_error();
+
+                        $wtx['b'] = $b;
+
+                        if( false === $this->pairs_lease_info->set_pair( $wtx['txid'], array( '$' => $tx['amount'], 'b' => $b ), 'j' ) )
                             w8io_error();
                     }
-                    $saved = true;
                     break;
                 case 9: // cancel lease
                     $wtx['a'] = $tx['sender'];
                     {
                         $txid = $this->get_pair_txid( $tx['leaseId'] );
-                        $lease_tx = $this->get_txid( $txid, true );
-                        if( $lease_tx === false )
+                        $lease_info = $this->pairs_lease_info->get_value( $txid, 'j' );
+                        if( $lease_info === false )
                             w8io_error();
 
-                        $wtx['b'] = intval( $lease_tx['b'] );
-                        $wtx['amount'] = $lease_tx['amount'];
+                        $wtx['b'] = intval( $lease_info['b'] );
+                        
+                        if( !isset( $lease_info['x'] ) || false === $this->get_txid( $lease_info['x'], true ) )
+                        {
+                            $wtx['amount'] = $lease_info['$'];
+
+                            $lease_info['x'] = $wtx['txid'];
+                            if( false === $this->pairs_lease_info->set_pair( $txid, $lease_info, 'j' ) )
+                                w8io_error();
+                        }
+                        else
+                        {
+                            $wtx['amount'] = 0; // already cancelled
+                        }
                     }
                     break;
                 case 10: // alias
@@ -688,6 +802,34 @@ class w8io_blockchain_transactions
                     $wtx['a'] = $tx['sender'];
                     $wtx['b'] = 'NULL';
                     $wtx['data'] = array( 'd' => $this->get_dataid( json_encode( $tx['data'] ), true ) );
+                    break;
+
+                case 13: // script
+                    $wtx['a'] = $tx['sender'];
+                    $wtx['b'] = 'NULL';
+                    $wtx['data'] = array( 's' => $this->get_dataid( json_encode( $tx['script'] ), true ) );
+                    break;
+
+                case 14: // sponsorship
+                    $wtx['a'] = $this->get_aid( $tx['sender'] );
+                    $wtx['b'] = 'NULL';
+                    {
+                        $asset = $this->get_assetid( $tx['assetId'] );
+                        $ainfo = $this->pairs_asset_info->get_value( $asset, 'j' );
+
+                        if( isset( $ainfo['sponsor'] ) )
+                            $sponsor = $ainfo['sponsor'];
+                        else
+                            $sponsor = array();
+
+                        $sponsor[$at] = array( 'id' => $wtx['a'], 'sfee' => $tx['minSponsoredAssetFee'] );
+                        $ainfo['sponsor'] = $sponsor;
+
+                        if( $this->pairs_asset_info->set_pair( $asset, $ainfo, 'j' ) === false )
+                            w8io_error();
+
+                        $wtx['asset'] = $asset;
+                    }
                     break;
 
                 default:
@@ -738,7 +880,7 @@ class w8io_blockchain_transactions
             if( $block === false )
                 w8io_error( 'unexpected blockchain->get_block() error' );
 
-            if( $prev_block === false && $i > 805001 )
+            if( $prev_block === false && $i > W8IO_NG_ACTIVE )
             {
                 $prev_block = $blockchain->get_block( $i - 1 );
                 if( $prev_block === false )

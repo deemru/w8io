@@ -21,7 +21,7 @@ class w8io_crypto
         if( $data === false || strlen( $data ) != 26 )
             return false;
 
-        if( $data[0] !== chr( 1 ) || $data[1] !== chr( 87 ) )
+        if( $data[0] !== chr( 1 ) || $data[1] !== W8IO_NETWORK )
             return false;
  
         $crc = self::sechash( substr( $data, 0, 22 ) );
@@ -37,7 +37,7 @@ class w8io_crypto
         $seed = self::sechash( sodium_crypto_box_publickey_from_secretkey(
                                hash( 'sha256',
                                self::sechash( $seed ), true ) ) );
-        $seed = chr( 1 ) . chr( 87 ) . substr( $seed, 0, 20 );
+        $seed = chr( 1 ) . W8IO_NETWORK . substr( $seed, 0, 20 );
         $seed .= substr( self::sechash( $seed ), 0, 4 );
         return self::b58_encode( $seed );
     }
@@ -48,7 +48,7 @@ class w8io_crypto
         if( $pubkey === false || strlen( $pubkey ) != 32 )
             return false;
         $pubkey = self::sechash( $pubkey );
-        $pubkey = chr( 1 ) . chr( 87 ) . substr( $pubkey, 0, 20 );
+        $pubkey = chr( 1 ) . W8IO_NETWORK . substr( $pubkey, 0, 20 );
         $pubkey .= substr( self::sechash( $pubkey ), 0, 4 );
         return self::b58_encode( $pubkey );
     }

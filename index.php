@@ -65,10 +65,100 @@ if( $f === 'f' )
     }
 }
 
+function w8io_print_transactions( $api )
+{
+    $aid = false;
+    $address = '3PAWwWa6GbwcJaFzwqXQN5KQm7H96Y7SHT1';
+    $wtxs = $api->get_address_transactions( false, false, 10000 );
+
+    if( $wtxs === false )
+        w8io_error( "get_address_transactions( $aid ) failed" );
+
+    echo '</pre></td><td valign="top"><pre>';
+    echo 'transactions:' . PHP_EOL;
+    foreach( $wtxs as $wtx )
+    {
+        if( $wtx['type'] == 11 )
+            continue;
+
+        $asset = $wtx['asset'];
+        $amount = $wtx['amount'];
+
+        if( $asset )
+        {
+            $info = $api->get_asset_info( $asset );
+            if( isset( $info['scam'] ) )
+                continue;
+                
+            $asset = "<a href=\"" . W8IO_ROOT . "$address/f/{$info['id']}\">{$info['name']}</a>";
+            $decimals = $info['decimals'];
+            $amount = number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' );
+            $furl = W8IO_ROOT . "$address/f/{$info['id']}";
+        }
+        else
+        {
+            $asset = "<a href=\"" . W8IO_ROOT . "$address/f/Waves\">Waves</a>";
+            $amount = number_format( $amount / 100000000, 8, '.', '' );
+            $furl = W8IO_ROOT . "$address/f/Waves";
+        }
+
+        $a = (int)$wtx['a'];
+        $b = (int)$wtx['b'];
+
+        $amount = ( $b == $aid ? '+' : '-' ) . $amount;
+        $isa = $a === $aid;
+        $isb = $b === $aid;
+        $a = $isa ? $address : $api->get_address( $a );
+        $b = $isb ? $address : $api->get_address( $b );
+
+        $fee = $wtx['fee'];
+
+        if( $a === $address && $fee )
+        {
+            $afee = $wtx['afee'];
+
+            if( $afee )
+            {
+                $info = $api->get_asset_info( $afee );
+                $afee = $info['name'];
+                $decimals = $info['decimals'];
+                $fee = number_format( $fee / pow( 10, $decimals ), $decimals, '.', '' );
+                $fee = " ($fee <a href=\"" . W8IO_ROOT . "$address/f/{$info['id']}\">$afee</a> fee)";
+            }
+            else
+            {
+                $afee = "Waves";
+                $fee = number_format( $fee / 100000000, 8, '.', '' );
+                $fee = " ($fee <a href=\"" . W8IO_ROOT . "$address/f/Waves\">Waves</a> fee)";
+            }
+        }
+        else
+            $fee = '';
+
+        $data = $wtx['data'];
+
+        if( $data )
+        {
+            $data = json_decode( $data, true );
+
+            if( isset( $data['b'] ) )
+                $b = $api->get_data( $data['b'] );
+        }
+
+        $type = w8io_tx_type( $wtx['type'] );
+
+        $ashow = $isa ? "<b>$a</b>" : $a;
+        $bshow = $isb ? "<b>$b</b>" : $b;
+
+        echo "    <small>" . date( 'Y.m.d H:i:s', $wtx['timestamp'] ) ."</small> ($type) <a href=\"". W8IO_ROOT . $a ."\">$ashow</a> >> <a href=\"". W8IO_ROOT . $b ."\">$bshow</a> $amount $asset$fee" . PHP_EOL;
+    }
+}
+
 $aid = $api->get_aid( $address );
 if( $aid === false )
 {
     w8io_trace( 'w', "\"$address\" not found" );
+    w8io_print_transactions( $api );
 }
 else
 {
@@ -99,9 +189,19 @@ else
         $tickers[] = $record = array( 'asset' => $asset, 'amount' => $amount, 'furl' => $furl );
     }
 
+    if( isset( $balance[W8IO_ASSET_WAVES_LEASED] ) )
+    {
+        $asset = "Waves (leased)";
+        $amount = str_pad( number_format( $balance[W8IO_ASSET_WAVES_LEASED] / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
+
+        $furl = W8IO_ROOT . "$address/f/Waves";
+
+        $tickers[] = $record = array( 'asset' => $asset, 'amount' => $amount, 'furl' => $furl );
+    }
+
     foreach( $balance as $asset => $amount )
     {
-        if( $asset )
+        if( $asset > 0 )
         {
             $info = $api->get_asset_info( $asset );
             if( isset( $info['scam'] ) )

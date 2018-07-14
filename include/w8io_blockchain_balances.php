@@ -95,11 +95,12 @@ class w8io_blockchain_balances
 
         switch( $wtx['type'] )
         {
-            case 0:
-            case 1:
-            case 2:
-            case 4:
-            case 7:
+            case W8IO_TYPE_FEES: // fees
+            case W8IO_TYPE_SPONSOR: // sponsor
+            case 1: // genesis
+            case 2: // payment
+            case 4: // transfer
+            case 7: // exchange
                 if( $afee == $asset )
                 {
                     $procs_a[$asset] = -$amount -$fee;
@@ -113,24 +114,41 @@ class w8io_blockchain_balances
                 $is_b = $amount != 0;
                 break;
 
-            case 3:
-            case 5:
+            case 3: // issue
+            case 5: // reissue
                 $procs_a[$asset] = +$amount;
                 $procs_a[$afee] = -$fee;
                 break;
-            case 6:
+            case 6: //burn
                 $procs_a[$asset] = -$amount;
                 $procs_a[$afee] = -$fee;
                 break;
 
-            case 8:
-            case 9:
-            case 10:
-            case 12:
+            case 8: // start lease
+                if( $amount )
+                {
+                    $procs_b[W8IO_ASSET_WAVES_LEASED] = +$amount;
+                    $is_b = true;
+                }
+                $procs_a[$afee] = -$fee;
+                break;
+            case 9: // cancel lease
+                if( $amount )
+                {
+                    $procs_b[W8IO_ASSET_WAVES_LEASED] = -$amount;
+                    $is_b = true;
+                }
                 $procs_a[$afee] = -$fee;
                 break;
 
-            case 11:
+            case 10: // alias
+            case 12: // data
+            case 13: // script
+            case 14: // sponsorship
+                $procs_a[$afee] = -$fee;
+                break;
+
+            case 11: // mass transfer
                 if( $wtx['b'] < 0 )
                 {
                     if( $afee == $asset )

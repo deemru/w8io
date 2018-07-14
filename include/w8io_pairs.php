@@ -14,7 +14,7 @@ class w8io_pairs
     private $query_set_value = false;
     private $query_set_pair = false;
 
-    public function __construct( $db, $name, $writable = false, $type = 'INTEGER PRIMARY KEY|TEXT UNIQUE|0|0', $cache_size = 2048 )
+    public function __construct( $db, $name, $writable = false, $type = 'INTEGER PRIMARY KEY|TEXT UNIQUE|0|0', $cache_size = W8IO_CACHE_PAIRS )
     {
         if( is_a( $db, 'PDO' ) )
         {

@@ -71,6 +71,9 @@ class w8io_api
 
     public function get_address_transactions( $aid, $height, $limit = 100 )
     {
+        if( $aid === false )
+            return $this->get_transactions()->get_txs_all( $limit );
+
         return $this->get_transactions()->get_txs( $aid, $height, $limit );
     }
 

@@ -11,7 +11,7 @@ class w8io_blockchain
 
     public function __construct( $writable = true )
     {
-        $this->blocks = new w8io_pairs( W8IO_DB_BLOCKCHAIN, 'blocks', $writable, 'INTEGER PRIMARY KEY|BLOB|0|0', 256 );
+        $this->blocks = new w8io_pairs( W8IO_DB_BLOCKCHAIN, 'blocks', $writable, 'INTEGER PRIMARY KEY|BLOB|0|0', W8IO_CACHE_BLOCKS );
         $this->checkpoint = new w8io_pairs( $this->blocks->get_db(), 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
         $this->nodes = new w8io_nodes( explode( '|', W8IO_NODES ) );
     }
@@ -48,7 +48,7 @@ class w8io_blockchain
             return false;
         }
 
-        $to -= 3; // highest stable block
+        $to -= W8IO_HEIGHT_CORRECTION; // highest stable block
         $height = $to;
 
         if( $to <= $from ) // no new blocks
