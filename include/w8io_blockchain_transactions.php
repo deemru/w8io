@@ -332,6 +332,9 @@ class w8io_blockchain_transactions
 
     private function get_sponsor( $asset, $height )
     {
+        if( $height < W8IO_SPONSOR_ACTIVE )
+            return false;
+
         $ainfo = $this->pairs_asset_info->get_value( $asset, 'j' );
 
         if( !isset( $ainfo['sponsor'] ) )

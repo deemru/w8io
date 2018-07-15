@@ -12,7 +12,7 @@ define( 'W8IO_HEIGHT_CORRECTION', 1 );
 define( 'W8IO_CACHE_PAIRS', 1024 );
 define( 'W8IO_CACHE_BLOCKS', 32 );
 define( 'W8IO_DB_PRAGMAS', 'PRAGMA temp_store = MEMORY;' );
-define( 'W8IO_DB_WRITE_PRAGMAS', 'PRAGMA synchronous = NORMAL; PRAGMA journal_mode = WAL; PRAGMA cache_size = 10000; PRAGMA optimize;' );
+define( 'W8IO_DB_WRITE_PRAGMAS', 'PRAGMA synchronous = NORMAL; PRAGMA journal_mode = WAL; PRAGMA journal_size_limit = 16777216; PRAGMA optimize;' );
 define( 'W8IO_DB_BLOCKCHAIN', W8IO_DB_DIR . 'blockchain.sqlite3' );
 define( 'W8IO_DB_BLOCKCHAIN_TRANSACTIONS', W8IO_DB_DIR . 'blockchain_transactions.sqlite3' );
 define( 'W8IO_DB_BLOCKCHAIN_BALANCES', W8IO_DB_DIR . 'blockchain_balances.sqlite3' );

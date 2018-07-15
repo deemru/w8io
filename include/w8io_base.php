@@ -1,6 +1,7 @@
 <?php
 
 define( 'W8IO_NG_ACTIVE', W8IO_NETWORK == 'W' ? 805001 : 171001 );
+define( 'W8IO_SPONSOR_ACTIVE', W8IO_NETWORK == 'W' ? 1090000 : 369000 );
 define( 'W8IO_ASSET_EMPTY', -1 ); // to skip select with empty fee
 define( 'W8IO_ASSET_WAVES_LEASED', -2 ); // to monitor waves leased
 define( 'W8IO_TYPE_FEES', 0 ); // internal tx type for fees
