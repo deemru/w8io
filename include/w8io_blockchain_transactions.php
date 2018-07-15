@@ -27,6 +27,8 @@ class w8io_blockchain_transactions
     private $pairs_data;
     private $pairs_lease_info;
 
+    private $last_wtx;
+
     public function __construct( $writable = true )
     {
         $this->transactions = new PDO( 'sqlite:' . W8IO_DB_BLOCKCHAIN_TRANSACTIONS );
@@ -121,7 +123,7 @@ class w8io_blockchain_transactions
 
     public function get_height()
     {
-        $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS );
+        $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, 'i' );
         if( !$height )
             return 0;
     
@@ -216,8 +218,6 @@ class w8io_blockchain_transactions
         {
             $this->query_get_txs_asset = $this->transactions->prepare( 
                 "SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit )
-                 UNION
-                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND afee = :asset ORDER BY uid DESC LIMIT :limit )
                  UNION
                  SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND b = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit ) ORDER BY uid DESC LIMIT :limit" );
             if( !is_object( $this->query_get_txs_asset ) )
@@ -404,7 +404,7 @@ class w8io_blockchain_transactions
             {
                 $alias = substr( $b, 8 );
 
-                $b = $this->pairs_aliases->get_value( $alias );
+                $b = $this->pairs_aliases->get_value( $alias, 'i' );
                 if( $b === false )
                     return false;
 
@@ -447,8 +447,7 @@ class w8io_blockchain_transactions
 
         if( $wtx['fee'] === 0 )
             $wtx['afee'] = W8IO_ASSET_EMPTY;
-
-        if( $wtx['afee'] > 0 )
+        else if( $wtx['afee'] > 0 )
         {
             $sponsor = $this->get_sponsor( $wtx['afee'], $wtx['block'] );
 
@@ -540,17 +539,18 @@ class w8io_blockchain_transactions
         else
         foreach( $fees as $asset => $fee )
         {
-            $sponsor = $this->get_sponsor( $asset, $at );
+            $wtx['asset'] = $asset;
+            $wtx['amount'] = $fee;
 
-            if( $sponsor )
+            if( $asset > 0 )
             {
-                $wtx['asset'] = 0;
-                $wtx['amount'] = gmp_intval( gmp_div( gmp_mul( $fee, 100000 ), $sponsor['sfee'] ) );
-            }
-            else
-            {
-                $wtx['asset'] = $asset;
-                $wtx['amount'] = $fee;
+                $sponsor = $this->get_sponsor( $asset, $at );
+
+                if( $sponsor )
+                {
+                    $wtx['asset'] = 0;
+                    $wtx['amount'] = gmp_intval( gmp_div( gmp_mul( $fee, 100000 ), $sponsor['sfee'] ) );
+                }
             }
 
             if( !$this->set_tx( $wtx ) )
@@ -648,24 +648,20 @@ class w8io_blockchain_transactions
                         $seller = $tx['order2'];
 
                         $pub = $buyer['senderPublicKey'];
-                        $ba = $this->pairs_pubkey_addresses->get_value( $pub );
+                        $ba = $this->pairs_pubkey_addresses->get_value( $pub, 'i' );
                         if( $ba === false )
                         {
                             $ba = $this->get_crypto()->get_address_from_pubkey( $pub );
                             if( $ba === false )
                                 w8io_error();
 
-                            $ba = $this->pairs_addresses->get_id( $ba );
-                            if( $ba === false )
-                                w8io_error();
-                                
+                            $ba = $this->get_aid( $ba );
                             if( $this->pairs_pubkey_addresses->set_pair( $pub, $ba ) === false )
                                 w8io_error();
                         }
-                        $ba = intval( $ba );
 
                         $pub = $seller['senderPublicKey'];
-                        $sa = $this->pairs_pubkey_addresses->get_value( $pub );
+                        $sa = $this->pairs_pubkey_addresses->get_value( $pub, 'i' );
                         if( $sa === false )
                         {
                             $sa = $this->get_crypto()->get_address_from_pubkey( $pub );
@@ -673,11 +669,9 @@ class w8io_blockchain_transactions
                                 w8io_error();
 
                             $sa = $this->get_aid( $sa );
-
                             if( $this->pairs_pubkey_addresses->set_pair( $pub, $sa ) === false )
                                 w8io_error();
                         }
-                        $sa = intval( $sa );
 
                         $basset = $buyer['assetPair']['amountAsset'];
                         $basset = $basset !== null ? $this->get_assetid( $basset ) : 0;
@@ -726,16 +720,17 @@ class w8io_blockchain_transactions
                     break;
                 case 8: // start lease
                     $wtx['a'] = $tx['sender'];
-                    {
-                        $b = $this->get_aid( $tx['recipient'], true );
-                        if( $b === false )
-                            w8io_error();
+                    $wtx['b'] = $tx['recipient'];
 
-                        $wtx['b'] = $b;
+                    if( !$this->set_tx( $wtx ) )
+                        w8io_error();
 
-                        if( false === $this->pairs_lease_info->set_pair( $wtx['txid'], array( '$' => $tx['amount'], 'b' => $b ), 'j' ) )
-                            w8io_error();
-                    }
+                    $saved = true;
+                    $wtx = $this->last_wtx;
+
+                    if( false === $this->pairs_lease_info->set_pair( $wtx['txid'], array( '$' => $wtx['amount'], 'b' => $wtx['b'] ), 'j' ) )
+                        w8io_error();
+
                     break;
                 case 9: // cancel lease
                     $wtx['a'] = $tx['sender'];
