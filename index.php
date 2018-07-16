@@ -191,12 +191,17 @@ else
 
     if( isset( $balance[W8IO_ASSET_WAVES_LEASED] ) )
     {
-        $asset = "Waves (leased)";
-        $amount = str_pad( number_format( $balance[W8IO_ASSET_WAVES_LEASED] / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
+        $amount = $balance[W8IO_ASSET_WAVES_LEASED] + ( isset( $balance[0] ) ? $balance[0] : 0 );
 
-        $furl = W8IO_ROOT . "$address/f/Waves";
+        if( $amount > 1000 )
+        {
+            $asset = "Waves (GENERATOR)";
+            $amount = str_pad( number_format( $amount / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
 
-        $tickers[] = $record = array( 'asset' => $asset, 'amount' => $amount, 'furl' => $furl );
+            $furl = W8IO_ROOT . "$address/f/Waves";
+
+            $tickers[] = $record = array( 'asset' => $asset, 'amount' => $amount, 'furl' => $furl );
+        }
     }
 
     foreach( $balance as $asset => $amount )
