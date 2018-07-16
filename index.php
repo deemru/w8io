@@ -193,7 +193,7 @@ else
     {
         $amount = $balance[W8IO_ASSET_WAVES_LEASED] + ( isset( $balance[0] ) ? $balance[0] : 0 );
 
-        if( $amount > 1000 )
+        if( $amount > 100000000000 )
         {
             $asset = "Waves (GENERATOR)";
             $amount = str_pad( number_format( $amount / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
