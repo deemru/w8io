@@ -128,18 +128,36 @@ class w8io_blockchain_balances
                 break;
 
             case 8: // start lease
-                $procs_a[W8IO_ASSET_WAVES_LEASED] = -$amount;
-                $procs_a[$afee] = -$fee;
-                $is_a = true;
-                $procs_b[W8IO_ASSET_WAVES_LEASED] = +$amount;
-                $is_b = true;                
+                if( $wtx['block'] > W8IO_RESET_LEASES )
+                {
+                    $procs_a[W8IO_ASSET_WAVES_LEASED] = -$amount;
+                    $procs_a[$afee] = -$fee;
+                    $is_a = true;
+                    $procs_b[W8IO_ASSET_WAVES_LEASED] = +$amount;
+                    $is_b = true;
+                }
+                else
+                {
+                    $procs_a[$afee] = -$fee;
+                    $is_a = true;
+                    $is_b = false;
+                }
                 break;
             case 9: // cancel lease
-                $procs_a[W8IO_ASSET_WAVES_LEASED] = +$amount;
-                $procs_a[$afee] = -$fee;
-                $is_a = true;
-                $procs_b[W8IO_ASSET_WAVES_LEASED] = -$amount;
-                $is_b = true;
+                if( $wtx['block'] > W8IO_RESET_LEASES )
+                {
+                    $procs_a[W8IO_ASSET_WAVES_LEASED] = +$amount;
+                    $procs_a[$afee] = -$fee;
+                    $is_a = true;
+                    $procs_b[W8IO_ASSET_WAVES_LEASED] = -$amount;
+                    $is_b = true;
+                }
+                else
+                {
+                    $procs_a[$afee] = -$fee;
+                    $is_a = true;
+                    $is_b = false;
+                }
                 break;
 
             case 10: // alias
