@@ -332,9 +332,6 @@ class w8io_blockchain_transactions
 
     private function get_sponsor( $asset, $height )
     {
-        if( $height < W8IO_SPONSOR_ACTIVE )
-            return false;
-
         $ainfo = $this->pairs_asset_info->get_value( $asset, 'j' );
 
         if( !isset( $ainfo['sponsor'] ) )
@@ -447,7 +444,7 @@ class w8io_blockchain_transactions
 
         if( $wtx['fee'] === 0 )
             $wtx['afee'] = W8IO_ASSET_EMPTY;
-        else if( $wtx['afee'] > 0 )
+        else if( $wtx['afee'] > 0 && $wtx['block'] > W8IO_SPONSOR_ACTIVE )
         {
             $sponsor = $this->get_sponsor( $wtx['afee'], $wtx['block'] );
 
@@ -500,7 +497,21 @@ class w8io_blockchain_transactions
             }
 
             if( $i == 1 )
+            {
+                if( $at > W8IO_SPONSOR_ACTIVE )
+                {
+                    foreach( $fees as $asset => $fee )
+                    {
+                        if( $asset > 0 && ( $sponsor = $this->get_sponsor( $asset, $at ) ) )
+                        {
+                            $fees[0] = ( isset( $fees[0] ) ? $fees[0] : 0 ) + gmp_intval( gmp_div( gmp_mul( $fee, 100000 ), $sponsor['sfee'] ) );
+                            unset( $fees[$asset] );
+                        }
+                    }
+                }
+
                 return $fees;
+            }
 
             if( $at <= W8IO_NG_ACTIVE )
                 return $fees;
@@ -541,17 +552,6 @@ class w8io_blockchain_transactions
         {
             $wtx['asset'] = $asset;
             $wtx['amount'] = $fee;
-
-            if( $asset > 0 )
-            {
-                $sponsor = $this->get_sponsor( $asset, $at );
-
-                if( $sponsor )
-                {
-                    $wtx['asset'] = 0;
-                    $wtx['amount'] = gmp_intval( gmp_div( gmp_mul( $fee, 100000 ), $sponsor['sfee'] ) );
-                }
-            }
 
             if( !$this->set_tx( $wtx ) )
                 w8io_error();
