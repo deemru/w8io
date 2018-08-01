@@ -487,9 +487,9 @@ class w8io_blockchain_transactions
                 if( $at >= W8IO_NG_ACTIVE )
                 {
                     if( $i == 0 )
-                        $fee = intdiv( $fee * 2, 5 );
+                        $fee = intdiv( $fee, 5 ) * 2;
                     else
-                        $fee = $fee - intdiv( $fee * 2, 5 );
+                        $fee = $fee - ( intdiv( $fee, 5 ) * 2 );
                 }
 
                 if( $fee )
