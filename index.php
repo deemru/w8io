@@ -37,6 +37,13 @@ echo sprintf( '
         {
             color: #A0A8C0;
         }
+        hr
+        {
+            margin: 1em 0 1em 0;
+            height: 1px;
+            border: 0;
+            background-color: #606870;
+        }
     </style>
     <body>
         <pre>
@@ -323,14 +330,16 @@ else
 
 echo '</pre></td></tr></table>'. PHP_EOL . PHP_EOL;
 
-echo '<small>';
+echo '<hr><div width="100%" align="right"><small>';
 if( file_exists( '.git/FETCH_HEAD' ) )
 {
     $rev = file_get_contents( '.git/FETCH_HEAD', null, null, 0, 40 );
     echo "<a href=\"https://github.com/deemru/w8io\">github/deemru/w8io</a>/<a href=\"https://github.com/deemru/w8io/commit/$rev\">" . substr( $rev, 0, 7 ) . '</a>';
 }
 echo PHP_EOL . sprintf( '%.02f ms', 1000 * ( microtime( true ) - $_SERVER['REQUEST_TIME_FLOAT'] ) );
-echo '</small>';
+if( defined( 'W8IO_ANALYTICS' ) )
+    echo '<br><br>' . W8IO_ANALYTICS;
+echo '</small></div>';
 ?>
 
         </pre>
