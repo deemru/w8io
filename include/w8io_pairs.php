@@ -129,7 +129,10 @@ class w8io_pairs
         $value = $this->query_get_value->fetchAll( PDO::FETCH_ASSOC );
 
         if( !isset( $value[0]['value'] ) )
+        {
+            self::set_cache( $id, false );
             return false;
+        }
 
         $value = $value[0]['value'];
 
