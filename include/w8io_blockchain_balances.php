@@ -205,6 +205,27 @@ class w8io_blockchain_balances
         return true;
     }
 
+    public function get_all_waves()
+    {
+        $balances = $this->get_db()->prepare( "SELECT * FROM balances" );
+        $balances->execute();
+
+        $waves = 0;
+
+        foreach( $balances as $balance )
+        {
+            if( $balance['id'] > 0 )
+            {
+                $values = json_decode( $balance['value'], true, 512, JSON_BIGINT_AS_STRING );
+
+                if( isset( $values[0] ) )
+                    $waves += $values[0];
+            }
+        }
+
+        return $waves;
+    }
+
     public function update( $upcontext )
     {
         $transactions = $upcontext['transactions'];

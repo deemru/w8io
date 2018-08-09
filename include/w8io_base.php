@@ -1,7 +1,7 @@
 <?php
 
 define( 'W8IO_NG_ACTIVE', W8IO_NETWORK == 'W' ? 805001 : 171001 );
-define( 'W8IO_SPONSOR_ACTIVE', W8IO_NETWORK == 'W' ? 1090000 : 369000 );
+define( 'W8IO_SPONSOR_ACTIVE', W8IO_NETWORK == 'W' ? 1080000 + 10000 : 339000 + 3000 );
 define( 'W8IO_RESET_LEASES', W8IO_NETWORK == 'W' ? 462000 : 51500 );
 define( 'W8IO_ASSET_EMPTY', -1 ); // to skip select with empty fee
 define( 'W8IO_ASSET_WAVES_LEASED', -2 ); // to monitor waves leased
@@ -114,12 +114,12 @@ function w8io_tx_type( $type )
         case 6: return 'burn';
         case 7: return 'exchange';
         case 8: return 'lease';
-        case 9: return 'cancel lease';
+        case 9: return 'unlease';
         case 10: return 'alias';
-        case 11: return 'mass transfer';
+        case 11: return 'mass';
         case 12: return 'data';
         case 13: return 'script';
         case 14: return 'sponsorship';
-        default: return 'unkonwn';
+        default: return 'unknown';
     }
 }

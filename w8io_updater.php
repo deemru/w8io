@@ -50,23 +50,33 @@ function update_proc( $blockchain, $transactions, $balances )
                 $transactions_from_to = $transactions->update( $blockchain_from_to );
                 if( !is_array( $transactions_from_to ) )
                     w8io_error( 'unexpected update transactions error' );
-                
-                if( $blockchain_from_to['to'] <= $transactions_from_to['to'] )
-                    break;
 
                 $blockchain_from_to['from'] = $transactions_from_to['to'];
-            }
 
-            for( ;; )
-            {
-                $balances_from_to = $balances->update( $transactions_from_to );
-                if( !is_array( $balances_from_to ) )
-                    w8io_error( 'unexpected update balances error' );
+                for( ;; )
+                {
+                    $balances_from_to = $balances->update( $transactions_from_to );
+                    if( !is_array( $balances_from_to ) )
+                        w8io_error( 'unexpected update balances error' );
 
-                if( $transactions_from_to['to'] <= $balances_from_to['to'] )
+                    // selfcheck: 100M WAVES
+                    if( 0 )
+                    {
+                        $waves = $balances->get_all_waves();
+                        $waves += $transactions->get_hang_waves( $balances_from_to['to'] + 1 );
+                        if( $waves != 10000000000000000 )
+                            w8io_error( $waves . ' != 10000000000000000' );
+                        w8io_trace( 's', $waves );
+                    }
+
+                    if( $transactions_from_to['to'] <= $balances_from_to['to'] )
+                        break;
+
+                    $transactions_from_to['from'] = $balances_from_to['to'];
+                }
+
+                if( $blockchain_from_to['to'] <= $transactions_from_to['to'] )
                     break;
-
-                $transactions_from_to['from'] = $balances_from_to['to'];
             }
         }
       

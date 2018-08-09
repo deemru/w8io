@@ -30,6 +30,10 @@ class w8io_api
             return -1;
         else if( $address === 'MATCHER' )
             return -2;
+        else if( $address === 'NULL' )
+            return -3;
+        else if( $address === 'SPONSOR' )
+            return -4;
 
         return false;
     }
@@ -77,9 +81,9 @@ class w8io_api
         return $this->get_transactions()->get_txs( $aid, $height, $limit );
     }
 
-    public function get_address_transactions_asset( $aid, $height, $asset, $limit = 100 )
+    public function get_transactions_where( $aid, $where, $limit = 100 )
     {
-        return $this->get_transactions()->get_txs_asset( $aid, $height, $asset, $limit );
+        return $this->get_transactions()->get_txs_where( $aid, $where, $limit );
     }
 
     private function get_pairs_aliases()
