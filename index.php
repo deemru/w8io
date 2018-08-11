@@ -176,14 +176,14 @@ if( $address == 'SUM' )
                 $waves = isset( $values[0] ) ? $values[0] : 0;
                 $waves += isset( $values[W8IO_ASSET_WAVES_LEASED] ) ? $values[W8IO_ASSET_WAVES_LEASED] : 0;
                 if( $waves >= 100000000000 )
-                    $sum[$waves] = $api->get_address( $balance['id'] );
+                    $sum[$api->get_address( $balance['id'] )] = $waves;
             }
         }
     }
 
-    krsort( $sum );
+    arsort( $sum );
 
-    foreach( $sum as $waves => $address )
+    foreach( $sum as $address => $waves )
     {
 
         $amount = str_pad( number_format( $waves / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
