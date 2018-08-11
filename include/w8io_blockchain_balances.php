@@ -205,10 +205,13 @@ class w8io_blockchain_balances
         return true;
     }
 
-    public function get_all_waves()
+    public function get_all_waves( $ret = false )
     {
         $balances = $this->get_db()->prepare( "SELECT * FROM balances" );
         $balances->execute();
+
+        if( $ret )
+            return $balances;
 
         $waves = 0;
 

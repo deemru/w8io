@@ -86,6 +86,11 @@ class w8io_api
         return $this->get_transactions()->get_txs_where( $aid, $where, $limit );
     }
 
+    public function get_all_balances()
+    {
+        return $this->get_balances()->get_all_waves( true );
+    }
+
     private function get_pairs_aliases()
     {
         if( !isset( $this->pairs_aliases ) )

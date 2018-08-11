@@ -159,6 +159,41 @@ else if( $f === 't' )
 else if( $f === 't-' )
     $where = "type != $arg";
 
+if( $address == 'SUM' )
+{
+    $balances = $api->get_all_balances();
+
+    $sum = array();
+
+    foreach( $balances as $balance )
+    {
+        if( $balance['id'] > 0 )
+        {
+            $values = json_decode( $balance['value'], true, 512, JSON_BIGINT_AS_STRING );
+
+            if( isset( $values[0] ) || isset( $values[W8IO_ASSET_WAVES_LEASED] ) )
+            {
+                $waves = isset( $values[0] ) ? $values[0] : 0;
+                $waves += isset( $values[W8IO_ASSET_WAVES_LEASED] ) ? $values[W8IO_ASSET_WAVES_LEASED] : 0;
+                if( $waves >= 100000000000 )
+                    $sum[$waves] = $api->get_address( $balance['id'] );
+            }
+        }
+    }
+
+    krsort( $sum );
+
+    foreach( $sum as $waves => $address )
+    {
+
+        $amount = str_pad( number_format( $waves / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
+        $url = W8IO_ROOT . "$address";
+
+        echo "$amount Waves -- <a href=\"$url\">$address</a>" . PHP_EOL;
+    }
+}
+else
+{
 $aid = $api->get_aid( $address );
 if( $aid === false )
 {
@@ -246,6 +281,7 @@ else
     echo 'transactions:' . PHP_EOL;
     $wtxs = $api->get_transactions_where( $aid, $where, 1000 );
     w8io_print_transactions( $aid, $address, $wtxs, $api );
+}
 }
 
 echo '</pre></td></tr></table>'. PHP_EOL . PHP_EOL;
