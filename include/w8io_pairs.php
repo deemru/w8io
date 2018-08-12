@@ -54,6 +54,7 @@ class w8io_pairs
     public function reset()
     {
         $this->db->exec( "DELETE FROM {$this->name}" );
+        $this->reset_cache();
     }
 
     public function get_db()
@@ -181,14 +182,18 @@ class w8io_pairs
     private function set_cache( $id, $value )
     {
         if( count( $this->cache_by_id ) >= $this->cache_size )
-        {
-            $this->cache_by_id = array();
-            $this->cache_by_value = array();
-        }
+            $this->reset_cache();
 
         $this->cache_by_id[$id] = $value;
 
-        if( isset( $this->cache_by_value ) && !is_array( $value ) )
+        if( isset( $this->cache_by_value ) && !is_array( $value ) && $value !== false )
             $this->cache_by_value[$value] = $id;
+    }
+
+    private function reset_cache()
+    {
+        $this->cache_by_id = array();
+        if( isset( $this->cache_by_value ) && count( $this->cache_by_value ) )
+            $this->cache_by_value = array();
     }
 }
