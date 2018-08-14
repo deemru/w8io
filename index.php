@@ -74,7 +74,7 @@ if( $f === 'f' )
 elseif( $arg !== false )
     $arg = (int)$arg;
 
-function w8io_print_transactions( $aid, $address, $wtxs, $api )
+function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
 {
     foreach( $wtxs as $wtx )
     {
@@ -84,7 +84,7 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api )
         if( $asset )
         {
             $info = $api->get_asset_info( $asset );
-            if( isset( $info['scam'] ) )
+            if( $spam && isset( $info['scam'] ) )
                 continue;
                 
             $asset = "<a href=\"" . W8IO_ROOT . "$address/f/{$info['id']}\">{$info['name']}</a>";
@@ -198,7 +198,7 @@ $aid = $api->get_aid( $address );
 if( $aid === false )
 {
     $wtxs = $api->get_transactions_where( false, $where, 1000 );
-    w8io_print_transactions( false, $address, $wtxs, $api );
+    w8io_print_transactions( false, $address, $wtxs, $api, !( $f === 'f' ) );
 }
 else
 {
@@ -280,7 +280,7 @@ else
     echo '</pre></td><td valign="top"><pre>';
     echo 'transactions:' . PHP_EOL;
     $wtxs = $api->get_transactions_where( $aid, $where, 1000 );
-    w8io_print_transactions( $aid, $address, $wtxs, $api );
+    w8io_print_transactions( $aid, $address, $wtxs, $api, !( $f === 'f' ) );
 }
 }
 
