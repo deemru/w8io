@@ -303,6 +303,22 @@ class w8io_blockchain_balances
         if( !$this->balances->commit() )
             w8io_error( 'unexpected commit() error' );
 
+        if( $to % 1337 === 0 )
+        {
+            $copy = W8IO_DB_BLOCKCHAIN_BALANCES . '.copy';
+            $backup = W8IO_DB_BLOCKCHAIN_BALANCES . '.backup';
+
+            if( file_exists( $copy ) )
+            {
+                if( file_exists( $backup ) )
+                    unlink( $backup );
+                
+                rename( $copy, $backup );
+            }
+
+            copy( W8IO_DB_BLOCKCHAIN_BALANCES, $copy );
+        }
+
         return array( 'from' => $from, 'to' => $to );
     }
 }
