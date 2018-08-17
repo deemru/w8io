@@ -8,7 +8,6 @@ class w8io_blockchain_balances
     private $balances;
     private $checkpoint;
 
-    private $db;
     private $query_get_balance;
 
     public function __construct( $writable = true )
@@ -26,20 +25,12 @@ class w8io_blockchain_balances
         return $height;
     }
 
-    private function get_db()
-    {
-        if( !isset( $this->db ) )
-            $this->db = $this->balances->get_db();
-
-        return $this->db;
-    }
-
     public function get_balance( $aid )
     {
         if( $this->query_get_balance == false )
         {
             $id = W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES;
-            $this->query_get_balance = $this->get_db()->prepare( "SELECT ( SELECT value FROM checkpoint WHERE id = $id ) AS height, ( SELECT value FROM balances WHERE id = :aid ) AS balance" );
+            $this->query_get_balance = $this->balances->get_db()->prepare( "SELECT ( SELECT value FROM checkpoint WHERE id = $id ) AS height, ( SELECT value FROM balances WHERE id = :aid ) AS balance" );
             if( !is_object( $this->query_get_balance ) )
                 return false;
         }
@@ -316,7 +307,10 @@ class w8io_blockchain_balances
                 rename( $copy, $backup );
             }
 
+            unset( $this->checkpoint );
+            unset( $this->balances );
             copy( W8IO_DB_BLOCKCHAIN_BALANCES, $copy );
+            $this->__construct();
         }
 
         return array( 'from' => $from, 'to' => $to );
