@@ -198,7 +198,7 @@ class w8io_blockchain_balances
 
     public function get_all_waves( $ret = false )
     {
-        $balances = $this->get_db()->prepare( "SELECT * FROM balances" );
+        $balances = $this->balances->get_db()->prepare( "SELECT * FROM balances" );
         $balances->execute();
 
         if( $ret )
@@ -244,6 +244,10 @@ class w8io_blockchain_balances
                         unlink( W8IO_DB_BLOCKCHAIN_BALANCES );
                         copy( $backup, W8IO_DB_BLOCKCHAIN_BALANCES );
                         chmod( W8IO_DB_BLOCKCHAIN_BALANCES, 0666 );
+                        if( file_exists( W8IO_DB_BLOCKCHAIN_BALANCES . '-shm' ) )
+                            chmod( W8IO_DB_BLOCKCHAIN_BALANCES . '-shm', 0666 );
+                        if( file_exists( W8IO_DB_BLOCKCHAIN_BALANCES . '-wal' ) )
+                            chmod( W8IO_DB_BLOCKCHAIN_BALANCES . '-wal', 0666 );
                     }
 
                     $this->__construct();
