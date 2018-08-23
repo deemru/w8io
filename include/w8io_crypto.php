@@ -57,16 +57,9 @@ class w8io_crypto
     {
         $looklen = strlen( $look );
 
-        // 3P1vtjFEpXswXWfpiPuFKL1Mqt2NYrL5jVH .. 3PRGViMY7F4QQL6xoRKadp8ddWXdVZZfZoc
         for( $i = 0; $i < $looklen; $i++ )
-        {
-            if( $i == 0 && false === strpos( '123456789ABCDEFGHJKLMNPQR', $look[$i] ) )
+            if( false === strpos( '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', $look[$i] ) )
                 return false;
-            else if( $i == 1 && $look[0] == 'R' && false === strpos( '123456789ABCDEFG', $look[$i] ) )
-                return false;
-            else if( false === strpos( '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', $look[$i] ) )
-                return false;
-        }
 
         $seed = "{$seed}_" . mt_rand( 100000000, 999999999 ) . mt_rand( 100000000, 999999999 ) . mt_rand( 100000000, 999999999 );
         $len = strlen( $seed ) - 1;
@@ -76,7 +69,7 @@ class w8io_crypto
             $address = self::get_address_from_seed( $seed );
 
             for( $l = 0; $l < $looklen; $l++ )
-                if( $address[ 2 + $l ] !== $look[$l] )
+                if( $address[ 3 + $l ] !== $look[$l] )
                     break;
 
             if( $l == $looklen )
@@ -132,5 +125,17 @@ class w8io_crypto
     public function sechash( $data )
     {
         return self::keccak256( self::blake2b256( $data ) );
+    }
+
+    public function sign( $data, $key )
+    {
+        require_once './include/w8io_25519.php';
+        return w8io_25519\curve25519_sign( $data, $key );
+    }
+
+    public function verify( $sign, $data, $key )
+    {
+        require_once './include/w8io_25519.php';
+        return w8io_25519\curve25519_verify( $sign, $data, $key );
     }
 }
