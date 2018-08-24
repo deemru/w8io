@@ -343,10 +343,7 @@ class w8io_blockchain_transactions
         $wtx['asset'] = 0;
 
         if( !$this->set_tx( $wtx ) )
-        {
-            var_dump( $wtx );
-            w8io_error( 'set_tx()' );
-        }
+            w8io_error( json_encode( $wtx ) );
     }
 
     private function fill_sponsors()
@@ -388,11 +385,7 @@ class w8io_blockchain_transactions
         {
             if( $a[0] === 'a' )
             {
-                var_dump( $wtx );
-                w8io_error( 'unexpected alias' );
-                //$a = $this->pairs_aliases->get_value( substr( $a, 8 ) );
-                //if( $a === false )
-                    //return false;
+                w8io_error( json_encode( $wtx ) );
             }
             else if( $a[0] === '3' )
             {
@@ -413,10 +406,7 @@ class w8io_blockchain_transactions
                 $a = -2;
             }
             else
-            {
-                var_dump( $wtx );
-                w8io_error( 'unexpected $a' );
-            }
+                w8io_error( json_encode( $wtx ) );
         }
 
         $b = $wtx['b'];
@@ -454,10 +444,7 @@ class w8io_blockchain_transactions
                 $b = -4;
             }
             else
-            {
-                var_dump( $wtx );
-                w8io_error( 'unexpected $b' );
-            }
+                w8io_error( json_encode( $wtx ) );
         }
 
         if( !isset( $this->query_set_tx ) )
@@ -878,8 +865,7 @@ class w8io_blockchain_transactions
                     break;
 
                 default:
-                    var_dump( $tx );
-                    w8io_error( "unexpected tx type = $type ($at)" );
+                    w8io_error( json_encode( $wtx ) );
             }
 
             if( $saved === false && $this->set_tx( $wtx ) === false )
