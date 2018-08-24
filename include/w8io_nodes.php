@@ -4,27 +4,27 @@ require_once 'w8io_base.php';
 
 class w8io_nodes
 {
-    private $cdb = array();
+    private $cdb = [];
 
     public function __construct( $hosts, $api = '' )
     {
         foreach( $hosts as $host )
-            $this->cdb[] = array( 'host' => $host, 'curl' => false );
+            $this->cdb[] = [ 'host' => $host, 'curl' => false ];
     }
 
     private function connect( $host )
     {
         if( false === ( $ch = curl_init() ) )
             w8io_error( 'curl_init() failed' );
-            
-        if( false === curl_setopt_array( $ch, array (
+
+        if( false === curl_setopt_array( $ch, [
             CURLOPT_CONNECTTIMEOUT  => 1,
             CURLOPT_TIMEOUT         => 15,
             CURLOPT_URL             => $host,
             CURLOPT_CONNECT_ONLY    => true,
             CURLOPT_CAINFO          => './third_party/ca-bundle/res/cacert.pem',
             //CURLOPT_SSL_VERIFYPEER  => false, // not secure
-        ) ) )
+        ] ) )
             w8io_error( 'curl_setopt_array() failed' );
 
         $ms = 0;
@@ -41,10 +41,10 @@ class w8io_nodes
             return false;
         }
 
-        if( false === curl_setopt_array( $ch, array (
+        if( false === curl_setopt_array( $ch, [
             CURLOPT_RETURNTRANSFER  => true,
             CURLOPT_CONNECT_ONLY    => false,
-        ) ) )
+        ] ) )
             w8io_error( 'curl_setopt_array() failed' );
 
         w8io_trace( 'i', "$host connected ($ms ms)" );
@@ -99,13 +99,13 @@ class w8io_nodes
         $ch = $c['curl'];
         $post = $method === 'POST';
 
-        if( false === curl_setopt_array( $ch, array(
-            CURLOPT_HTTPHEADER      => $post ? array( 'Content-Type: application/json', 'Accept: application/json', $api ? "X-API-Key: $api" : '', ) : array(),
+        if( false === curl_setopt_array( $ch, [
+            CURLOPT_HTTPHEADER      => $post ? [ 'Content-Type: application/json', 'Accept: application/json', $api ? "X-API-Key: $api" : '', ] : [],
             CURLOPT_URL             => $host . $url,
             CURLOPT_POST            => $post,
             CURLOPT_FOLLOWLOCATION  => true,
             CURLOPT_MAXREDIRS       => 3,
-        ) ) )
+        ] ) )
             w8io_error( 'curl_setopt_array() failed' );
 
         $ms = 0;

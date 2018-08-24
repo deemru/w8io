@@ -31,7 +31,7 @@ class w8io_pairs
         
         $this->name = $name;
         $this->cache_size = $cache_size;
-        $this->cache_by_id = array();
+        $this->cache_by_id = [];
 
         if( $writable )
         {
@@ -47,7 +47,7 @@ class w8io_pairs
             if( $type[3] )
                 $this->db->exec( "CREATE INDEX IF NOT EXISTS {$this->name}_value_index ON {$this->name}( value )" );
 
-            $this->cache_by_value = array();
+            $this->cache_by_value = [];
         }
     }
 
@@ -94,7 +94,7 @@ class w8io_pairs
             }
         }
 
-        if( $this->query_get_id->execute( array( 'value' => $value ) ) === false )
+        if( $this->query_get_id->execute( [ 'value' => $value ] ) === false )
             return false;
 
         $id = $this->query_get_id->fetchAll( PDO::FETCH_ASSOC );
@@ -124,7 +124,7 @@ class w8io_pairs
                 return false;
         }
 
-        if( $this->query_get_value->execute( array( 'id' => $id ) ) === false )
+        if( $this->query_get_value->execute( [ 'id' => $id ] ) === false )
             return false;
 
         $value = $this->query_get_value->fetchAll( PDO::FETCH_ASSOC );
@@ -157,7 +157,7 @@ class w8io_pairs
                 return false;
         }
 
-        return $this->query_set_value->execute( array( 'value' => $value, ) );
+        return $this->query_set_value->execute( [ 'value' => $value ] );
     }
 
     public function set_pair( $id, $value, $type = false )
@@ -176,7 +176,7 @@ class w8io_pairs
         else if( $type === 'jz' )
             $value = gzdeflate( json_encode( $value ), 9 );
 
-        return $this->query_set_pair->execute( array( 'id' => $id, 'value' => $value, ) );
+        return $this->query_set_pair->execute( [ 'id' => $id, 'value' => $value ] );
     }
 
     private function set_cache( $id, $value )
@@ -192,8 +192,8 @@ class w8io_pairs
 
     private function reset_cache()
     {
-        $this->cache_by_id = array();
+        $this->cache_by_id = [];
         if( isset( $this->cache_by_value ) && count( $this->cache_by_value ) )
-            $this->cache_by_value = array();
+            $this->cache_by_value = [];
     }
 }

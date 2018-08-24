@@ -84,7 +84,7 @@ class w8io_blockchain
             {
                 w8io_trace( 'w', "fork at $from" );
 
-                if( --$from == 0 )
+                if( --$from === 0 )
                     break;
 
                 $local_block = $this->get_block( $from );
@@ -96,7 +96,8 @@ class w8io_blockchain
                     return false;
                 }
 
-                if( serialize( $nodes_block ) == serialize( $local_block ) )
+                if( $nodes_block['reference'] === $local_block['reference'] &&
+                    $nodes_block['signature'] === $local_block['signature'] )
                 {
                     $signature = $nodes_block['signature'];
                     w8io_trace( 'w', "no fork at $from" );
@@ -116,13 +117,13 @@ class w8io_blockchain
                 return false;
             }
 
-            if( isset( $signature ) && $nodes_block['reference'] != $signature )
+            if( isset( $signature ) && $nodes_block['reference'] !== $signature )
             {
                 w8io_trace( 'w', "fork at $i (break)" );
                 break;
             }
 
-            w8io_trace( 'i', "$i (blockchain)" );          
+            w8io_trace( 'i', "$i (blockchain)" );
 
             if( !$this->set_block( $nodes_block ) )
                 w8io_error( 'set_block() failed' );
@@ -139,6 +140,6 @@ class w8io_blockchain
         if( $i <= $to )
             return false;
 
-        return array( 'blockchain' => $this, 'from' => $from, 'to' => $to, 'height' => $height );
+        return [ 'blockchain' => $this, 'from' => $from, 'to' => $to, 'height' => $height ];
     }
 }

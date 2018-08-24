@@ -21,13 +21,13 @@ class w8io_blockchain_balances
         $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES );
         if( !$height )
             return 0;
-    
+
         return $height;
     }
 
     public function get_balance( $aid )
     {
-        if( $this->query_get_balance == false )
+        if( !isset( $this->query_get_balance ) )
         {
             $id = W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES;
             $this->query_get_balance = $this->balances->get_db()->prepare( "SELECT ( SELECT value FROM checkpoint WHERE id = $id ) AS height, ( SELECT value FROM balances WHERE id = :aid ) AS balance" );
@@ -35,7 +35,7 @@ class w8io_blockchain_balances
                 return false;
         }
 
-        if( $this->query_get_balance->execute( array( 'aid' => $aid ) ) === false )
+        if( $this->query_get_balance->execute( [ 'aid' => $aid ] ) === false )
             return false;
 
         $data = $this->query_get_balance->fetchAll( PDO::FETCH_ASSOC );
@@ -50,7 +50,7 @@ class w8io_blockchain_balances
     {
         $balance = $this->balances->get_value( $aid, 'j' );
         if( $balance === false )
-            $balance = array();
+            $balance = [];
 
         foreach( $procs as $asset => $amount )
         {
@@ -74,8 +74,8 @@ class w8io_blockchain_balances
 
     public function update_balances( $wtx )
     {
-        $procs_a = array();
-        $procs_b = array();
+        $procs_a = [];
+        $procs_b = [];
 
         $amount = $wtx['amount'];
         $asset = $wtx['asset'];
@@ -90,7 +90,7 @@ class w8io_blockchain_balances
             case 2: // payment
             case 4: // transfer
             case 7: // exchange
-                if( $asset == $afee )
+                if( $asset === $afee )
                 {
                     $procs_a[$asset] = -$amount -$fee;
                 }
@@ -163,7 +163,7 @@ class w8io_blockchain_balances
             case 11: // mass transfer
                 if( $wtx['b'] < 0 )
                 {
-                    if( $asset == $afee )
+                    if( $asset === $afee )
                     {
                         $procs_a[$asset] = -$amount -$fee;
                     }
@@ -317,6 +317,6 @@ class w8io_blockchain_balances
             $this->__construct();
         }
 
-        return array( 'from' => $from, 'to' => $to );
+        return [ 'from' => $from, 'to' => $to ];
     }
 }

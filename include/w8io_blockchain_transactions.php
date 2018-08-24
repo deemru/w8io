@@ -23,7 +23,6 @@ class w8io_blockchain_transactions
     private $pairs_asset_info;
     private $pairs_balances;
     private $pairs_aliases;
-    private $pairs_data;
     private $pairs_lease_info;
 
     private $sponsors;
@@ -85,7 +84,7 @@ class w8io_blockchain_transactions
                 return false;
         }
 
-        if( $this->query_get_txid->execute( array( 'txid' => $txid ) ) === false )
+        if( $this->query_get_txid->execute( [ 'txid' => $txid ] ) === false )
             return false;
 
         $data = $this->query_get_txid->fetchAll( PDO::FETCH_ASSOC );
@@ -95,7 +94,7 @@ class w8io_blockchain_transactions
 
         if( $one )
         {
-            if( count( $data ) != 1 )
+            if( count( $data ) !== 1 )
                 return false;
 
             return $data[0];
@@ -113,9 +112,9 @@ class w8io_blockchain_transactions
         if( $query_wtxs_at->execute() === false )
             return false;
 
-        $query_wtxs_at = $query_wtxs_at->fetchAll( PDO::FETCH_ASSOC );
+        $query_wtxs_at->fetchAll( PDO::FETCH_ASSOC );
 
-        return array_map( array( $this, 'filter_wtx' ), $query_wtxs_at );
+        return array_map( 'self::filter_wtx', $query_wtxs_at );
     }
 
     public function get_height()
@@ -136,7 +135,7 @@ class w8io_blockchain_transactions
                 return false;
         }
 
-        if( $this->query_clear->execute( array( 'height' => $height ) ) === false )
+        if( $this->query_clear->execute( [ 'height' => $height ] ) === false )
             return false;
 
         return true;
@@ -185,7 +184,7 @@ class w8io_blockchain_transactions
                 return false;
         }
 
-        if( $this->query_get_txs_all->execute( array( 'limit' => $limit ) ) === false )
+        if( $this->query_get_txs_all->execute( [ 'limit' => $limit ] ) === false )
             return false;
 
         return $this->query_get_txs_all;
@@ -229,7 +228,7 @@ class w8io_blockchain_transactions
                 return false;
         }
 
-        if( $this->query_get_txs->execute( array( 'aid' => $aid, 'height' => $height, 'limit' => $limit ) ) === false )
+        if( $this->query_get_txs->execute( [ 'aid' => $aid, 'height' => $height, 'limit' => $limit ] ) === false )
             return false;
 
         return $this->query_get_txs;
@@ -247,7 +246,7 @@ class w8io_blockchain_transactions
                 return false;
         }
 
-        if( $this->query_get_txs_asset->execute( array( 'aid' => $aid, 'height' => $height, 'asset' => $asset, 'limit' => $limit ) ) === false )
+        if( $this->query_get_txs_asset->execute( [ 'aid' => $aid, 'height' => $height, 'asset' => $asset, 'limit' => $limit ] ) === false )
             return false;
 
         return $this->query_get_txs_asset;
@@ -262,7 +261,7 @@ class w8io_blockchain_transactions
                 return false;
         }
 
-        if( $this->query_from_to->execute( array( 'from' => $from, 'to' => $to ) ) === false )
+        if( $this->query_from_to->execute( [ 'from' => $from, 'to' => $to ] ) === false )
             return false;
 
         return $this->query_from_to;
@@ -363,7 +362,7 @@ class w8io_blockchain_transactions
         if( $query_sponsorships->execute() === false )
             w8io_error( 'query_sponsorships->execute()' );
 
-        $this->sponsors = array();
+        $this->sponsors = [];
 
         foreach( $query_sponsorships as $wtx )
             if( !isset( $this->sponsors[$wtx['asset']] ) )
@@ -373,9 +372,9 @@ class w8io_blockchain_transactions
     private function set_sponsor( $asset, $a, $sfee )
     {
         if( !isset( $this->sponsors ) )
-            $this->sponsors = array();
+            $this->sponsors = [];
 
-        $this->sponsors[$asset] = array( 'a' => $a, 'f' => $sfee );
+        $this->sponsors[$asset] = [ 'a' => $a, 'f' => $sfee ];
     }
 
     private function get_sponsor( $asset )
@@ -442,7 +441,7 @@ class w8io_blockchain_transactions
                 if( $wtx['data'] !== false )
                     $wtx['data']['b'] = $this->get_dataid( $alias );
                 else
-                    $wtx['data'] = array( 'b' => $this->get_dataid( $alias ) );
+                    $wtx['data'] = [ 'b' => $this->get_dataid( $alias ) ];
             }
             else if( $b[0] == '3' )
             {
@@ -486,7 +485,7 @@ class w8io_blockchain_transactions
             if( $wtx['data'] !== false )
                 $wtx['data']['f'] = $sponsor['f'];
             else
-                $wtx['data'] = array( 'f' => $sponsor['f'] );
+                $wtx['data'] = [ 'f' => $sponsor['f'] ];
         }
 
         if( $wtx['data'] !== false )
@@ -519,7 +518,7 @@ class w8io_blockchain_transactions
 
     private function block_fees( $at, $wtxs, $prev_wtxs )
     {
-        $fees = array();
+        $fees = [];
         $prev = false;
 
         for( ;; )
@@ -573,7 +572,7 @@ class w8io_blockchain_transactions
         if( $at <= W8IO_NG_ACTIVE )
             return 0;
 
-        $fees = $this->block_fees( $at, array(), $this->get_wtxs_at( $at - 1 ) );
+        $fees = $this->block_fees( $at, [], $this->get_wtxs_at( $at - 1 ) );
         if( isset( $fees[0] ) )
             return $fees[0];
 
@@ -585,7 +584,7 @@ class w8io_blockchain_transactions
         $at = $block['height'];
         $fees = $this->block_fees( $at, $wtxs, $prev_wtxs );
 
-        $wtx = array();
+        $wtx = [];
         $wtx['txid'] = $this->get_pair_txid( $at, true );
         $wtx['block'] = $at;
         $wtx['type'] = W8IO_TYPE_FEES;
@@ -640,12 +639,12 @@ class w8io_blockchain_transactions
         else
             $prev_wtxs = false;
 
-        $this->wtxs = array();
+        $this->wtxs = [];
 
         foreach( $txs as $tx )
         {
             $type = $tx['type'];
-            $wtx = array();
+            $wtx = [];
             $wtx['txid'] = $this->get_pair_txid( $tx['id'], true );
             $wtx['block'] = $at;
             $wtx['type'] = $type;
@@ -687,7 +686,7 @@ class w8io_blockchain_transactions
                     {
                         $attachment = $tx['attachment'];
                         if( is_string( $attachment ) && strlen( $attachment ) > 0 )
-                            $wtx['data'] = array( 'd' => $this->get_dataid( $attachment, true ) );
+                            $wtx['data'] = [ 'd' => $this->get_dataid( $attachment, true ) ];
                     }
                     {
                         if( null !== ( $asset = $tx['assetId'] ) )
@@ -794,7 +793,7 @@ class w8io_blockchain_transactions
                     $saved = true;
                     $wtx = end( $this->wtxs );
 
-                    if( false === $this->pairs_lease_info->set_pair( $wtx['txid'], array( '$' => $wtx['amount'], 'b' => $wtx['b'] ), 'j' ) )
+                    if( false === $this->pairs_lease_info->set_pair( $wtx['txid'], [ '$' => $wtx['amount'], 'b' => $wtx['b'] ], 'j' ) )
                         w8io_error();
 
                     break;
@@ -834,7 +833,7 @@ class w8io_blockchain_transactions
                         if( false === $this->pairs_aliases->set_pair( $alias, $aid ) )
                             w8io_error();
 
-                        $wtx['data'] = array( 'd' => $this->get_dataid( $alias, true ) );
+                        $wtx['data'] = [ 'd' => $this->get_dataid( $alias, true ) ];
                     }
                     break;
                 case 11: // mass transfer
@@ -865,13 +864,13 @@ class w8io_blockchain_transactions
                 case 12: // data
                     $wtx['a'] = $tx['sender'];
                     $wtx['b'] = 'NULL';
-                    $wtx['data'] = array( 'd' => $this->get_dataid( json_encode( $tx['data'] ), true ) );
+                    $wtx['data'] = [ 'd' => $this->get_dataid( json_encode( $tx['data'] ), true ) ];
                     break;
 
                 case 13: // script
                     $wtx['a'] = $tx['sender'];
                     $wtx['b'] = 'NULL';
-                    $wtx['data'] = array( 's' => $this->get_dataid( json_encode( $tx['script'] ), true ) );
+                    $wtx['data'] = [ 's' => $this->get_dataid( json_encode( $tx['script'] ), true ) ];
                     break;
 
                 case 14: // sponsorship
@@ -955,6 +954,6 @@ class w8io_blockchain_transactions
         if( !$this->transactions->commit() )
             w8io_error( 'unexpected commit() error' );
 
-        return array( 'transactions' => $this, 'from' => $from,  'to' => $to );
+        return [ 'transactions' => $this, 'from' => $from, 'to' => $to ];
     }
 }

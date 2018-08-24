@@ -5,13 +5,9 @@ class w8io_api
     private $balances;
     private $transactions;
 
-    private $crypto;
-    private $pairs_transactions;
     private $pairs_addresses;
-    private $pairs_pubkey_addresses;
     private $pairs_assets;
     private $pairs_asset_info;
-    private $pairs_balances;
     private $pairs_aliases;
     private $pairs_data;
 

@@ -64,7 +64,7 @@ function update_proc( $blockchain, $transactions, $balances )
                     {
                         $waves = $balances->get_all_waves();
                         $waves += $transactions->get_hang_waves( $balances_from_to['to'] + 1 );
-                        if( $waves != 10000000000000000 )
+                        if( $waves !== 10000000000000000 )
                             w8io_error( $waves . ' != 10000000000000000' );
                         w8io_trace( 's', $waves );
                     }
@@ -79,7 +79,7 @@ function update_proc( $blockchain, $transactions, $balances )
                     break;
             }
         }
-      
+
         if( $blockchain_from_to['height'] <= $blockchain_from_to['to'] )
             break;
     }
@@ -106,10 +106,10 @@ function update_tickers( $transactions )
 
         $last_tickers = json_decode( $last_tickers, true, 512, JSON_BIGINT_AS_STRING );
         if( $last_tickers === false )
-            $last_tickers = array();
+            $last_tickers = [];
         else
         {
-            $temp = array();
+            $temp = [];
             foreach( $last_tickers as $ticker )
             {
                 if( $ticker['24h_volume'] > 0 )
@@ -123,9 +123,9 @@ function update_tickers( $transactions )
         }
     }
     else
-        $last_tickers = array();
+        $last_tickers = [];
 
-    $fresh_tickers = new w8io_nodes( array( 'marketdata.wavesplatform.com' ) );
+    $fresh_tickers = new w8io_nodes( [ 'marketdata.wavesplatform.com' ] );
     $fresh_tickers = $fresh_tickers->get( '/api/tickers' );
     if( $fresh_tickers === false )
     {
@@ -140,7 +140,7 @@ function update_tickers( $transactions )
         return;
     }
 
-    $temp = array();
+    $temp = [];
     foreach( $tickers as $ticker )
     {
         if( $ticker['24h_volume'] > 0 )
@@ -182,9 +182,9 @@ function update_scam( $transactions )
         $last_scam = explode( "\n", $last_scam );
     }
     else
-        $last_scam = array();
+        $last_scam = [];
 
-    $fresh_scam = new w8io_nodes( array( 'raw.githubusercontent.com' ) );
+    $fresh_scam = new w8io_nodes( [ 'raw.githubusercontent.com' ] );
     $fresh_scam = $fresh_scam->get( '/wavesplatform/waves-community/master/Scam%20tokens%20according%20to%20the%20opinion%20of%20Waves%20Community.csv' );
     if( $fresh_scam === false )
     {

@@ -86,7 +86,7 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
             $info = $api->get_asset_info( $asset );
             if( $spam && isset( $info['scam'] ) )
                 continue;
-                
+
             $asset = "<a href=\"" . W8IO_ROOT . "$address/f/{$info['id']}\">{$info['name']}</a>";
             $decimals = $info['decimals'];
             $amount = number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' );
@@ -102,7 +102,7 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
         $a = (int)$wtx['a'];
         $b = (int)$wtx['b'];
 
-        $amount = ( $b == $aid ? '+' : '-' ) . $amount;
+        $amount = ( $b === $aid ? '+' : '-' ) . $amount;
         $isa = $a === $aid;
         $isb = $b === $aid;
         $a = $isa ? $address : $api->get_address( $a );
@@ -159,11 +159,11 @@ else if( $f === 't' )
 else if( $f === 't-' )
     $where = "type != $arg";
 
-if( $address == 'SUM' )
+if( $address === 'SUM' )
 {
     $balances = $api->get_all_balances();
 
-    $sum = array();
+    $sum = [];
 
     foreach( $balances as $balance )
     {

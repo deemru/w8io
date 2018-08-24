@@ -18,7 +18,7 @@ class w8io_crypto
     public function is_address_valid( $address )
     {
         $data = self::b58_decode( $address );
-        if( $data === false || strlen( $data ) != 26 )
+        if( $data === false || strlen( $data ) !== 26 )
             return false;
 
         if( $data[0] !== chr( 1 ) || $data[1] !== W8IO_NETWORK )
@@ -72,8 +72,8 @@ class w8io_crypto
                 if( $address[ 3 + $l ] !== $look[$l] )
                     break;
 
-            if( $l == $looklen )
-                return array( $seed, $address );
+            if( $l === $looklen )
+                return [ $seed, $address ];
 
             for( $n = $len;; $n-- )
             {

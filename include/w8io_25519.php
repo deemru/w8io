@@ -60,8 +60,8 @@ function pack25519( &$o, $n )
 
         for( $i = 1; $i < 15; $i++ )
         {
-          $m[$i] = $t[$i] - 0xFFFF - (( $m[$i - 1] >> 16 ) & 1 );
-          $m[$i - 1] &= 0xFFFF;
+            $m[$i] = $t[$i] - 0xFFFF - (( $m[$i - 1] >> 16 ) & 1 );
+            $m[$i - 1] &= 0xFFFF;
         }
 
         $m[15] = $t[15] - 0x7FFF - (( $m[14] >> 16 ) & 1 );
@@ -147,9 +147,15 @@ function inv25519( &$o, $i )
 
 function add( &$p, $q )
 {
-    $a = gf(); $b = gf(); $c = gf();
-    $d = gf(); $e = gf(); $f = gf();
-    $g = gf(); $h = gf(); $t = gf();
+    $a = gf();
+    $b = gf();
+    $c = gf();
+    $d = gf();
+    $e = gf();
+    $f = gf();
+    $g = gf();
+    $h = gf();
+    $t = gf();
     $D2 = gf( [ 0xF159, 0x26B2, 0x9B94, 0xEBD6, 0xB156, 0x8283, 0x149A, 0x00E0, 0xD130, 0xEEF3, 0x80F2, 0x198E, 0xFCE7, 0x56DF, 0xD9DC, 0x2406 ] );
 
     Z( $a, $p[1], $p[0] );
@@ -214,11 +220,11 @@ function scalarbase( &$p, $s )
     $X = gf( [ 0xD51A, 0x8F25, 0x2D60, 0xC956, 0xA7B2, 0x9525, 0xC760, 0x692C, 0xDC5C, 0xFDD6, 0xE231, 0xC0A4, 0x53FE, 0xCD6E, 0x36D3, 0x2169 ] );
     $Y = gf( [ 0x6658, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666 ] );
 
-    $q = array();
+    $q = [];
     $q[0] = $X;
     $q[1] = $Y;
     $q[2] = gf( [ 1 ] );
-    $q[3] = array();
+    $q[3] = [];
     M( $q[3], $X, $Y );
 
     scalarmult( $p, $q, $s );
@@ -283,7 +289,7 @@ function sha512( $data, $len )
 
     $raw = hash( 'sha512', $raw, true );
 
-    $hash = array();
+    $hash = [];
     for( $i = 0; $i < 64; $i++ )
         $hash[] = ord( $raw[$i] );
 
@@ -323,7 +329,7 @@ function sign_direct( $msg, $sk, $rnd )
     for( $i = 0; $i < 64; $i++ )
         $sm[$n + 64 + $i] = 0;
 
-    $x = array();
+    $x = [];
     for( $i = 0; $i < 32; $i++ )
         $x[] = $r[$i];
 
@@ -362,7 +368,7 @@ function curve25519_sign( $msg, $key )
     if( strlen( $key ) !== 32 )
         return false;
 
-    $edsk = array();
+    $edsk = [];
     for( $i = 0; $i < 32; $i++ )
         $edsk[] = ord( $key[$i] );
 
@@ -392,7 +398,7 @@ function curve25519_verify( $signature, $msg, $key )
     if( strlen( $key ) !== 32 || strlen( $signature ) !== 64 )
         return false;
 
-    $pk = array();
+    $pk = [];
     for( $i = 0; $i < 32; $i++ )
         $pk[] = ord( $key[$i] );
 
