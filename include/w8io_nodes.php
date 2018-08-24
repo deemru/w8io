@@ -34,7 +34,7 @@ class w8io_nodes
         }
         $ms = w8io_ms( w8io_timer( $ms ) );
 
-        if( 0 != ( $errno = curl_errno( $ch ) ) )
+        if( 0 !== ( $errno = curl_errno( $ch ) ) )
         {
             w8io_trace( 'w', "$host error $errno: " . curl_error( $ch ) );
             curl_close( $ch );
@@ -116,7 +116,7 @@ class w8io_nodes
         }
         $ms = w8io_ms( w8io_timer( $ms ) );
 
-        if( 0 != ( $errno = curl_errno( $ch ) ) || $code !== 200 )
+        if( 0 !== ( $errno = curl_errno( $ch ) ) || $code !== 200 )
         {
             w8io_trace( 'w', "$host error $errno: " . curl_error( $ch ) );
             curl_close( $ch );
@@ -124,7 +124,7 @@ class w8io_nodes
         }
 
         w8io_trace( 'i', "$host $method $url ($ms ms)" );
-        
+
         return $data;
     }
 

@@ -216,8 +216,8 @@ else
     echo '<table><tr><td valign="top"><pre>';
 
     echo 'balance:' . PHP_EOL;
-    $tickers = array();
-    $unlisted = array();
+    $tickers = [];
+    $unlisted = [];
 
     if( !isset( $balance[0] ) )
         $balance[0] = 0;
@@ -228,7 +228,7 @@ else
 
         $furl = W8IO_ROOT . "$address/f/Waves";
 
-        $tickers[] = $record = array( 'asset' => $asset, 'amount' => $amount, 'furl' => $furl );
+        $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
     }
 
     if( isset( $balance[W8IO_ASSET_WAVES_LEASED] ) )
@@ -242,7 +242,7 @@ else
 
             $furl = W8IO_ROOT . "$address/f/Waves";
 
-            $tickers[] = $record = array( 'asset' => $asset, 'amount' => $amount, 'furl' => $furl );
+            $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
         }
     }
 
@@ -260,7 +260,7 @@ else
 
             $furl = W8IO_ROOT . "$address/f/{$info['id']}";
 
-            $record = array( 'asset' => $asset, 'amount' => $amount, 'furl' => $furl );
+            $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
 
             if( isset( $info['ticker'] ) )
                 $tickers[] = $record;

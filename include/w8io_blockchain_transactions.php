@@ -6,14 +6,14 @@ class w8io_blockchain_transactions
 {
     private $transactions;
     private $checkpoint;
-    
-    private $query_get_txs_all = false;
-    private $query_get_txs = false;
-    private $query_get_txs_asset = false;
-    private $query_get_txid = false;
-    private $query_set_tx = false;
-    private $query_clear = false;
-    private $query_from_to = false;
+
+    private $query_get_txs_all;
+    private $query_get_txs;
+    private $query_get_txs_asset;
+    private $query_get_txid;
+    private $query_set_tx;
+    private $query_clear;
+    private $query_from_to;
 
     private $crypto;
     private $pairs_txids;
@@ -77,7 +77,7 @@ class w8io_blockchain_transactions
 
     private function get_txid( $txid, $one = false )
     {
-        if( $this->query_get_txid == false )
+        if( !isset( $this->query_get_txid ) )
         {
             $this->query_get_txid = $this->transactions->prepare( "SELECT * FROM transactions WHERE txid = :txid" );
             if( !is_object( $this->query_get_txid ) )
@@ -122,13 +122,13 @@ class w8io_blockchain_transactions
         $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, 'i' );
         if( !$height )
             return 0;
-    
+
         return $height;
     }
 
     private function clear_transactions( $height )
     {
-        if( $this->query_clear === false )
+        if( !isset( $this->query_clear ) )
         {
             $this->query_clear = $this->transactions->prepare( 'DELETE FROM transactions WHERE block > :height' );
             if( !is_object( $this->query_clear ) )
@@ -176,9 +176,9 @@ class w8io_blockchain_transactions
 
     public function get_txs_all( $limit = 100 )
     {
-        if( $this->query_get_txs_all == false )
+        if( !isset( $this->query_get_txs_all ) )
         {
-            $this->query_get_txs_all = $this->transactions->prepare( 
+            $this->query_get_txs_all = $this->transactions->prepare(
                 "SELECT * FROM transactions ORDER BY uid DESC LIMIT :limit" );
             if( !is_object( $this->query_get_txs_all ) )
                 return false;
@@ -195,17 +195,17 @@ class w8io_blockchain_transactions
         if( $aid !== false )
         {
             $where = $where ? "AND $where" : '';
-            $where = 
+            $where =
                 "SELECT * FROM ( SELECT * FROM transactions WHERE a = $aid $where ORDER BY uid DESC LIMIT $limit ) UNION
                  SELECT * FROM ( SELECT * FROM transactions WHERE b = $aid $where ORDER BY uid DESC LIMIT $limit ) ORDER BY uid DESC LIMIT $limit";
         }
         else
         {
             $where = $where ? "WHERE $where" : '';
-            $where = 
+            $where =
                 "SELECT * FROM transactions $where ORDER BY uid DESC LIMIT $limit";
         }
-       
+
         $query_where = $this->transactions->prepare( $where );
         if( !is_object( $query_where ) )
             return false;
@@ -218,9 +218,9 @@ class w8io_blockchain_transactions
 
     public function get_txs( $aid, $height, $limit = 100 )
     {
-        if( $this->query_get_txs == false )
+        if( !isset( $this->query_get_txs ) )
         {
-            $this->query_get_txs = $this->transactions->prepare( 
+            $this->query_get_txs = $this->transactions->prepare(
                 "SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid ORDER BY uid DESC LIMIT :limit )
                  UNION
                  SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND b = :aid ORDER BY uid DESC LIMIT :limit ) ORDER BY uid DESC LIMIT :limit" );
@@ -236,9 +236,9 @@ class w8io_blockchain_transactions
 
     public function get_txs_asset( $aid, $height, $asset, $limit = 100 )
     {
-        if( $this->query_get_txs_asset == false )
+        if( !isset( $this->query_get_txs_asset ) )
         {
-            $this->query_get_txs_asset = $this->transactions->prepare( 
+            $this->query_get_txs_asset = $this->transactions->prepare(
                 "SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit )
                  UNION
                  SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND b = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit ) ORDER BY uid DESC LIMIT :limit" );
@@ -254,7 +254,7 @@ class w8io_blockchain_transactions
 
     public function get_from_to( $from, $to )
     {
-        if( $this->query_from_to == false )
+        if( !isset( $this->query_from_to ) )
         {
             $this->query_from_to = $this->transactions->prepare( "SELECT * FROM transactions WHERE block > :from AND block <= :to ORDER BY uid ASC" );
             if( !is_object( $this->query_from_to ) )
@@ -390,7 +390,7 @@ class w8io_blockchain_transactions
         $a = $wtx['a'];
         if( is_int( $a ) === false )
         {
-            if( $a[0] == 'a' )
+            if( $a[0] === 'a' )
             {
                 var_dump( $wtx );
                 w8io_error( 'unexpected alias' );
@@ -398,21 +398,21 @@ class w8io_blockchain_transactions
                 //if( $a === false )
                     //return false;
             }
-            else if( $a[0] == '3' )
+            else if( $a[0] === '3' )
             {
                 $a = $this->pairs_addresses->get_id( $wtx['a'], true );
                 if( $a === false )
                     return false;
             }
-            else if( $a == 'GENESIS' )
+            else if( $a === 'GENESIS' )
             {
                 $a = 0;
             }
-            else if( $a == 'GENERATOR' )
+            else if( $a === 'GENERATOR' )
             {
                 $a = -1;
             }
-            else if( $a == 'MATCHER' )
+            else if( $a === 'MATCHER' )
             {
                 $a = -2;
             }
@@ -430,7 +430,7 @@ class w8io_blockchain_transactions
             {
                 $b = 0;
             }
-            else if( $b[0] == 'a' )
+            else if( $b[0] === 'a' )
             {
                 $alias = substr( $b, 8 );
 
@@ -443,17 +443,17 @@ class w8io_blockchain_transactions
                 else
                     $wtx['data'] = [ 'b' => $this->get_dataid( $alias ) ];
             }
-            else if( $b[0] == '3' )
+            else if( $b[0] === '3' )
             {
                 $b = $this->pairs_addresses->get_id( $wtx['b'], true );
                 if( $b === false )
                     return false;
             }
-            else if( $b == 'NULL' )
+            else if( $b === 'NULL' )
             {
                 $b = -3;
             }
-            else if( $b == 'SPONSOR' )
+            else if( $b === 'SPONSOR' )
             {
                 $b = -4;
             }
@@ -464,7 +464,7 @@ class w8io_blockchain_transactions
             }
         }
 
-        if( $this->query_set_tx === false )
+        if( !isset( $this->query_set_tx ) )
         {
             $this->query_set_tx = $this->transactions->prepare( "INSERT INTO transactions
                 (  txid,  block,  type,  timestamp,  a,  b,  amount,  asset,  fee,  afee,  data ) VALUES
@@ -526,11 +526,11 @@ class w8io_blockchain_transactions
             foreach( $wtxs as $wtx )
             {
                 $fee = $wtx['fee'];
-                if( $fee == 0 )
+                if( $fee === 0 )
                     continue;
 
                 // only MATCHER pays fee to GENERATOR
-                if( $wtx['type'] == 7 && $wtx['a'] != -2 )
+                if( $wtx['type'] === 7 && $wtx['a'] !== -2 )
                     continue;
 
                 $asset = $wtx['afee'];
@@ -552,7 +552,7 @@ class w8io_blockchain_transactions
                     }
 
                     $fee = $prev ? $fee - $ngfee : $ngfee;
-                    if( $fee == 0 )
+                    if( $fee === 0 )
                         continue;
                 }
 
@@ -589,15 +589,15 @@ class w8io_blockchain_transactions
         $wtx['block'] = $at;
         $wtx['type'] = W8IO_TYPE_FEES;
         $wtx['timestamp'] = $this->timestamp( $block['timestamp'] );
-        
+
         $wtx['fee'] = 0;
         $wtx['afee'] = W8IO_ASSET_EMPTY;
         $wtx['data'] = false;
 
         $wtx['a'] = 'GENERATOR';
-        $wtx['b'] = $this->get_aid( $block['generator'], $at == 1 );
+        $wtx['b'] = $this->get_aid( $block['generator'], $at === 1 );
 
-        if( count( $fees ) == 0 )
+        if( count( $fees ) === 0 )
         {
             $wtx['amount'] = 0;
             $wtx['asset'] = 0;
@@ -806,7 +806,7 @@ class w8io_blockchain_transactions
                             w8io_error();
 
                         $wtx['b'] = intval( $lease_info['b'] );
-                        
+
                         if( !isset( $lease_info['x'] ) || false === $this->get_txid( $lease_info['x'], true ) )
                         {
                             $wtx['amount'] = $lease_info['$'];
@@ -829,7 +829,7 @@ class w8io_blockchain_transactions
                         $wtx['a'] = $aid;
 
                         $alias = $tx['alias'];
-                        
+
                         if( false === $this->pairs_aliases->set_pair( $alias, $aid ) )
                             w8io_error();
 
@@ -913,7 +913,7 @@ class w8io_blockchain_transactions
         $to = $upcontext['to'];
         $local_height = $this->get_height();
 
-        if( $local_height != $from )
+        if( $local_height !== $from )
         {
             $from = min( $local_height, $from );
 
@@ -927,7 +927,7 @@ class w8io_blockchain_transactions
                 unset( $this->sponsors );
             }
         }
-        
+
         $to = min( $to, $from + W8IO_MAX_UPDATE_BATCH );
 
         if( !isset( $this->sponsors ) )
@@ -939,7 +939,7 @@ class w8io_blockchain_transactions
         for( $i = $from + 1; $i <= $to; $i++ )
         {
             w8io_trace( 'i', "$i (transactions)" );
-            
+
             $block = $blockchain->get_block( $i );
             if( $block === false )
                 w8io_error( 'unexpected blockchain->get_block() error' );

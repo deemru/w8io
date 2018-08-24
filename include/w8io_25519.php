@@ -349,7 +349,9 @@ function sign_direct( $msg, $sk, $rnd )
 function curve25519_to_ed25519( $pk )
 {
     $z = array_fill( 0, 32, 0 );
-    $x = gf(); $a = gf(); $b = gf();
+    $x = gf();
+    $a = gf();
+    $b = gf();
     $gf1 = gf( [ 1 ] );
 
     unpack25519( $x, $pk );

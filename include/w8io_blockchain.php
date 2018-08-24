@@ -22,7 +22,7 @@ class w8io_blockchain
 
         if( !$height )
             return 0;
-    
+
         return $height;
     }
 
@@ -69,7 +69,7 @@ class w8io_blockchain
                 return false;
             }
 
-            if( $nodes_block['reference'] == $local_block['signature'] ) // no fork
+            if( $nodes_block['reference'] === $local_block['signature'] ) // no fork
             {
                 w8io_trace( 'i', "{$nodes_block['height']} (blockchain)" );
 

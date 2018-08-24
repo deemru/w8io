@@ -227,7 +227,7 @@ class w8io_blockchain_balances
         $to = $upcontext['to'];
         $local_height = $this->get_height();
 
-        if( $local_height != $from )
+        if( $local_height !== $from )
         {
             if( $local_height > $from )
             {
@@ -237,7 +237,7 @@ class w8io_blockchain_balances
                     unset( $this->checkpoint );
                     unset( $this->balances );
 
-                    $backup_diff = md5_file( $backup ) != md5_file( W8IO_DB_BLOCKCHAIN_BALANCES );
+                    $backup_diff = md5_file( $backup ) !== md5_file( W8IO_DB_BLOCKCHAIN_BALANCES );
 
                     if( $backup_diff )
                     {
@@ -282,7 +282,7 @@ class w8io_blockchain_balances
         $i = 0;
         foreach( $wtxs as $wtx )
         {
-            if( $i != $wtx['block'] )
+            if( $i !== $wtx['block'] )
             {
                 $i = $wtx['block'];
                 w8io_trace( 'i', "$i (balances)" );
@@ -291,7 +291,7 @@ class w8io_blockchain_balances
             if( !$this->update_balances( $wtx ) )
                 w8io_error( 'unexpected update_balances() error' );
         }
-            
+
         if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES, $to ) )
             w8io_error( 'set checkpoint_transactions failed' );
 
@@ -307,7 +307,7 @@ class w8io_blockchain_balances
             {
                 if( file_exists( $backup ) )
                     unlink( $backup );
-                
+
                 rename( $copy, $backup );
             }
 

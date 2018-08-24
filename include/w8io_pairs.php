@@ -28,7 +28,7 @@ class w8io_pairs
 
             $this->db->exec( W8IO_DB_PRAGMAS );
         }
-        
+
         $this->name = $name;
         $this->cache_size = $cache_size;
         $this->cache_by_id = [];
