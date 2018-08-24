@@ -8,11 +8,10 @@ class w8io_pairs
     private $cache_by_id;
     private $cache_by_value;
 
-    private $query_get_id = false;
-    private $query_max_id = false;
-    private $query_get_value = false;
-    private $query_set_value = false;
-    private $query_set_pair = false;
+    private $query_get_id;
+    private $query_get_value;
+    private $query_set_value;
+    private $query_set_pair;
 
     public function __construct( $db, $name, $writable = false, $type = 'INTEGER PRIMARY KEY|TEXT UNIQUE|0|0', $cache_size = W8IO_CACHE_PAIRS )
     {
@@ -82,7 +81,7 @@ class w8io_pairs
         if( isset( $this->cache_by_value[$value] ) )
             return $this->cache_by_value[$value];
 
-        if( $this->query_get_id === false )
+        if( !isset( $this->query_get_id ) )
         {
             $this->query_get_id = $this->db->prepare( "SELECT id FROM {$this->name} WHERE value = :value" );
             if( $this->query_get_id === false )
@@ -117,7 +116,7 @@ class w8io_pairs
         if( isset( $this->cache_by_id[$id] ) )
             return $this->cache_by_id[$id];
 
-        if( $this->query_get_value === false )
+        if( !isset( $this->query_get_value ) )
         {
             $this->query_get_value = $this->db->prepare( "SELECT value FROM {$this->name} WHERE id = :id" );
             if( $this->query_get_value === false )
@@ -150,7 +149,7 @@ class w8io_pairs
 
     private function set_value( $value )
     {
-        if( $this->query_set_value === false )
+        if( !isset( $this->query_set_value ) )
         {
             $this->query_set_value = $this->db->prepare( "INSERT INTO {$this->name}( value ) VALUES( :value )" );
             if( $this->query_set_value === false )
@@ -164,7 +163,7 @@ class w8io_pairs
     {
         self::set_cache( $id, $value );
 
-        if( $this->query_set_pair === false )
+        if( !isset( $this->query_set_pair ) )
         {
             $this->query_set_pair = $this->db->prepare( "INSERT OR REPLACE INTO {$this->name}( id, value ) VALUES( :id, :value )" );
             if( $this->query_set_pair === false )

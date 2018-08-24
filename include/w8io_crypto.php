@@ -23,7 +23,7 @@ class w8io_crypto
 
         if( $data[0] !== chr( 1 ) || $data[1] !== W8IO_NETWORK )
             return false;
- 
+
         $crc = self::sechash( substr( $data, 0, 22 ) );
         if( substr( $crc, 0, 4 ) !== substr( $data, 22, 4 ) )
             return false;
@@ -45,7 +45,7 @@ class w8io_crypto
     public function get_address_from_pubkey( $pubkey )
     {
         $pubkey = self::b58_decode( $pubkey );
-        if( $pubkey === false || strlen( $pubkey ) != 32 )
+        if( $pubkey === false || strlen( $pubkey ) !== 32 )
             return false;
         $pubkey = self::sechash( $pubkey );
         $pubkey = chr( 1 ) . W8IO_NETWORK . substr( $pubkey, 0, 20 );

@@ -194,94 +194,94 @@ if( $address === 'SUM' )
 }
 else
 {
-$aid = $api->get_aid( $address );
-if( $aid === false )
-{
-    $wtxs = $api->get_transactions_where( false, $where, 1000 );
-    w8io_print_transactions( false, $address, $wtxs, $api, !( $f === 'f' ) );
-}
-else
-{
-    $full_address = $api->get_address( $aid );
-    $balance = $api->get_address_balance( $aid );
-
-    if( $balance === false )
-        w8io_error( "get_address_balance( $aid ) failed" );
-
-    $height = $balance['height'];
-    $balance = $balance['balance'];
-    $full_address = $full_address !== $address ? " / <a href=\"". W8IO_ROOT . $full_address ."\">$full_address</a>" : '';
-
-    echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height" . PHP_EOL . PHP_EOL;
-    echo '<table><tr><td valign="top"><pre>';
-
-    echo 'balance:' . PHP_EOL;
-    $tickers = [];
-    $unlisted = [];
-
-    if( !isset( $balance[0] ) )
-        $balance[0] = 0;
-
+    $aid = $api->get_aid( $address );
+    if( $aid === false )
     {
-        $asset = "Waves";
-        $amount = str_pad( number_format( $balance[0] / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
-
-        $furl = W8IO_ROOT . "$address/f/Waves";
-
-        $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
+        $wtxs = $api->get_transactions_where( false, $where, 1000 );
+        w8io_print_transactions( false, $address, $wtxs, $api, !( $f === 'f' ) );
     }
-
-    if( isset( $balance[W8IO_ASSET_WAVES_LEASED] ) )
+    else
     {
-        $amount = $balance[W8IO_ASSET_WAVES_LEASED] + ( isset( $balance[0] ) ? $balance[0] : 0 );
+        $full_address = $api->get_address( $aid );
+        $balance = $api->get_address_balance( $aid );
 
-        if( $amount > 100000000000 )
+        if( $balance === false )
+            w8io_error( "get_address_balance( $aid ) failed" );
+
+        $height = $balance['height'];
+        $balance = $balance['balance'];
+        $full_address = $full_address !== $address ? " / <a href=\"". W8IO_ROOT . $full_address ."\">$full_address</a>" : '';
+
+        echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height" . PHP_EOL . PHP_EOL;
+        echo '<table><tr><td valign="top"><pre>';
+
+        echo 'balance:' . PHP_EOL;
+        $tickers = [];
+        $unlisted = [];
+
+        if( !isset( $balance[0] ) )
+            $balance[0] = 0;
+
         {
-            $asset = "Waves (GENERATOR)";
-            $amount = str_pad( number_format( $amount / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
+            $asset = "Waves";
+            $amount = str_pad( number_format( $balance[0] / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
 
             $furl = W8IO_ROOT . "$address/f/Waves";
 
             $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
         }
-    }
 
-    foreach( $balance as $asset => $amount )
-    {
-        if( $asset > 0 )
+        if( isset( $balance[W8IO_ASSET_WAVES_LEASED] ) )
         {
-            $info = $api->get_asset_info( $asset );
-            if( isset( $info['scam'] ) )
-                continue;
+            $amount = $balance[W8IO_ASSET_WAVES_LEASED] + ( isset( $balance[0] ) ? $balance[0] : 0 );
 
-            $asset = $info['name'];
-            $decimals = $info['decimals'];
-            $amount = str_pad( number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' ), 24, ' ', STR_PAD_LEFT );
+            if( $amount > 100000000000 )
+            {
+                $asset = "Waves (GENERATOR)";
+                $amount = str_pad( number_format( $amount / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
 
-            $furl = W8IO_ROOT . "$address/f/{$info['id']}";
+                $furl = W8IO_ROOT . "$address/f/Waves";
 
-            $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
-
-            if( isset( $info['ticker'] ) )
-                $tickers[] = $record;
-            else
-                $unlisted[] = $record;
+                $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
+            }
         }
+
+        foreach( $balance as $asset => $amount )
+        {
+            if( $asset > 0 )
+            {
+                $info = $api->get_asset_info( $asset );
+                if( isset( $info['scam'] ) )
+                    continue;
+
+                $asset = $info['name'];
+                $decimals = $info['decimals'];
+                $amount = str_pad( number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' ), 24, ' ', STR_PAD_LEFT );
+
+                $furl = W8IO_ROOT . "$address/f/{$info['id']}";
+
+                $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
+
+                if( isset( $info['ticker'] ) )
+                    $tickers[] = $record;
+                else
+                    $unlisted[] = $record;
+            }
+        }
+
+        foreach( $tickers as $record )
+            echo "{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>" . PHP_EOL;
+
+        echo "------------------------------------------" . PHP_EOL;
+
+        foreach( $unlisted as $record )
+            echo "{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>" . PHP_EOL;
+
+        echo '</pre></td><td valign="top"><pre>';
+        echo 'transactions:' . PHP_EOL;
+        $wtxs = $api->get_transactions_where( $aid, $where, 1000 );
+        w8io_print_transactions( $aid, $address, $wtxs, $api, !( $f === 'f' ) );
     }
-
-    foreach( $tickers as $record )
-        echo "{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>" . PHP_EOL;
-
-    echo "------------------------------------------" . PHP_EOL;
-
-    foreach( $unlisted as $record )
-        echo "{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>" . PHP_EOL;
-
-    echo '</pre></td><td valign="top"><pre>';
-    echo 'transactions:' . PHP_EOL;
-    $wtxs = $api->get_transactions_where( $aid, $where, 1000 );
-    w8io_print_transactions( $aid, $address, $wtxs, $api, !( $f === 'f' ) );
-}
 }
 
 echo '</pre></td></tr></table>'. PHP_EOL . PHP_EOL;

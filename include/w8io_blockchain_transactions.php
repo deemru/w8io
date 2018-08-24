@@ -21,7 +21,6 @@ class w8io_blockchain_transactions
     private $pairs_pubkey_addresses;
     private $pairs_assets;
     private $pairs_asset_info;
-    private $pairs_balances;
     private $pairs_aliases;
     private $pairs_lease_info;
 
@@ -335,10 +334,7 @@ class w8io_blockchain_transactions
         $wtx['data'] = false;
 
         if( !$this->set_tx( $wtx ) )
-        {
-            var_dump( $wtx );
-            w8io_error( 'set_tx()' );
-        }
+            w8io_error( json_encode( $wtx ) );
 
         // SPONSOR > METASPONSOR
         $wtx['a'] = $sponsor;
@@ -673,7 +669,7 @@ class w8io_blockchain_transactions
                     {
                         $asset = $this->get_assetid( $tx['assetId'], true );
 
-                        $tx['name'] = htmlentities( trim( preg_replace( '/\s+/', ' ',  $tx['name'] ) ) );
+                        $tx['name'] = htmlentities( trim( preg_replace( '/\s+/', ' ', $tx['name'] ) ) );
                         if( $this->pairs_asset_info->set_pair( $asset, $tx, 'j' ) === false )
                             w8io_error();
 

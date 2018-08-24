@@ -6,7 +6,7 @@ class w8io_nodes
 {
     private $cdb = [];
 
-    public function __construct( $hosts, $api = '' )
+    public function __construct( $hosts )
     {
         foreach( $hosts as $host )
             $this->cdb[] = [ 'host' => $host, 'curl' => false ];
