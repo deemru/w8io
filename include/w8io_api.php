@@ -36,17 +36,17 @@ class w8io_api
 
     public function get_address( $id )
     {
-        return $this->get_pairs_addresses()->get_value( $id );
+        return $this->get_pairs_addresses()->get_value( $id, 's' );
     }
 
     public function get_alias( $id )
     {
-        return $this->get_pairs_aliases()->get_value( $id );
+        return $this->get_pairs_aliases()->get_value( $id, 's' );
     }
 
     public function get_data( $id )
     {
-        return $this->get_pairs_data()->get_value( $id );
+        return $this->get_pairs_data()->get_value( $id, 's' );
     }
 
     public function get_asset_info( $id )
