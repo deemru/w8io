@@ -31,12 +31,19 @@ class w8io_crypto
         return true;
     }
 
+    public function get_priv_from_seed( $seed )
+    {
+        return hash( 'sha256', self::sechash( chr( 0 ) . chr( 0 ) . chr( 0 ) . chr( 0 ) . $seed ), true );
+    }
+
+    public function get_pub_from_seed( $seed )
+    {
+        return sodium_crypto_box_publickey_from_secretkey( self::get_priv_from_seed( $seed ) );
+    }
+
     public function get_address_from_seed( $seed )
     {
-        $seed = chr( 0 ) . chr( 0 ) . chr( 0 ) . chr( 0 ) . $seed;
-        $seed = self::sechash( sodium_crypto_box_publickey_from_secretkey(
-                               hash( 'sha256',
-                               self::sechash( $seed ), true ) ) );
+        $seed = self::sechash( self::get_pub_from_seed( $seed ) );
         $seed = chr( 1 ) . W8IO_NETWORK . substr( $seed, 0, 20 );
         $seed .= substr( self::sechash( $seed ), 0, 4 );
         return self::b58_encode( $seed );

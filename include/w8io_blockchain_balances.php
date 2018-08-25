@@ -18,7 +18,7 @@ class w8io_blockchain_balances
 
     public function get_height()
     {
-        $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES );
+        $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES, 'i' );
         if( !$height )
             return 0;
 

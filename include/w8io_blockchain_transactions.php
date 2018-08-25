@@ -14,6 +14,7 @@ class w8io_blockchain_transactions
     private $query_set_tx;
     private $query_clear;
     private $query_from_to;
+    private $query_wtxs_at;
 
     private $crypto;
     private $pairs_txids;
@@ -104,16 +105,17 @@ class w8io_blockchain_transactions
 
     private function get_wtxs_at( $at )
     {
-        $query_wtxs_at = $this->transactions->prepare( "SELECT * FROM transactions WHERE block = $at" );
-        if( !is_object( $query_wtxs_at ) )
+        if( !isset( $this->query_wtxs_at ) )
+        {
+            $this->query_wtxs_at = $this->transactions->prepare( "SELECT * FROM transactions WHERE block = :at" );
+            if( !is_object( $this->query_wtxs_at ) )
+                return false;
+        }
+
+        if( $this->query_wtxs_at->execute( [ 'at' => $at ] ) === false )
             return false;
 
-        if( $query_wtxs_at->execute() === false )
-            return false;
-
-        $query_wtxs_at->fetchAll( PDO::FETCH_ASSOC );
-
-        return array_map( 'self::filter_wtx', $query_wtxs_at );
+        return array_map( 'self::filter_wtx', $this->query_wtxs_at->fetchAll( PDO::FETCH_ASSOC ) );
     }
 
     public function get_height()
@@ -263,7 +265,7 @@ class w8io_blockchain_transactions
         if( $this->query_from_to->execute( [ 'from' => $from, 'to' => $to ] ) === false )
             return false;
 
-        return $this->query_from_to;
+        return array_map( 'self::filter_wtx', $this->query_from_to->fetchAll( PDO::FETCH_ASSOC ) );
     }
 
     public function mark_scam( $scam, $mark )

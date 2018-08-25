@@ -111,7 +111,7 @@ class w8io_pairs
         return $id;
     }
 
-    public function get_value( $id, $type = false )
+    public function get_value( $id, $type )
     {
         if( isset( $this->cache_by_id[$id] ) )
             return $this->cache_by_id[$id];
