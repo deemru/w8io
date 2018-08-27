@@ -136,13 +136,13 @@ class w8io_crypto
 
     public function sign( $data, $key )
     {
-        require_once './include/w8io_25519.php';
-        return w8io_25519\curve25519_sign( $data, $key );
+        require_once './third_party/curve25519-php/curve25519.php';
+        return curve25519\curve25519_sign( $data, $key );
     }
 
     public function verify( $sign, $data, $key )
     {
-        require_once './include/w8io_25519.php';
-        return w8io_25519\curve25519_verify( $sign, $data, $key );
+        require_once './third_party/curve25519-php/curve25519.php';
+        return curve25519\curve25519_verify( $sign, $data, $key );
     }
 }
