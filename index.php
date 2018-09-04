@@ -9,10 +9,16 @@ else
 
 $uri = explode( '/', $uri );
 
-$address = $uri[0];
+function flt( $string )
+{
+    $filter = preg_filter( '/[^a-zA-Z0-9_@\-]+/', '', $string );
+    return isset( $filter ) ? $filter : $string;
+}
 
-$f = isset( $uri[1] ) ? $uri[1] : false;
-$arg = isset( $uri[2] ) ? $uri[2] : false;
+$address = flt( $uri[0] );
+
+$f = isset( $uri[1] ) ? flt( $uri[1] ) : false;
+$arg = isset( $uri[2] ) ? flt( $uri[2] ) : false;
 
 echo sprintf( '
 <html>
