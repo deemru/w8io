@@ -696,32 +696,8 @@ class w8io_blockchain_transactions
                     {
                         $buyer = $tx['order1'];
                         $seller = $tx['order2'];
-
-                        $pub = $buyer['senderPublicKey'];
-                        $ba = $this->pairs_pubkey_addresses->get_value( $pub, 'i' );
-                        if( $ba === false )
-                        {
-                            $ba = $this->get_crypto()->get_address_from_pubkey( $pub );
-                            if( $ba === false )
-                                w8io_error();
-
-                            $ba = $this->get_aid( $ba );
-                            if( $this->pairs_pubkey_addresses->set_pair( $pub, $ba ) === false )
-                                w8io_error();
-                        }
-
-                        $pub = $seller['senderPublicKey'];
-                        $sa = $this->pairs_pubkey_addresses->get_value( $pub, 'i' );
-                        if( $sa === false )
-                        {
-                            $sa = $this->get_crypto()->get_address_from_pubkey( $pub );
-                            if( $sa === false )
-                                w8io_error();
-
-                            $sa = $this->get_aid( $sa );
-                            if( $this->pairs_pubkey_addresses->set_pair( $pub, $sa ) === false )
-                                w8io_error();
-                        }
+                        $ba = $this->get_aid( $buyer['sender'] );
+                        $sa = $this->get_aid( $seller['sender'] );
 
                         $basset = $buyer['assetPair']['amountAsset'];
                         $basset = $basset !== null ? $this->get_assetid( $basset ) : 0;
