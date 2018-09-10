@@ -19,6 +19,7 @@ $address = flt( $uri[0] );
 
 $f = isset( $uri[1] ) ? flt( $uri[1] ) : false;
 $arg = isset( $uri[2] ) ? flt( $uri[2] ) : false;
+$arg2 = isset( $uri[3] ) ? flt( $uri[3] ) : false;
 
 echo sprintf( '
 <html>
@@ -53,7 +54,7 @@ echo sprintf( '
     </style>
     <body>
         <pre>
-', " / $address", W8IO_ROOT );
+', empty( $address ) ? '' : " / $address", W8IO_ROOT );
 
 if( empty( $address ) )
     $address = 'GENESIS';
@@ -157,14 +158,6 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
     }
 }
 
-$where = false;
-if( $f === 'f' )
-    $where = "asset = $arg";
-else if( $f === 't' )
-    $where = "type = $arg";
-else if( $f === 't-' )
-    $where = "type != $arg";
-
 if( $address === 'SUM' )
 {
     $balances = $api->get_all_balances();
@@ -200,6 +193,14 @@ if( $address === 'SUM' )
 }
 else
 {
+    $where = false;
+    if( $f === 'f' )
+        $where = "asset = $arg";
+    else if( $f === 't' )
+        $where = "type = $arg";
+    else if( $f === 't-' )
+        $where = "type != $arg";
+
     $aid = $api->get_aid( $address );
     if( $aid === false )
     {
@@ -284,9 +285,114 @@ else
             echo "{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>" . PHP_EOL;
 
         echo '</pre></td><td valign="top"><pre>';
-        echo 'transactions:' . PHP_EOL;
-        $wtxs = $api->get_transactions_where( $aid, $where, 1000 );
-        w8io_print_transactions( $aid, $address, $wtxs, $api, !( $f === 'f' ) );
+
+        if( $f !== 'pay' )
+        {
+            echo 'transactions:' . PHP_EOL;
+            $wtxs = $api->get_transactions_where( $aid, $where, 1000 );
+            w8io_print_transactions( $aid, $address, $wtxs, $api, !( $f === 'f' ) );
+        }
+        else
+        {
+            $from = $arg;
+            $to = $arg2;
+
+            $incomes = $api->get_incomes( $aid, $from, $to );
+
+            if( $incomes !== false )
+            {
+                // waves_fees
+                $waves_fees = 0;
+                $query = $api->get_transactions_query( "SELECT * FROM transactions WHERE block >= $from AND block <= $to AND b = $aid AND type = 0" );
+                foreach( $query as $wtx )
+                {
+                    $wtx = w8io_filter_wtx( $wtx );
+                    if( $wtx['asset'] === 0 )
+                        $waves_fees += $wtx['amount'];
+                }
+
+                // mrt_fees
+                $mrt_fees = 0;
+                $mrt_id = $api->get_asset( '4uK8i4ThRGbehENwa6MxyLtxAjAo1Rj9fduborGExarC' );
+                $query = $api->get_transactions_query( "SELECT * FROM transactions WHERE block >= $from AND block <= $to AND b = $aid AND type = 4 AND asset = $mrt_id" );
+                foreach( $query as $wtx )
+                {
+                    $wtx = w8io_filter_wtx( $wtx );
+                    $mrt_fees += $wtx['amount'];
+                }
+
+                echo "pay ($from .. $to):" . PHP_EOL . PHP_EOL;
+                echo str_pad( number_format( $waves_fees / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT ) . " Waves" . PHP_EOL;
+                echo str_pad( number_format( $mrt_fees / 100, 2, '.', '' ), 24, ' ', STR_PAD_LEFT ) . " MinersReward" . PHP_EOL;
+
+                $payments = [];
+                foreach( $incomes as $a => $p )
+                    if( $p * $waves_fees > 10000 && ( $mrt_fees === 0 || $p * $mrt_fees > 1 ) )
+                        $payments[] = $a;
+
+                $reserve = count( $payments );
+                $reserve = ( intdiv( $reserve, 100 ) + 1 ) * 100000 + $reserve * 50000 + ( $reserve % 2 ) * 50000;
+                $waves_fees -= $reserve * 2;
+
+                echo PHP_EOL;
+                $waves = 0;
+                $m = 0;
+                $n = 0;
+
+                foreach( $payments as $a )
+                {
+                    $p = $incomes[$a];
+
+                    if( $n === 0 )
+                    {
+                        $m++;
+                        echo "    Mass (Waves) #$m:" . PHP_EOL;
+                        echo "    ------------------------------------------------------------" . PHP_EOL;
+                    }
+                    $address = $api->get_address( $a );
+                    $pay = number_format( $p * $waves_fees / 100000000, 8, '.', '' );
+                    $waves += $pay;
+                    echo "    $address, $pay" . PHP_EOL;
+                    if( ++$n === 100 )
+                    {
+                        $n = 0;
+                        echo "    ------------------------------------------------------------" . PHP_EOL . PHP_EOL;
+                    }
+                }
+
+                if( $n )
+                    echo "    ------------------------------------------------------------" . PHP_EOL . PHP_EOL;
+
+                echo PHP_EOL;
+                $waves = 0;
+                $m = 0;
+                $n = 0;
+
+                foreach( $payments as $a )
+                {
+                    $p = $incomes[$a];
+
+                    if( $n === 0 )
+                    {
+                        $m++;
+                        echo "    Mass (MinersReward) #$m:" . PHP_EOL;
+                        echo "    ------------------------------------------------------------" . PHP_EOL;
+                    }
+                    $address = $api->get_address( $a );
+                    $pay = number_format( $p * $mrt_fees / 100, 2, '.', '' );
+                    $waves += $pay;
+                    echo "    $address, $pay" . PHP_EOL;
+                    if( ++$n === 100 )
+                    {
+                        $n = 0;
+                        echo "    ------------------------------------------------------------" . PHP_EOL . PHP_EOL;
+                    }
+                }
+
+                if( $n )
+                    echo "    ------------------------------------------------------------" . PHP_EOL . PHP_EOL;
+            }
+        }
     }
 }
 

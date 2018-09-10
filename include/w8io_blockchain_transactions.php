@@ -23,7 +23,6 @@ class w8io_blockchain_transactions
     private $pairs_assets;
     private $pairs_asset_info;
     private $pairs_aliases;
-    private $pairs_lease_info;
 
     private $sponsors;
     private $wtxs;
@@ -46,7 +45,6 @@ class w8io_blockchain_transactions
             $this->pairs_asset_info = new w8io_pairs( $this->transactions, 'asset_info', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
             $this->pairs_aliases = new w8io_pairs( $this->transactions, 'aliases', true, 'TEXT PRIMARY KEY|INTEGER|0|1' );
             $this->pairs_addons = new w8io_pairs( $this->transactions, 'addons', true );
-            $this->pairs_lease_info = new w8io_pairs( $this->transactions, 'lease_info', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
 
             $this->transactions->exec( W8IO_DB_WRITE_PRAGMAS );
             $this->transactions->exec( "CREATE TABLE IF NOT EXISTS transactions (
@@ -79,7 +77,7 @@ class w8io_blockchain_transactions
     {
         if( !isset( $this->query_get_txid ) )
         {
-            $this->query_get_txid = $this->transactions->prepare( "SELECT * FROM transactions WHERE txid = :txid" );
+            $this->query_get_txid = $this->transactions->prepare( 'SELECT * FROM transactions WHERE txid = :txid ORDER BY uid ASC' );
             if( !is_object( $this->query_get_txid ) )
                 return false;
         }
@@ -97,10 +95,10 @@ class w8io_blockchain_transactions
             if( count( $data ) !== 1 )
                 return false;
 
-            return $data[0];
+            return w8io_filter_wtx( $data[0] );
         }
 
-        return $data;
+        return array_map( 'w8io_filter_wtx', $data );
     }
 
     private function get_wtxs_at( $at )
@@ -115,7 +113,7 @@ class w8io_blockchain_transactions
         if( $this->query_wtxs_at->execute( [ 'at' => $at ] ) === false )
             return false;
 
-        return array_map( 'self::filter_wtx', $this->query_wtxs_at->fetchAll( PDO::FETCH_ASSOC ) );
+        return array_map( 'w8io_filter_wtx', $this->query_wtxs_at->fetchAll( PDO::FETCH_ASSOC ) );
     }
 
     public function get_height()
@@ -189,6 +187,18 @@ class w8io_blockchain_transactions
             return false;
 
         return $this->query_get_txs_all;
+    }
+
+    public function query( $query )
+    {
+        $query = $this->transactions->prepare( $query );
+        if( !is_object( $query ) )
+            return false;
+
+        if( $query->execute() === false )
+            return false;
+
+        return $query;
     }
 
     public function get_txs_where( $aid, $where, $limit = 100 )
@@ -265,7 +275,7 @@ class w8io_blockchain_transactions
         if( $this->query_from_to->execute( [ 'from' => $from, 'to' => $to ] ) === false )
             return false;
 
-        return array_map( 'self::filter_wtx', $this->query_from_to->fetchAll( PDO::FETCH_ASSOC ) );
+        return array_map( 'w8io_filter_wtx', $this->query_from_to->fetchAll( PDO::FETCH_ASSOC ) );
     }
 
     public function mark_scam( $scam, $mark )
@@ -481,24 +491,6 @@ class w8io_blockchain_transactions
 
         $this->wtxs[] = $wtx;
         return true;
-    }
-
-    private function filter_wtx( $wtx )
-    {
-        if( isset( $wtx['uid'] ) )
-            $wtx['uid'] = (int)$wtx['uid'];
-        $wtx['txid'] = (int)$wtx['txid'];
-        $wtx['block'] = (int)$wtx['block'];
-        $wtx['type'] = (int)$wtx['type'];
-        $wtx['timestamp'] = (int)$wtx['timestamp'];
-        $wtx['a'] = (int)$wtx['a'];
-        $wtx['b'] = (int)$wtx['b'];
-        $wtx['amount'] = (int)$wtx['amount'];
-        $wtx['asset'] = (int)$wtx['asset'];
-        $wtx['fee'] = (int)$wtx['fee'];
-        $wtx['afee'] = (int)$wtx['afee'];
-        $wtx['data'] = empty( $wtx['data'] ) ? false : $wtx['data'];
-        return $wtx;
     }
 
     private function block_fees( $at, $wtxs, $prev_wtxs )
@@ -747,34 +739,21 @@ class w8io_blockchain_transactions
                 case 8: // start lease
                     $wtx['a'] = $tx['sender'];
                     $wtx['b'] = $tx['recipient'];
-
-                    if( !$this->set_tx( $wtx ) )
-                        w8io_error();
-
-                    $saved = true;
-                    $wtx = end( $this->wtxs );
-
-                    if( false === $this->pairs_lease_info->set_pair( $wtx['txid'], [ '$' => $wtx['amount'], 'b' => $wtx['b'] ], 'j' ) )
-                        w8io_error();
-
                     break;
                 case 9: // cancel lease
                     $wtx['a'] = $tx['sender'];
                     {
-                        $txid = $this->get_pair_txid( $tx['leaseId'] );
-                        $lease_info = $this->pairs_lease_info->get_value( $txid, 'j' );
-                        if( $lease_info === false )
+                        $wtxs = $this->get_txid( $this->get_pair_txid( $tx['leaseId'] ) );
+                        if( $wtxs === false )
                             w8io_error();
 
-                        $wtx['b'] = intval( $lease_info['b'] );
+                        $wtx_lease = $wtxs[0];
+                        $wtx['b'] = $wtx_lease['b'];
 
-                        if( !isset( $lease_info['x'] ) || false === $this->get_txid( $lease_info['x'], true ) )
+                        if( count( $wtxs ) == 1 )
                         {
-                            $wtx['amount'] = $lease_info['$'];
-
-                            $lease_info['x'] = $wtx['txid'];
-                            if( false === $this->pairs_lease_info->set_pair( $txid, $lease_info, 'j' ) )
-                                w8io_error();
+                            $wtx['txid'] = $wtx_lease['txid'];
+                            $wtx['amount'] = $wtx_lease['amount'];
                         }
                         else
                         {

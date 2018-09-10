@@ -90,6 +90,11 @@ function w8io_warning( $message )
     w8io_trace( 'w', $message );
 }
 
+function w8io_info( $message )
+{
+    w8io_trace( 'i', $message );
+}
+
 function w8io_error( $message = false )
 {
     trigger_error( $message ? w8io_log( 'e', $message ) : '(no message)', E_USER_ERROR );
@@ -122,4 +127,22 @@ function w8io_tx_type( $type )
         case 14: return 'sponsorship';
         default: return 'unknown';
     }
+}
+
+function w8io_filter_wtx( $wtx )
+{
+    if( isset( $wtx['uid'] ) )
+        $wtx['uid'] = (int)$wtx['uid'];
+    $wtx['txid'] = (int)$wtx['txid'];
+    $wtx['block'] = (int)$wtx['block'];
+    $wtx['type'] = (int)$wtx['type'];
+    $wtx['timestamp'] = (int)$wtx['timestamp'];
+    $wtx['a'] = (int)$wtx['a'];
+    $wtx['b'] = (int)$wtx['b'];
+    $wtx['amount'] = (int)$wtx['amount'];
+    $wtx['asset'] = (int)$wtx['asset'];
+    $wtx['fee'] = (int)$wtx['fee'];
+    $wtx['afee'] = (int)$wtx['afee'];
+    $wtx['data'] = empty( $wtx['data'] ) ? false : $wtx['data'];
+    return $wtx;
 }

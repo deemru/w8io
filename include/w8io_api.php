@@ -82,6 +82,11 @@ class w8io_api
         return $this->get_transactions()->get_txs_where( $aid, $where, $limit );
     }
 
+    public function get_transactions_query( $query )
+    {
+        return $this->get_transactions()->query( $query );
+    }
+
     public function get_all_balances()
     {
         return $this->get_balances()->get_all_waves( true );
@@ -162,5 +167,68 @@ class w8io_api
         }
 
         return $this->transactions;
+    }
+
+    public function get_incomes( $aid, $from, $to )
+    {
+        if( $from > $to || $from < 0 || $to < 0 )
+            return false;
+
+        $query = $this->get_transactions_query( 
+            "SELECT * FROM transactions WHERE b = $aid AND type = 8 UNION
+             SELECT * FROM transactions WHERE b = $aid AND type = 9 ORDER BY type" );
+
+        $leases = [];
+        foreach( $query as $wtx )
+        {
+            $wtx = w8io_filter_wtx( $wtx );
+            $txid = $wtx['txid'];
+
+            if( $wtx['type'] == 8 )
+            {
+                $start = $wtx['block'] + 1000;
+
+                if( $start > $to )
+                    continue;
+
+                $leases[$txid] = [ 'start' => $start, 'a' => $wtx['a'], 'amount' => $wtx['amount'] ];
+            }
+            else if( isset( $leases[$txid] ) && $wtx['amount'] )
+            {
+                $end = $wtx['block'];
+
+                if( $end < $from || $end < $leases[$txid]['start'] )
+                {
+                    unset( $leases[$txid] );
+                    continue;
+                }
+
+                $leases[$txid]['end'] = $end;
+            }
+        }
+
+        $range = $to - $from + 1;
+        $total = 0;
+
+        $incomes = [];
+        foreach( $leases as $txid => $lease )
+        {
+            $lease_range = $range;
+            if( $lease['start'] > $from )
+                $lease_range -= $lease['start'] - $from;
+            if( isset( $lease['end'] ) && $to > $lease['end'] )
+                $lease_range -= $to - $lease['end'];
+
+            $power = $lease_range / $range * $lease['amount'];
+            $total += $power;
+
+            $a = $lease['a'];
+            $incomes[$a] = $power + ( isset( $incomes[$a] ) ? $incomes[$a] : 0 );
+        }
+
+        foreach( $incomes as $a => $power )
+            $incomes[$a] = $power / $total;
+
+        return $incomes;
     }
 }

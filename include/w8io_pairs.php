@@ -46,7 +46,8 @@ class w8io_pairs
             if( $type[3] )
                 $this->db->exec( "CREATE INDEX IF NOT EXISTS {$this->name}_value_index ON {$this->name}( value )" );
 
-            $this->cache_by_value = [];
+            if( $type[3] || false !== strpos( $type[1], 'UNIQUE' ) )
+                $this->cache_by_value = [];
         }
     }
 
