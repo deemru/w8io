@@ -174,7 +174,7 @@ class w8io_api
         if( $from > $to || $from < 0 || $to < 0 )
             return false;
 
-        $query = $this->get_transactions_query( 
+        $query = $this->get_transactions_query(
             "SELECT * FROM transactions WHERE b = $aid AND type = 8 UNION
              SELECT * FROM transactions WHERE b = $aid AND type = 9 ORDER BY type" );
 
@@ -184,7 +184,7 @@ class w8io_api
             $wtx = w8io_filter_wtx( $wtx );
             $txid = $wtx['txid'];
 
-            if( $wtx['type'] == 8 )
+            if( $wtx['type'] === 8 )
             {
                 $start = $wtx['block'] + 1000;
 

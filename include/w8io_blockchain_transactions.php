@@ -750,7 +750,7 @@ class w8io_blockchain_transactions
                         $wtx_lease = $wtxs[0];
                         $wtx['b'] = $wtx_lease['b'];
 
-                        if( count( $wtxs ) == 1 )
+                        if( count( $wtxs ) === 1 )
                         {
                             $wtx['txid'] = $wtx_lease['txid'];
                             $wtx['amount'] = $wtx_lease['amount'];
