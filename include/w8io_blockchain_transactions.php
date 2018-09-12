@@ -16,10 +16,8 @@ class w8io_blockchain_transactions
     private $query_from_to;
     private $query_wtxs_at;
 
-    private $crypto;
     private $pairs_txids;
     private $pairs_addresses;
-    private $pairs_pubkey_addresses;
     private $pairs_assets;
     private $pairs_asset_info;
     private $pairs_aliases;
@@ -40,7 +38,6 @@ class w8io_blockchain_transactions
             $this->checkpoint = new w8io_pairs( $this->transactions, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
             $this->pairs_txids = new w8io_pairs( $this->transactions, 'txids', true );
             $this->pairs_addresses = new w8io_pairs( $this->transactions, 'addresses', true );
-            $this->pairs_pubkey_addresses = new w8io_pairs( $this->transactions, 'pubkey_addresses', true, 'TEXT PRIMARY KEY|INTEGER|0|0' );
             $this->pairs_assets = new w8io_pairs( $this->transactions, 'assets', true );
             $this->pairs_asset_info = new w8io_pairs( $this->transactions, 'asset_info', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
             $this->pairs_aliases = new w8io_pairs( $this->transactions, 'aliases', true, 'TEXT PRIMARY KEY|INTEGER|0|1' );
@@ -593,17 +590,6 @@ class w8io_blockchain_transactions
         }
 
         return true;
-    }
-
-    private function get_crypto()
-    {
-        if( !isset( $this->crypto ) )
-        {
-            require_once 'w8io_crypto.php';
-            $this->crypto = new w8io_crypto();
-        }
-
-        return $this->crypto;
     }
 
     private function set_transactions( $block )
