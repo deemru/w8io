@@ -20,6 +20,8 @@ $address = flt( $uri[0] );
 $f = isset( $uri[1] ) ? flt( $uri[1] ) : false;
 $arg = isset( $uri[2] ) ? flt( $uri[2] ) : false;
 $arg2 = isset( $uri[3] ) ? flt( $uri[3] ) : false;
+$arg3 = isset( $uri[4] ) ? flt( $uri[4] ) : false;
+$arg4 = isset( $uri[5] ) ? flt( $uri[5] ) : false;
 
 echo sprintf( '
 <html>
@@ -154,7 +156,7 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
         $ashow = $isa ? "<b>$a</b>" : $a;
         $bshow = $isb ? "<b>$b</b>" : $b;
 
-        echo "    <small>" . date( 'Y.m.d H:i:s', $wtx['timestamp'] ) ."</small> (<a href=\"". W8IO_ROOT . "$address/t/{$wtx['type']}\">$type</a>) <a href=\"". W8IO_ROOT . $a ."\">$ashow</a> >> <a href=\"". W8IO_ROOT . $b ."\">$bshow</a> $amount $asset$fee" . PHP_EOL;
+        echo "    <small>" . date( 'y.m.d H:i', $wtx['timestamp'] ) ." ({$wtx['block']})</small> (<a href=\"". W8IO_ROOT . "$address/t/{$wtx['type']}\">$type</a>) <a href=\"". W8IO_ROOT . $a ."\">$ashow</a> >> <a href=\"". W8IO_ROOT . $b ."\">$bshow</a> $amount $asset$fee" . PHP_EOL;
     }
 }
 
@@ -300,7 +302,27 @@ else
             $incomes = $api->get_incomes( $aid, $from, $to );
 
             if( $incomes !== false )
+            for( ;; )
             {
+                if( $arg3 === 'raw' )
+                {
+                    echo "raw income ($from .. $to):" . PHP_EOL . PHP_EOL;
+                    
+                    $raw = [];
+                    foreach( $incomes as $a => $p )
+                    {
+                        $address = $api->get_address( $a );
+                        $p = number_format( $p, 14, '.', '' );
+                        $raw[$address] = $p;
+                    }
+
+                    echo json_encode( $raw, JSON_PRETTY_PRINT );
+                    break;
+                }
+
+                $percent = (int)$arg3;
+                $percent = ( $percent > 0 && $percent < 100 ) ? $percent : 100;
+
                 // waves_fees
                 $waves_fees = 0;
                 $query = $api->get_transactions_query( "SELECT * FROM transactions WHERE block >= $from AND block <= $to AND b = $aid AND type = 0" );
@@ -310,6 +332,7 @@ else
                     if( $wtx['asset'] === 0 )
                         $waves_fees += $wtx['amount'];
                 }
+                $waves_fees *= $percent / 100;
 
                 // mrt_fees
                 $mrt_fees = 0;
@@ -320,8 +343,9 @@ else
                     $wtx = w8io_filter_wtx( $wtx );
                     $mrt_fees += $wtx['amount'];
                 }
+                $mrt_fees *= $percent / 100;
 
-                echo "pay ($from .. $to):" . PHP_EOL . PHP_EOL;
+                echo "pay ($from .. $to) ($percent %):" . PHP_EOL . PHP_EOL;
                 echo str_pad( number_format( $waves_fees / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT ) . " Waves" . PHP_EOL;
                 echo str_pad( number_format( $mrt_fees / 100, 2, '.', '' ), 24, ' ', STR_PAD_LEFT ) . " MinersReward" . PHP_EOL;
 
@@ -391,6 +415,8 @@ else
 
                 if( $n )
                     echo "    ------------------------------------------------------------" . PHP_EOL . PHP_EOL;
+
+                break;
             }
         }
     }
