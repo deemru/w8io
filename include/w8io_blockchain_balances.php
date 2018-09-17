@@ -77,12 +77,29 @@ class w8io_blockchain_balances
         $procs_a = [];
         $procs_b = [];
 
+        $type = $wtx['type'];
         $amount = $wtx['amount'];
         $asset = $wtx['asset'];
-        $fee = $wtx['fee'];
-        $afee = $wtx['afee'];
 
-        switch( $wtx['type'] )
+        if( $type === 4 && $wtx['data'] !== false )
+        {
+            $data = json_decode( $wtx['data'], true );
+            if( isset( $data['f'] ) )
+                $nofee = true;
+        }
+
+        if( isset( $nofee ) )
+        {
+            $fee = 0;
+            $afee = 0;
+        }
+        else
+        {
+            $fee = $wtx['fee'];
+            $afee = $wtx['afee'];
+        }
+
+        switch( $type )
         {
             case W8IO_TYPE_FEES: // fees
             case W8IO_TYPE_SPONSOR: // sponsor
