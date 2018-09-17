@@ -304,6 +304,8 @@ else
             if( $incomes !== false )
             for( ;; )
             {
+                arsort( $incomes );
+
                 if( $arg3 === 'raw' )
                 {
                     echo "raw income ($from .. $to):" . PHP_EOL . PHP_EOL;
