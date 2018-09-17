@@ -67,6 +67,12 @@ class w8io_blockchain_transactions
             $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_t     ON transactions( type )" );
             $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_ta    ON transactions( a, type )" );
             $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_tb    ON transactions( b, type )" );
+
+            $this->pairs_addresses->set_pair(  0, 'GENESIS' );
+            $this->pairs_addresses->set_pair( -1, 'GENERATOR' );
+            $this->pairs_addresses->set_pair( -2, 'MATCHER' );
+            $this->pairs_addresses->set_pair( -3, 'NULL' );
+            $this->pairs_addresses->set_pair( -4, 'SPONSOR' );
         }
     }
 
@@ -824,15 +830,6 @@ class w8io_blockchain_transactions
 
     public function update( $upcontext )
     {
-        // TODO
-        {
-            $this->pairs_addresses->set_pair(  0, 'GENESIS' );
-            $this->pairs_addresses->set_pair( -1, 'GENERATOR' );
-            $this->pairs_addresses->set_pair( -2, 'MATCHER' );
-            $this->pairs_addresses->set_pair( -3, 'NULL' );
-            $this->pairs_addresses->set_pair( -4, 'SPONSOR' );
-        }
-
         $blockchain = $upcontext['blockchain'];
         $from = $upcontext['from'];
         $to = $upcontext['to'];
