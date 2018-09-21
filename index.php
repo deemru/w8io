@@ -156,7 +156,7 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
         $ashow = $isa ? "<b>$a</b>" : $a;
         $bshow = $isb ? "<b>$b</b>" : $b;
 
-        echo "    <small>" . date( 'y.m.d H:i', $wtx['timestamp'] ) ." ({$wtx['block']})</small> (<a href=\"". W8IO_ROOT . "$address/t/{$wtx['type']}\">$type</a>) <a href=\"". W8IO_ROOT . $a ."\">$ashow</a> >> <a href=\"". W8IO_ROOT . $b ."\">$bshow</a> $amount $asset$fee" . PHP_EOL;
+        echo "<small>" . date( 'Y.m.d H:i', $wtx['timestamp'] ) ." ({$wtx['block']})</small> (<a href=\"". W8IO_ROOT . "$address/t/{$wtx['type']}\">$type</a>) <a href=\"". W8IO_ROOT . $a ."\">$ashow</a> >> <a href=\"". W8IO_ROOT . $b ."\">$bshow</a> $amount $asset$fee" . PHP_EOL;
     }
 }
 
@@ -224,7 +224,6 @@ else
         echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height" . PHP_EOL . PHP_EOL;
         echo '<table><tr><td valign="top"><pre>';
 
-        echo 'balance:' . PHP_EOL;
         $tickers = [];
         $unlisted = [];
 
@@ -281,7 +280,7 @@ else
         foreach( $tickers as $record )
             echo "{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>" . PHP_EOL;
 
-        echo "------------------------------------------" . PHP_EOL;
+        echo "------------------------------------------&nbsp;" . PHP_EOL;
 
         foreach( $unlisted as $record )
             echo "{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>" . PHP_EOL;
@@ -290,7 +289,6 @@ else
 
         if( $f !== 'pay' )
         {
-            echo 'transactions:' . PHP_EOL;
             $wtxs = $api->get_transactions_where( $aid, $where, 1000 );
             w8io_print_transactions( $aid, $address, $wtxs, $api, !( $f === 'f' ) );
         }
