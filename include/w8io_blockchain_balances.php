@@ -86,9 +86,19 @@ class w8io_blockchain_balances
         switch( $type )
         {
             case W8IO_TYPE_SPONSOR: // sponsor
-                $is_a = false;
-                $procs_b[$asset] = +$amount;
-                $is_b = true;
+                if( $asset )
+                {
+                    $is_a = false;
+                    $procs_b[$asset] = +$amount;
+                    $is_b = true;
+                }
+                else
+                {
+                    $procs_a[0] = -$amount;
+                    $is_a = true;
+                    $procs_b[0] = +$amount;
+                    $is_b = true;
+                }
                 break;
 
             case W8IO_TYPE_FEES: // fees    
