@@ -842,10 +842,24 @@ class w8io_blockchain_transactions
             if( $local_height > $from )
             {
                 w8io_warning( "clear_transactions( $from )" );
-                if( !$this->clear_transactions( $from ) )
-                    w8io_error( 'unexpected clear_transactions() error' );
-                if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, $from ) )
-                    w8io_error( 'set checkpoint_transactions failed' );
+                for( $i = $local_height;; )
+                {
+                    $i -= W8IO_MAX_UPDATE_BATCH;
+                    $i = max( $from, $i );                    
+                    w8io_info( "clear_transactions( $i )" );
+
+                    if( !$this->transactions->beginTransaction() )
+                        w8io_error( 'unexpected begin() error' );
+                    if( !$this->clear_transactions( $i ) )
+                        w8io_error( 'unexpected clear_transactions() error' );
+                    if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, $i ) )
+                        w8io_error( 'set checkpoint_transactions failed' );
+                    if( !$this->transactions->commit() )
+                        w8io_error( 'unexpected commit() error' );
+
+                    if( $i == $from )
+                        break;
+                }
                 unset( $this->sponsors );
             }
         }
