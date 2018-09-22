@@ -307,7 +307,7 @@ else
                 if( $arg3 === 'raw' )
                 {
                     echo "raw income ($from .. $to):" . PHP_EOL . PHP_EOL;
-                    
+
                     $raw = [];
                     foreach( $incomes as $a => $p )
                     {

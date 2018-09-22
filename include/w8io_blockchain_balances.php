@@ -101,7 +101,7 @@ class w8io_blockchain_balances
                 }
                 break;
 
-            case W8IO_TYPE_FEES: // fees    
+            case W8IO_TYPE_FEES: // fees
             case 1: // genesis
             case 2: // payment
             case 4: // transfer

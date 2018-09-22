@@ -845,7 +845,7 @@ class w8io_blockchain_transactions
                 for( $i = $local_height;; )
                 {
                     $i -= W8IO_MAX_UPDATE_BATCH;
-                    $i = max( $from, $i );                    
+                    $i = max( $from, $i );
                     w8io_info( "clear_transactions( $i )" );
 
                     if( !$this->transactions->beginTransaction() )
@@ -857,7 +857,7 @@ class w8io_blockchain_transactions
                     if( !$this->transactions->commit() )
                         w8io_error( 'unexpected commit() error' );
 
-                    if( $i == $from )
+                    if( $i === $from )
                         break;
                 }
                 unset( $this->sponsors );
