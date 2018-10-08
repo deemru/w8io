@@ -517,20 +517,17 @@ class w8io_blockchain_transactions
 
                 if( $at >= W8IO_NG_ACTIVE )
                 {
-                    $ngfee = intdiv( $fee, 5 ) * 2;
-
                     if( $asset > 0 && $at >= W8IO_SPONSOR_ACTIVE && $wtx['data'] !== false )
                     {
                         $data = json_decode( $wtx['data'], true );
                         if( isset( $data['f'] ) )
                         {
                             $asset = 0;
-                            $ngfee = gmp_intval( gmp_div( gmp_mul( $ngfee, 100000 ), $data['f'] ) );
-                            if( $prev )
-                                $fee = gmp_intval( gmp_div( gmp_mul( $fee, 100000 ), $data['f'] ) );
+                            $fee = gmp_intval( gmp_div( gmp_mul( $fee, 100000 ), $data['f'] ) );
                         }
                     }
 
+                    $ngfee = intdiv( $fee, 5 ) * 2;
                     $fee = $prev ? $fee - $ngfee : $ngfee;
                     if( $fee === 0 )
                         continue;
