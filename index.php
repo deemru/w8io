@@ -236,7 +236,7 @@ else
 
             $furl = W8IO_ROOT . "$address/f/Waves";
 
-            $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
+            $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl, 'b' => $arg === 0 ];
         }
 
         if( isset( $balance[W8IO_ASSET_WAVES_LEASED] ) )
@@ -250,7 +250,7 @@ else
 
                 $furl = W8IO_ROOT . "$address/f/Waves";
 
-                $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
+                $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl, 'b' => false ];
             }
         }
 
@@ -262,13 +262,14 @@ else
                 if( isset( $info['scam'] ) )
                     continue;
 
+                $b = $asset === $arg;
                 $asset = $info['name'];
                 $decimals = $info['decimals'];
                 $amount = str_pad( number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' ), 24, ' ', STR_PAD_LEFT );
 
                 $furl = W8IO_ROOT . "$address/f/{$info['id']}";
 
-                $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
+                $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl, 'b' => $b ];
 
                 if( isset( $info['ticker'] ) )
                     $tickers[] = $record;
@@ -278,12 +279,34 @@ else
         }
 
         foreach( $tickers as $record )
-            echo "{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>" . PHP_EOL;
+        {
+            if( $record['b'] )
+            {
+                $bs = '<b>';
+                $be = '</b>';
+            }
+            else
+            {
+                $bs = $be = '';
+            }
+            echo "$bs{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>$be" . PHP_EOL;
+        }
 
         echo "------------------------------------------&nbsp;" . PHP_EOL;
 
         foreach( $unlisted as $record )
-            echo "{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>" . PHP_EOL;
+        {
+            if( $record['b'] )
+            {
+                $bs = '<b>';
+                $be = '</b>';
+            }
+            else
+            {
+                $bs = $be = '';
+            }
+            echo "$bs{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>$be" . PHP_EOL;
+        }
 
         echo '</pre></td><td valign="top"><pre>';
 
