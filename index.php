@@ -355,7 +355,7 @@ else
                     if( $wtx['asset'] === 0 )
                         $waves_fees += $wtx['amount'];
                 }
-                $waves_fees *= $percent / 100;
+                $waves_fees = intval( $waves_fees * $percent / 100 );
 
                 // mrt_fees
                 $mrt_fees = 0;
@@ -366,7 +366,7 @@ else
                     $wtx = w8io_filter_wtx( $wtx );
                     $mrt_fees += $wtx['amount'];
                 }
-                $mrt_fees *= $percent / 100;
+                $mrt_fees = intval( $mrt_fees * $percent / 100 );
 
                 echo "pay ($from .. $to) ($percent %):" . PHP_EOL . PHP_EOL;
                 echo str_pad( number_format( $waves_fees / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT ) . " Waves" . PHP_EOL;
