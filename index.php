@@ -160,6 +160,40 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
     }
 }
 
+function prios( $tickers )
+{
+    $t_prios = [];
+    $t_other = [];
+
+    $prios = [
+        '8LQW8f7P5d5PZM7GtZEBgaqRPGSzS3DfPuiXrURJ4AJS', // WBTC
+        '474jTeYx2r2Va35794tCScAXWJG9hU2HcgxzMowaZUnu', // WETH
+        'Ft8X1v1LTa1ABafufpaCWyVj8KkaxUWE6xBhW6sNFJck', // WUSD
+        'Gtb1WRznfchDnTh37ezoDTJ4wcoKaRsKqKjJjy7nm2zU', // WEUR
+        '2mX5DzVKWrAJw8iwdJnV2qtoeVG9h5nTDpTqC1wb1WEN', // WTRY
+        'HZk1mbfuJpmxU1Fs4AX5MWLVYtctsNcg6e2C6VKqK8zk', // Litecoin
+        'zMFqXuoyrn5w17PFurTqxB7GsS71fp9dfk6XFwxbPCy',  // Bitcoin Cash
+        'BrjUWjndUanm5VsJkbUip8VRYy6LWJePtxya3FNv4TQa', // Zcash
+        'B3uGHFRpSUuGEDWjqB9LWWxafQj8VTvpMucEyoxzws5H', // DASH
+        '7FzrHF1pueRFrPEupz6oiVGTUZqe8epvC7ggWUx8n1bd', // Liquid
+        'DHgwrRvVyqJsepd32YbBqUeDH4GJ1N984X8QoekjgH8J', // WavesCommunity
+        '4uK8i4ThRGbehENwa6MxyLtxAjAo1Rj9fduborGExarC', // MinersReward
+    ];
+
+    foreach( $tickers as $record )
+        if( !isset( $record['id'] ) || in_array( $record['id'], $prios, true ) )
+            $t_prios[] = $record;
+        else
+            $t_other[] = $record;
+
+    return array_merge( $t_prios, $t_other );
+}
+
+if( $address === 'b' )
+{
+
+}
+else
 if( $address === 'SUM' )
 {
     $balances = $api->get_all_balances();
@@ -230,6 +264,7 @@ else
         if( !isset( $balance[0] ) )
             $balance[0] = 0;
 
+        // WAVES
         {
             $asset = "Waves";
             $amount = str_pad( number_format( $balance[0] / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
@@ -267,9 +302,10 @@ else
                 $decimals = $info['decimals'];
                 $amount = str_pad( number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' ), 24, ' ', STR_PAD_LEFT );
 
-                $furl = W8IO_ROOT . "$address/f/{$info['id']}";
+                $id = $info['id'];
+                $furl = W8IO_ROOT . "$address/f/$id";
 
-                $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl, 'b' => $b ];
+                $record = [ 'asset' => $asset, 'id' => $id, 'amount' => $amount, 'furl' => $furl, 'b' => $b ];
 
                 if( isset( $info['ticker'] ) )
                     $tickers[] = $record;
@@ -277,6 +313,9 @@ else
                     $unlisted[] = $record;
             }
         }
+
+        $tickers = prios( $tickers );
+        $unlisted = prios( $unlisted );
 
         foreach( $tickers as $record )
         {
