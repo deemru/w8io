@@ -36,6 +36,11 @@ class w8io_crypto
         return hash( 'sha256', self::sechash( chr( 0 ) . chr( 0 ) . chr( 0 ) . chr( 0 ) . $seed ), true );
     }
 
+    public function get_pub_from_priv( $priv )
+    {
+        return sodium_crypto_box_publickey_from_secretkey( $priv );
+    }
+
     public function get_pub_from_seed( $seed )
     {
         return sodium_crypto_box_publickey_from_secretkey( self::get_priv_from_seed( $seed ) );
@@ -44,6 +49,22 @@ class w8io_crypto
     public function get_address_from_seed( $seed )
     {
         $seed = self::sechash( self::get_pub_from_seed( $seed ) );
+        $seed = chr( 1 ) . W8IO_NETWORK . substr( $seed, 0, 20 );
+        $seed .= substr( self::sechash( $seed ), 0, 4 );
+        return self::b58_encode( $seed );
+    }
+
+    public function get_address_from_priv( $priv )
+    {
+        $seed = self::sechash( self::get_pub_from_priv( $priv ) );
+        $seed = chr( 1 ) . W8IO_NETWORK . substr( $seed, 0, 20 );
+        $seed .= substr( self::sechash( $seed ), 0, 4 );
+        return self::b58_encode( $seed );
+    }
+
+    public function get_address_from_pub( $pub )
+    {
+        $seed = self::sechash( $pub );
         $seed = chr( 1 ) . W8IO_NETWORK . substr( $seed, 0, 20 );
         $seed .= substr( self::sechash( $seed ), 0, 4 );
         return self::b58_encode( $seed );
@@ -134,10 +155,10 @@ class w8io_crypto
         return self::keccak256( self::blake2b256( $data ) );
     }
 
-    public function sign( $data, $key )
+    public function sign( $data, $key, $rseed = null )
     {
         require_once './third_party/curve25519-php/curve25519.php';
-        return curve25519\curve25519_sign( $data, $key );
+        return curve25519\curve25519_sign( $data, $key, $rseed );
     }
 
     public function verify( $sign, $data, $key )
