@@ -200,10 +200,12 @@ function update_scam( $transactions )
     $unset_scam = array_diff( $last_scam, $scam );
 
     foreach( $mark_scam as $scamid )
-        $transactions->mark_scam( explode( ',', $scamid )[0], true );
+        if( !empty( $scamid ) )
+            $transactions->mark_scam( $scamid, true );
 
     foreach( $unset_scam as $scamid )
-        $transactions->mark_scam( explode( ',', $scamid )[0], false );
+        if( !empty( $scamid ) )
+            $transactions->mark_scam( $scamid, false );
 
     file_put_contents( $scam_file, $fresh_scam );
 }
