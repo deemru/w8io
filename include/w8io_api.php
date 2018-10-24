@@ -186,8 +186,11 @@ class w8io_api
 
             if( $wtx['type'] === 8 )
             {
-                $start = $wtx['block'] + 1000;
+                $start = $wtx['block'];
+                if( $start < W8IO_RESET_LEASES )
+                    continue;
 
+                $start += 1000;
                 if( $start > $to )
                     continue;
 
