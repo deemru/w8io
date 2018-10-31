@@ -11,7 +11,7 @@ $uri = explode( '/', $uri );
 
 function flt( $string )
 {
-    $filter = preg_filter( '/[^a-zA-Z0-9_@\-]+/', '', $string );
+    $filter = preg_filter( '/[^a-zA-Z0-9_.@\-]+/', '', $string );
     return isset( $filter ) ? $filter : $string;
 }
 
