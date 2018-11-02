@@ -5,11 +5,27 @@ require_once 'w8io_base.php';
 class w8io_nodes
 {
     private $cdb = [];
+    private $cshift = 0;
+    private $last_time = 0;
+    private $ret_time;
 
     public function __construct( $hosts )
     {
         foreach( $hosts as $host )
             $this->cdb[] = [ 'host' => $host, 'curl' => false ];
+
+        $this->ret_time = max( W8IO_UPDATE_DELAY - 2, 1 );
+    }
+
+    function __destruct()
+    {
+        $n = sizeof( $this->cdb );
+        for( $i = 0; $i < $n; $i++ )
+        {
+            $c = &$this->cdb[$i];
+            if( is_resource( $c['curl'] ) )
+                curl_close( $c['curl'] );
+        }
     }
 
     private function connect( $host )
@@ -53,26 +69,23 @@ class w8io_nodes
 
     private function connector()
     {
-        static $last_c = 0;
-        static $last_time = 0;
         $time = time();
-
-        if( $last_c && $last_time && $time - $last_time > 1 )
+        if( $this->cshift && $this->last_time && $time - $this->last_time > $this->ret_time )
         {
             w8io_trace( 'i', 'refresh connector' );
-            $last_c = 0;
+            $this->cshift = 0;
         }
 
         $n = sizeof( $this->cdb );
         for( ;; )
         {
-            for( $i = $last_c; $i < $n; $i++ )
+            for( $i = $this->cshift; $i < $n; $i++ )
             {
                 $c = &$this->cdb[$i];
                 if( is_resource( $c['curl'] ) )
                 {
-                    $last_c = $i;
-                    $last_time = $time;
+                    $this->cshift = $i;
+                    $this->last_time = $time;
                     return $c;
                 }
 
@@ -80,32 +93,43 @@ class w8io_nodes
                 if( $ch )
                 {
                     $c['curl'] = $ch;
-                    $last_c = $i;
-                    $last_time = $time;
+                    $this->cshift = $i;
+                    $this->last_time = $time;
                     return $c;
                 }
             }
 
             w8io_trace( 'w', 'no connection...' );
-            $last_c = 0;
+            $this->cshift = 0;
             sleep( 1 );
         }
     }
 
-    public function get( $url, $method = 'GET', $api = false )
+    public function trynext()
+    {
+        $this->cshift = ( $this->cshift + 1 ) % sizeof( $this->cdb );
+        $this->last_time = 0;
+    }
+
+    public function get( $url, $method = 'GET', $api = false, $data = false )
     {
         $c = $this->connector();
         $host = $c['host'];
         $ch = $c['curl'];
         $post = $method === 'POST';
-
-        if( false === curl_setopt_array( $ch, [
+        $options = [
             CURLOPT_HTTPHEADER      => $post ? [ 'Content-Type: application/json', 'Accept: application/json', $api ? "X-API-Key: $api" : '', ] : [],
             CURLOPT_URL             => $host . $url,
             CURLOPT_POST            => $post,
             CURLOPT_FOLLOWLOCATION  => true,
             CURLOPT_MAXREDIRS       => 3,
-        ] ) )
+            // CURLOPT_SSL_VERIFYPEER  => false, // not secure
+        ];
+
+        if( $data )
+            $options[CURLOPT_POSTFIELDS] = $data;
+
+        if( false === curl_setopt_array( $ch, $options ) )
             w8io_error( 'curl_setopt_array() failed' );
 
         $ms = 0;

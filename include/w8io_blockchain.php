@@ -9,6 +9,8 @@ class w8io_blockchain
     private $checkpoint;
     private $nodes;
 
+    private $last_update = 0;
+
     public function __construct( $writable = true )
     {
         $this->blocks = new w8io_pairs( W8IO_DB_BLOCKCHAIN, 'blocks', $writable, 'INTEGER PRIMARY KEY|BLOB|0|0', W8IO_CACHE_BLOCKS );
@@ -36,8 +38,11 @@ class w8io_blockchain
         return $this->blocks->set_pair( $block['height'], $block, 'jz' );
     }
 
-    public function update()
+    public function update( $trynext = false )
     {
+        if( $trynext )
+            $this->nodes->trynext();
+
         $from = $this->get_height();
         $to = $this->nodes->get_height();
         $shift = 0;
@@ -52,7 +57,15 @@ class w8io_blockchain
         $height = $to;
 
         if( $to <= $from ) // no new blocks
+        {
+            if( !$trynext && time() - $this->last_update > 300 )
+            {
+                w8io_trace( 'w', 'no new blocks for 300 seconds (try next node)' );
+                return $this->update( true );
+            }
+
             return true;
+        }
 
         if( !$this->blocks->begin() )
             w8io_error( 'unexpected begin() error' );
@@ -140,6 +153,7 @@ class w8io_blockchain
         if( $i <= $to )
             return false;
 
+        $this->last_update = time();
         return [ 'blockchain' => $this, 'from' => $from, 'to' => $to, 'height' => $height ];
     }
 }
