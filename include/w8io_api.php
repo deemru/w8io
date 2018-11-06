@@ -39,9 +39,14 @@ class w8io_api
         return $this->get_pairs_addresses()->get_value( $id, 's' );
     }
 
-    public function get_alias( $id )
+    public function get_alias_id_by_alias( $alias )
     {
-        return $this->get_pairs_aliases()->get_value( $id, 's' );
+        return $this->get_pairs_aliases()->get_value( $alias, 'i' );
+    }
+
+    public function get_alias_by_id( $id )
+    {
+        return $this->get_pairs_aliases()->get_id( $id, false, false );
     }
 
     public function get_data( $id )
@@ -233,5 +238,20 @@ class w8io_api
             $incomes[$a] = $power / $total;
 
         return $incomes;
+    }
+
+    public function get_generators( $blocks )
+    {
+        $query = $this->get_transactions_query(
+            "SELECT * FROM transactions WHERE type = 0 ORDER BY uid DESC LIMIT $blocks" );
+
+        $generators = [];
+        foreach( $query as $wtx )
+        {
+            $wtx = w8io_filter_wtx( $wtx ); 
+            $generators[$wtx['b']][$wtx['block']] = $wtx;
+        }
+
+        return $generators;
     }
 }

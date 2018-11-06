@@ -196,4 +196,16 @@ class w8io_pairs
         if( isset( $this->cache_by_value ) && count( $this->cache_by_value ) )
             $this->cache_by_value = [];
     }
+
+    public function query( $query )
+    {
+        $query = $this->db->prepare( $query );
+        if( !is_object( $query ) )
+            return false;
+
+        if( $query->execute() === false )
+            return false;
+
+        return $query;
+    }
 }

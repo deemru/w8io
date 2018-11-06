@@ -23,6 +23,17 @@ $arg2 = isset( $uri[3] ) ? flt( $uri[3] ) : false;
 $arg3 = isset( $uri[4] ) ? flt( $uri[4] ) : false;
 $arg4 = isset( $uri[5] ) ? flt( $uri[5] ) : false;
 
+if( $address === 'GENERATORS' )
+{
+    if( $f === false )
+        $f = 1472;
+
+    $f = intval( $f );
+    $n = min( max( $f, 64 ), 100000 );
+    if( $n !== $f )
+        exit( header("location: " . W8IO_ROOT . "$address/$n" ) );
+}
+
 echo sprintf( '
 <html>
     <head>
@@ -194,6 +205,120 @@ if( $address === 'b' )
 
 }
 else
+if( $address === 'GENERATORS' )
+{
+    $generators = $api->get_generators( $n );
+
+    $Q = 64;
+    $infos = [];
+    $gentotal = 0;
+    $feetotal = 0;
+    $blktotal = 0;
+
+    foreach( $generators as $generator => $wtxs )
+    {
+        $balance = $api->get_address_balance( $generator );
+        $balance = ( isset( $balance['balance'][0] ) ? $balance['balance'][0] : 0 ) + ( isset( $balance['balance'][W8IO_ASSET_WAVES_LEASED] ) ? $balance['balance'][W8IO_ASSET_WAVES_LEASED] : 0 );
+        $gentotal += $balance;
+
+        foreach( $wtxs as $wtx )
+        {
+            $block = $wtx['block'];
+            if( !isset( $from ) || $from > $block )
+            {
+                $from = $block;
+                $fromtime = $wtx['timestamp'];
+            }
+            if( !isset( $to ) || $to < $block )
+            {
+                $to = $block;
+                $totime = $wtx['timestamp'];
+            }
+        }
+        
+        $infos[$balance] = array( 'id' => $generator, 'balance' => $balance, 'wtxs' => $wtxs );
+    }
+
+    $q = ( 1 + $to - $from ) / $Q;
+    $qb = max( intdiv( $q, 16 ), 5 );
+
+    $hr = str_pad( '', 180, '-' );
+
+    $period = $totime - $fromtime;
+    $period = round( $period / 3600 );
+    if( $period < 100 )
+        $period = $period . ' h';
+    else
+        $period = round( $period / 24 ) . ' d';
+
+
+    echo "GENERATORS ( ~ $period )" . PHP_EOL;
+    echo $hr . PHP_EOL;
+
+    $generators = $infos;
+    krsort( $generators );
+    $n = 0;
+    foreach( $generators as $generator )
+    {
+        $id = $generator['id'];
+        $address = $api->get_address( $id );
+        $alias = $api->get_alias_by_id( $id );
+        $padlen = max( 30 - strlen( $alias ), 0 );
+
+        $address = '<a href="' . W8IO_ROOT . "$address\">$address</a>";
+        $alias = $alias === false ? '  ' : '(<a href="' . W8IO_ROOT . "$alias\">$alias</a>)";
+        $alias .= str_pad( '', $padlen );
+
+        $balance = $generator['balance'];
+        $percent = str_pad( number_format( $balance / $gentotal * 100, 2, '.', '' ) . '%', 7, ' ', STR_PAD_LEFT );
+        $balance = str_pad( number_format( $balance / 100000000, 0, '', '.' ), 10, ' ', STR_PAD_LEFT );
+
+        $wtxs = $generator['wtxs'];
+        $count = count( $wtxs );
+        $blktotal += $count;
+
+        $matrix = array_fill( 0, $Q, 0 );
+        $fee = 0;
+        foreach( $wtxs as $wtx )
+        {
+            if( $wtx['asset'] != 0 )
+                continue;
+
+            $block = $wtx['block'];
+            $target = (int)floor( ( $block - $from ) / $q );
+            $matrix[$target]++;
+            $fee += $wtx['amount'];
+        }
+
+        $feetotal += $fee;
+        $fee = str_pad( number_format( $fee / 100000000, 8, '.', '' ), 14, ' ', STR_PAD_LEFT );
+
+        $mxprint = '';
+        for( $i = 0; $i < $Q; $i++ )
+        {
+            $blocks = $matrix[$i];
+            if( $blocks === 0 )
+                $blocks = '.';
+            elseif( $blocks === 1 )
+                $blocks = 'o';
+            elseif( $blocks <= $qb )
+                $blocks = 'O';
+            else
+                $blocks = '<b>O</b>';
+            $mxprint .= $blocks;
+        }
+
+
+        echo str_pad( ++$n, 3, ' ', STR_PAD_LEFT ) . ") $address $alias $balance $percent  $mxprint $fee ($count)" . PHP_EOL;
+    }
+
+    $gentotal = str_pad( number_format( $gentotal / 100000000, 0, '', '.' ), 84, ' ', STR_PAD_LEFT );
+    $feetotal = str_pad( number_format( $feetotal / 100000000, 8, '.', '' ), 88, ' ', STR_PAD_LEFT );
+
+    echo $hr . PHP_EOL;
+    echo "$gentotal $feetotal ($blktotal)" .  PHP_EOL;
+}
+else
 if( $address === 'SUM' )
 {
     $balances = $api->get_all_balances();
@@ -271,7 +396,7 @@ else
 
             $furl = W8IO_ROOT . "$address/f/Waves";
 
-            $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl, 'b' => $arg === 0 ];
+            $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl, 'b' => $arg === 0 && $f !== 't' ];
         }
 
         if( isset( $balance[W8IO_ASSET_WAVES_LEASED] ) )
