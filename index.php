@@ -251,8 +251,8 @@ if( $address === 'GENERATORS' )
     else
         $period = round( $period / 24 ) . ' d';
 
-
-    echo "GENERATORS ( ~ $period )" . PHP_EOL;
+    $totime = date( 'Y.m.d H:i', $totime );
+    echo "GENERATORS ( ~ $period ) @ $to <small>($totime)</small>" . PHP_EOL;
     echo $hr . PHP_EOL;
 
     $generators = $infos;
