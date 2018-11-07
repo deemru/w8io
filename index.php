@@ -71,7 +71,7 @@ echo sprintf( '
         <pre>
 ', empty( $address ) ? '' : " / $address", W8IO_ROOT,
 isset( $showtime ) ? '0.66vw' : '0.90vw',
-isset( $showtime ) ? 'margin: 1em 2em 1em 2em; filter: brightness(144%%);' : 'margin: 0.5em;',
+isset( $showtime ) ? 'margin: 1em 2em 1em 2em; filter: brightness(144%);' : 'margin: 0.5em;',
 isset( $showtime ) ? 'text-decoration: none;' : '' );
 
 if( empty( $address ) )
