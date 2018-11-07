@@ -240,10 +240,12 @@ class w8io_api
         return $incomes;
     }
 
-    public function get_generators( $blocks )
+    public function get_generators( $blocks, $start = null )
     {
+        $start = isset( $start ) ? "AND asset = 0 AND block <= $start" : '';
+
         $query = $this->get_transactions_query(
-            "SELECT * FROM transactions WHERE type = 0 ORDER BY uid DESC LIMIT $blocks" );
+            "SELECT * FROM transactions WHERE type = 0 $start ORDER BY uid DESC LIMIT $blocks" );
 
         $generators = [];
         foreach( $query as $wtx )
@@ -253,5 +255,76 @@ class w8io_api
         }
 
         return $generators;
+    }
+
+    public function correct_balance( $id, $start, $waves )
+    {
+        $start = isset( $start ) ? "AND block > $start" : '';
+
+        $query = $this->get_transactions_query(
+            "SELECT * FROM transactions WHERE a = $id AND asset = 0 $start" );
+
+        foreach( $query as $wtx )
+        {
+            $wtx = w8io_filter_wtx( $wtx );
+            switch( $wtx['type'] )
+            {
+                case W8IO_TYPE_SPONSOR: // sponsor
+                case W8IO_TYPE_FEES: // fees
+                case 1: // genesis
+                case 2: // payment
+                case 4: // transfer
+                case 7: // exchange
+                case 8: // start lease
+                    $waves += $wtx['amount'];
+                    break;
+                case 9: // cancel lease
+                    $waves -= $wtx['amount'];
+                    break;
+
+                case 11: // mass transfer
+                    if( $wtx['b'] < 0 )
+                        $waves += $wtx['amount'];
+                    break;
+            }
+        }
+
+        $query = $this->get_transactions_query(
+            "SELECT * FROM transactions WHERE b = $id AND asset = 0 $start" );
+
+        foreach( $query as $wtx )
+        {
+            $wtx = w8io_filter_wtx( $wtx );
+            switch( $wtx['type'] )
+            {
+                case W8IO_TYPE_SPONSOR: // sponsor
+                case W8IO_TYPE_FEES: // fees
+                case 1: // genesis
+                case 2: // payment
+                case 4: // transfer
+                case 7: // exchange
+                case 8: // start lease
+                    $waves -= $wtx['amount'];
+                    break;
+                case 9: // cancel lease
+                    $waves += $wtx['amount'];
+                    break;
+
+                case 11: // mass transfer
+                    $waves -= $wtx['amount'];
+                    break;
+            }
+        }
+
+        $query = $this->get_transactions_query(
+            "SELECT * FROM transactions WHERE a = $id AND afee = 0 $start" );
+
+        foreach( $query as $wtx )
+        {
+            $wtx = w8io_filter_wtx( $wtx );
+            $waves += $wtx['fee'];
+        }
+
+        return $waves;
     }
 }

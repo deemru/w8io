@@ -5,7 +5,7 @@ require_once 'w8io_config.php';
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = '3PAWwWa6GbwcJaFzwqXQN5KQm7H96Y7SHTQ';
+    $uri = 'GENERATORS/64/64';
 
 $uri = explode( '/', $uri );
 
@@ -25,11 +25,13 @@ $arg4 = isset( $uri[5] ) ? flt( $uri[5] ) : false;
 
 if( $address === 'GENERATORS' )
 {
+    //$showtime = true;
+
     if( $f === false )
         $f = 1472;
 
     $f = intval( $f );
-    $n = min( max( $f, 64 ), 100000 );
+    $n = min( max( $f, isset( $showtime ) ? 1 : 64 ), 100000 );
     if( $n !== $f )
         exit( header("location: " . W8IO_ROOT . "$address/$n" ) );
 }
@@ -48,14 +50,14 @@ echo sprintf( '
     <style>
         body, table
         {
-            font-size: 12pt; font-size: 0.90vw; font-family: "Courier New", Courier, monospace;
+            font-size: 12pt; font-size: %s; font-family: "Courier New", Courier, monospace;
             background-color: #404840;
             color: #A0A8C0;
-            overflow-y: scroll;
+            overflow-y: scroll;%s
         }
         a
         {
-            color: #A0A8C0;
+            color: #A0A8C0;%s
         }
         hr
         {
@@ -67,7 +69,10 @@ echo sprintf( '
     </style>
     <body>
         <pre>
-', empty( $address ) ? '' : " / $address", W8IO_ROOT );
+', empty( $address ) ? '' : " / $address", W8IO_ROOT,
+isset( $showtime ) ? '0.66vw' : '0.90vw',
+isset( $showtime ) ? 'margin: 1em 2em 1em 2em; filter: brightness(144%%);' : 'margin: 0.5em;',
+isset( $showtime ) ? 'text-decoration: none;' : '' );
 
 if( empty( $address ) )
     $address = 'GENESIS';
@@ -207,9 +212,10 @@ if( $address === 'b' )
 else
 if( $address === 'GENERATORS' )
 {
-    $generators = $api->get_generators( $n );
+    $arg = isset( $showtime ) && $arg !== false ? intval( $arg ) : null;
+    $generators = $api->get_generators( $n, $arg );
 
-    $Q = 64;
+    $Q = isset( $showtime ) ? 128 : 80;
     $infos = [];
     $gentotal = 0;
     $feetotal = 0;
@@ -219,6 +225,8 @@ if( $address === 'GENERATORS' )
     {
         $balance = $api->get_address_balance( $generator );
         $balance = ( isset( $balance['balance'][0] ) ? $balance['balance'][0] : 0 ) + ( isset( $balance['balance'][W8IO_ASSET_WAVES_LEASED] ) ? $balance['balance'][W8IO_ASSET_WAVES_LEASED] : 0 );
+        if( isset( $arg ) )
+            $balance = $api->correct_balance( $generator, $arg, $balance );
         $gentotal += $balance;
 
         foreach( $wtxs as $wtx )
@@ -242,8 +250,6 @@ if( $address === 'GENERATORS' )
     $q = ( 1 + $to - $from ) / $Q;
     $qb = max( intdiv( $q, 16 ), 5 );
 
-    $hr = str_pad( '', 180, '-' );
-
     $period = $totime - $fromtime;
     $period = round( $period / 3600 );
     if( $period < 100 )
@@ -252,11 +258,17 @@ if( $address === 'GENERATORS' )
         $period = round( $period / 24 ) . ' d';
 
     $totime = date( 'Y.m.d H:i', $totime );
-    echo "GENERATORS ( ~ $period ) @ $to <small>($totime)</small>" . PHP_EOL;
-    echo $hr . PHP_EOL;
+    echo "GENERATORS ( ~ $period ) @ $to <small>($totime)</small><hr>";
 
     $generators = $infos;
     krsort( $generators );
+
+    if( isset( $showtime ) && count( $generators ) > 64 )
+    {
+        $center = 31;
+        $skip = $center + count( $generators ) - 64;
+    }
+
     $n = 0;
     foreach( $generators as $generator )
     {
@@ -309,14 +321,32 @@ if( $address === 'GENERATORS' )
         }
 
 
-        echo str_pad( ++$n, 3, ' ', STR_PAD_LEFT ) . ") $address $alias $balance $percent  $mxprint $fee ($count)" . PHP_EOL;
+        if( isset( $center ) && $n >= $center )
+        {
+            if( $n == $center )
+            {
+                echo '> ' . str_pad( ++$n, 2, ' ', STR_PAD_LEFT ) . ") $address $alias $balance $percent  $mxprint $fee ($count)" . PHP_EOL;
+                continue;
+            }
+            if( $n == $skip )
+            {
+                echo '> ' . str_pad( ++$n, 2, ' ', STR_PAD_LEFT ) . ") $address $alias $balance $percent  $mxprint $fee ($count)" . PHP_EOL;
+                continue;
+            }
+            if( $n < $skip )
+            {
+                $n++;
+                continue;
+            }
+        }
+
+        echo str_pad( ++$n, isset( $showtime ) ? 4 : 3, ' ', STR_PAD_LEFT ) . ") $address $alias $balance $percent  $mxprint $fee ($count)" . PHP_EOL;
     }
 
-    $gentotal = str_pad( number_format( $gentotal / 100000000, 0, '', '.' ), 84, ' ', STR_PAD_LEFT );
-    $feetotal = str_pad( number_format( $feetotal / 100000000, 8, '.', '' ), 88, ' ', STR_PAD_LEFT );
+    $gentotal = str_pad( number_format( $gentotal / 100000000, 0, '', '.' ), ( isset( $showtime ) ? 1 : 0 ) + 84, ' ', STR_PAD_LEFT );
+    $feetotal = str_pad( number_format( $feetotal / 100000000, 8, '.', '' ), ( isset( $showtime ) ? 48 : 0 ) + 104, ' ', STR_PAD_LEFT );
 
-    echo $hr . PHP_EOL;
-    echo "$gentotal $feetotal ($blktotal)" .  PHP_EOL;
+    echo "<small><br></small>$gentotal $feetotal ($blktotal)" .  PHP_EOL;
 }
 else
 if( $address === 'SUM' )
@@ -610,16 +640,19 @@ else
 }
 
 echo '</pre></td></tr></table>'. PHP_EOL . PHP_EOL;
-
-echo '<hr><div width="100%" align="right"><small>';
+echo '<hr><div width="100%" align="right"><pre><small>';
+echo "<a href=\"https://github.com/deemru/w8io\">github/deemru/w8io</a>";
 if( file_exists( '.git/FETCH_HEAD' ) )
 {
     $rev = file_get_contents( '.git/FETCH_HEAD', null, null, 0, 40 );
-    echo "<a href=\"https://github.com/deemru/w8io\">github/deemru/w8io</a>/<a href=\"https://github.com/deemru/w8io/commit/$rev\">" . substr( $rev, 0, 7 ) . '</a>';
+    echo "/<a href=\"https://github.com/deemru/w8io/commit/$rev\">" . substr( $rev, 0, 7 ) . '</a> ';
 }
-echo PHP_EOL . sprintf( '%.02f ms', 1000 * ( microtime( true ) - $_SERVER['REQUEST_TIME_FLOAT'] ) );
-if( defined( 'W8IO_ANALYTICS' ) )
-    echo '<br><br>' . W8IO_ANALYTICS;
+if( !isset( $showtime ) )
+{
+    echo PHP_EOL . sprintf( '%.02f ms ', 1000 * ( microtime( true ) - $_SERVER['REQUEST_TIME_FLOAT'] ) );
+    if( defined( 'W8IO_ANALYTICS' ) )
+        echo PHP_EOL . PHP_EOL . W8IO_ANALYTICS . ' ';
+}
 echo '</small></div>';
 ?>
 
