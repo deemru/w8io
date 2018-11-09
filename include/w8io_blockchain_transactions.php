@@ -498,7 +498,7 @@ class w8io_blockchain_transactions
 
     private function block_fees( $at, $wtxs, $prev_wtxs )
     {
-        $fees = [];
+        $fees = [ 0 => 0 ];
         $prev = false;
 
         for( ;; )
@@ -549,11 +549,7 @@ class w8io_blockchain_transactions
         if( $at <= W8IO_NG_ACTIVE )
             return 0;
 
-        $fees = $this->block_fees( $at, [], $this->get_wtxs_at( $at - 1 ) );
-        if( isset( $fees[0] ) )
-            return $fees[0];
-
-        return 0;
+        return $this->block_fees( $at, [], $this->get_wtxs_at( $at - 1 ) )[0];
     }
 
     public function set_fees( $block, $wtxs, $prev_wtxs )
@@ -574,15 +570,6 @@ class w8io_blockchain_transactions
         $wtx['a'] = 'GENERATOR';
         $wtx['b'] = $this->get_aid( $block['generator'], $at === 1 );
 
-        if( count( $fees ) === 0 )
-        {
-            $wtx['amount'] = 0;
-            $wtx['asset'] = 0;
-
-            if( !$this->set_tx( $wtx ) )
-                w8io_error();
-        }
-        else
         foreach( $fees as $asset => $fee )
         {
             $wtx['asset'] = $asset;
