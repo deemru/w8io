@@ -244,10 +244,10 @@ if( $address === 'GENERATORS' )
             }
         }
         
-        $infos[$balance] = array( 'id' => $generator, 'balance' => $balance, 'wtxs' => $wtxs );
+        $infos[$generator] = array( 'balance' => $balance, 'wtxs' => $wtxs );
     }
 
-    $q = ( 1 + $to - $from ) / $Q;
+    $q = $n / $Q;
     $qb = max( intdiv( $q, 16 ), 5 );
 
     $period = $totime - $fromtime;
@@ -258,21 +258,35 @@ if( $address === 'GENERATORS' )
         $period = round( $period / 24 ) . ' d';
 
     $totime = date( 'Y.m.d H:i', $totime );
-    echo "GENERATORS ( ~ $period ) @ $to <small>($totime)</small><hr>";
 
-    $generators = $infos;
-    krsort( $generators );
-
-    if( isset( $showtime ) && count( $generators ) > 64 )
+    if( isset( $showtime ) )
     {
-        $center = 31;
-        $skip = $center + count( $generators ) - 64;
+        $highlights = [];
+        $hs = intdiv( $from, 10000 );
+        $he = intdiv( $to, 10000 );
+
+        if( $hs * 10000 == $from )
+            $highlights[] = 0;
+        if( 0 && $from === 1 )
+            $highlights[] = $Q - 1 - (int)floor( ( $to - 1 ) / $q );
+        while( $he !== $hs )
+            $highlights[] = $Q - 1 - (int)floor( ( $to - ( ++$hs * 10000 ) ) / $q );
+
+        $topad = str_pad( $to, 7, ' ', STR_PAD_LEFT );
+        $periodpad = str_pad( $period, 4, ' ', STR_PAD_LEFT );
+        echo "GENERATORS ( ~ $periodpad ) @ <b>$topad</b> <small>($totime)</small><hr>";
+    }
+    else
+    {
+        echo "GENERATORS ( ~ $period ) @ $to <small>($totime)</small><hr>";
     }
 
+    $generators = $infos;
+    uasort( $generators, function( $a, $b ){ return( $a['balance'] < $b['balance'] ); } );
+
     $n = 0;
-    foreach( $generators as $generator )
+    foreach( $generators as $id => $generator )
     {
-        $id = $generator['id'];
         $address = $api->get_address( $id );
         $alias = $api->get_alias_by_id( $id );
         $padlen = max( 30 - strlen( $alias ), 0 );
@@ -282,7 +296,7 @@ if( $address === 'GENERATORS' )
         $alias .= str_pad( '', $padlen );
 
         $balance = $generator['balance'];
-        $percent = str_pad( number_format( $balance / $gentotal * 100, 2, '.', '' ) . '%', 7, ' ', STR_PAD_LEFT );
+        $percent = str_pad( number_format( $gentotal ? ( $balance / $gentotal * 100 ) : 0, 2, '.', '' ) . '%', 7, ' ', STR_PAD_LEFT );
         $balance = str_pad( number_format( $balance / 100000000, 0, '', '.' ), 10, ' ', STR_PAD_LEFT );
 
         $wtxs = $generator['wtxs'];
@@ -293,11 +307,8 @@ if( $address === 'GENERATORS' )
         $fee = 0;
         foreach( $wtxs as $wtx )
         {
-            if( $wtx['asset'] != 0 )
-                continue;
-
             $block = $wtx['block'];
-            $target = (int)floor( ( $block - $from ) / $q );
+            $target = $Q - 1 - (int)floor( ( $to - $block ) / $q );
             $matrix[$target]++;
             $fee += $wtx['amount'];
         }
@@ -317,36 +328,29 @@ if( $address === 'GENERATORS' )
                 $blocks = 'O';
             else
                 $blocks = '<b>O</b>';
+            if( isset( $highlights ) && in_array( $i, $highlights ) )
+                $blocks = "<a style=\"background-color: #384038;\">$blocks</a>";
             $mxprint .= $blocks;
         }
 
-
-        if( isset( $center ) && $n >= $center )
+        if( isset( $showtime ) && $n > 64 )
         {
-            if( $n == $center )
-            {
-                echo '> ' . str_pad( ++$n, 2, ' ', STR_PAD_LEFT ) . ") $address $alias $balance $percent  $mxprint $fee ($count)" . PHP_EOL;
-                continue;
-            }
-            if( $n == $skip )
-            {
-                echo '> ' . str_pad( ++$n, 2, ' ', STR_PAD_LEFT ) . ") $address $alias $balance $percent  $mxprint $fee ($count)" . PHP_EOL;
-                continue;
-            }
-            if( $n < $skip )
-            {
-                $n++;
-                continue;
-            }
+            $n++;
+            continue;
         }
 
         echo str_pad( ++$n, isset( $showtime ) ? 4 : 3, ' ', STR_PAD_LEFT ) . ") $address $alias $balance $percent  $mxprint $fee ($count)" . PHP_EOL;
     }
 
-    $gentotal = str_pad( number_format( $gentotal / 100000000, 0, '', '.' ), ( isset( $showtime ) ? 1 : 0 ) + 84, ' ', STR_PAD_LEFT );
+    $ntotal = str_pad( isset( $showtime ) ? $n : '', isset( $showtime ) ? 4 : 3, ' ', STR_PAD_LEFT );
+    $gentotal = str_pad( number_format( $gentotal / 100000000, 0, '', '.' ), 80, ' ', STR_PAD_LEFT );
     $feetotal = str_pad( number_format( $feetotal / 100000000, 8, '.', '' ), ( isset( $showtime ) ? 48 : 0 ) + 104, ' ', STR_PAD_LEFT );
 
-    echo "<small><br></small>$gentotal $feetotal ($blktotal)" .  PHP_EOL;
+    echo "<small style=\"font-size: 50%;\"><br></small><b>$ntotal $gentotal $feetotal</b> ($blktotal)" .  PHP_EOL;
+
+    if( isset( $showtime ) )
+        for( $i = $n; $i <= 64; $i++ )
+            echo PHP_EOL;
 }
 else
 if( $address === 'SUM' )
