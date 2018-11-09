@@ -242,15 +242,15 @@ class w8io_api
 
     public function get_generators( $blocks, $start = null )
     {
-        $start = isset( $start ) ? "AND asset = 0 AND block <= $start" : '';
+        $start = isset( $start ) ? "AND block <= $start" : '';
 
         $query = $this->get_transactions_query(
-            "SELECT * FROM transactions WHERE type = 0 $start ORDER BY uid DESC LIMIT $blocks" );
+            "SELECT * FROM transactions WHERE type = 0 AND asset = 0 $start ORDER BY uid DESC LIMIT $blocks" );
 
         $generators = [];
         foreach( $query as $wtx )
         {
-            $wtx = w8io_filter_wtx( $wtx ); 
+            $wtx = w8io_filter_wtx( $wtx );
             $generators[$wtx['b']][$wtx['block']] = $wtx;
         }
 
