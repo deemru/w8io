@@ -257,12 +257,17 @@ class w8io_api
         return $generators;
     }
 
-    public function correct_balance( $id, $start, $waves )
+    public function correct_balance( $id, $height, $waves_balance = null )
     {
-        $start = isset( $start ) ? "AND block > $start" : '';
+        $waves = 0;
+        
+        if( isset( $waves_balance ) )
+            $height = "block > $height";
+        else
+            $height = "block <= $height";
 
         $query = $this->get_transactions_query(
-            "SELECT * FROM transactions WHERE a = $id AND asset = 0 $start" );
+            "SELECT * FROM transactions WHERE a = $id AND asset = 0 AND $height" );
 
         foreach( $query as $wtx )
         {
@@ -276,21 +281,20 @@ class w8io_api
                 case 4: // transfer
                 case 7: // exchange
                 case 8: // start lease
-                    $waves += $wtx['amount'];
-                    break;
-                case 9: // cancel lease
                     $waves -= $wtx['amount'];
                     break;
-
+                case 9: // cancel lease
+                    $waves += $wtx['amount'];
+                    break;
                 case 11: // mass transfer
                     if( $wtx['b'] < 0 )
-                        $waves += $wtx['amount'];
+                        $waves -= $wtx['amount'];
                     break;
             }
         }
 
         $query = $this->get_transactions_query(
-            "SELECT * FROM transactions WHERE b = $id AND asset = 0 $start" );
+            "SELECT * FROM transactions WHERE b = $id AND asset = 0 AND $height" );
 
         foreach( $query as $wtx )
         {
@@ -304,27 +308,24 @@ class w8io_api
                 case 4: // transfer
                 case 7: // exchange
                 case 8: // start lease
-                    $waves -= $wtx['amount'];
-                    break;
-                case 9: // cancel lease
+                case 11: // mass transfer
                     $waves += $wtx['amount'];
                     break;
-
-                case 11: // mass transfer
+                case 9: // cancel lease
                     $waves -= $wtx['amount'];
                     break;
             }
         }
 
         $query = $this->get_transactions_query(
-            "SELECT * FROM transactions WHERE a = $id AND afee = 0 $start" );
+            "SELECT * FROM transactions WHERE a = $id AND afee = 0 AND $height" );
 
         foreach( $query as $wtx )
         {
             $wtx = w8io_filter_wtx( $wtx );
-            $waves += $wtx['fee'];
+            $waves -= $wtx['fee'];
         }
 
-        return $waves;
+        return isset( $waves_balance ) ? $waves_balance - $waves : $waves;
     }
 }

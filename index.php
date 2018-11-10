@@ -34,6 +34,15 @@ if( $address === 'GENERATORS' )
     $n = min( max( $f, isset( $showtime ) ? 1 : 64 ), 100000 );
     if( $n !== $f )
         exit( header("location: " . W8IO_ROOT . "$address/$n" ) );
+
+    if( isset( $showtime ) )
+    {
+        $showfile = "GENERATORS-$arg-$f.html";
+        if( file_exists( $showfile ) )
+            exit( file_get_contents( $showfile ) );
+            
+        ob_start();
+    }
 }
 
 echo sprintf( '
@@ -226,7 +235,7 @@ if( $address === 'GENERATORS' )
         $balance = $api->get_address_balance( $generator );
         $balance = ( isset( $balance['balance'][0] ) ? $balance['balance'][0] : 0 ) + ( isset( $balance['balance'][W8IO_ASSET_WAVES_LEASED] ) ? $balance['balance'][W8IO_ASSET_WAVES_LEASED] : 0 );
         if( isset( $arg ) )
-            $balance = $api->correct_balance( $generator, $arg, $balance );
+            $balance = $api->correct_balance( $generator, $arg, $arg > W8IO_RESET_LEASES ? $balance : null );
         $gentotal += $balance;
 
         foreach( $wtxs as $wtx )
@@ -658,8 +667,13 @@ if( !isset( $showtime ) )
         echo PHP_EOL . PHP_EOL . W8IO_ANALYTICS . ' ';
 }
 echo '</small></div>';
-?>
-
+echo '
         </pre>
     </body>
-</html>
+</html>';
+
+if( isset( $showtime ) )
+{
+    file_put_contents( $showfile, ob_get_contents() );
+    exit( file_get_contents( $showfile ) );
+}
