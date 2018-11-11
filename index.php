@@ -675,5 +675,6 @@ echo '
 if( isset( $showtime ) )
 {
     file_put_contents( $showfile, ob_get_contents() );
+    ob_end_clean();
     exit( file_get_contents( $showfile ) );
 }
