@@ -41,6 +41,11 @@ class w8io_crypto
         return sodium_crypto_box_publickey_from_secretkey( $priv );
     }
 
+    public function get_pub_from_priv_sodium( $priv )
+    {
+        return sodium_crypto_box_publickey_from_secretkey( substr( hash( 'sha512', $priv, true ), 0, 32 ) );
+    }
+
     public function get_pub_from_seed( $seed )
     {
         return sodium_crypto_box_publickey_from_secretkey( self::get_priv_from_seed( $seed ) );
@@ -159,6 +164,12 @@ class w8io_crypto
     {
         require_once './third_party/curve25519-php/curve25519.php';
         return curve25519\curve25519_sign( $data, $key, $rseed );
+    }
+
+    public function sign_sodium( $data, $key )
+    {
+        require_once './third_party/curve25519-php/curve25519.php';
+        return curve25519\curve25519_sign_sodium( $data, $key );
     }
 
     public function verify( $sign, $data, $key )
