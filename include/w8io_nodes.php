@@ -14,7 +14,7 @@ class w8io_nodes
         foreach( $hosts as $host )
             $this->cdb[] = [ 'host' => $host, 'curl' => false ];
 
-        $this->ret_time = max( W8IO_UPDATE_DELAY - 2, 1 );
+        $this->ret_time = defined( 'W8IO_UPDATE_DELAY') ? max( W8IO_UPDATE_DELAY - 2, 1 ) : 1;
     }
 
     function __destruct()
@@ -140,16 +140,40 @@ class w8io_nodes
         }
         $ms = w8io_ms( w8io_timer( $ms ) );
 
+        w8io_trace( 'i', "$host $method $url ($ms ms)" );
+
         if( 0 !== ( $errno = curl_errno( $ch ) ) || $code !== 200 )
         {
-            w8io_trace( 'w', "$host error $errno: " . curl_error( $ch ) );
+            if( $errno === 0 && $code === 404 )
+                return false;
+
+            $curl_error = curl_error( $ch );
+            w8io_trace( 'w', "$host (HTTP $code) (cURL $errno" . ( empty( $curl_error ) ? ')' : ":$curl_error)" ) );
             curl_close( $ch );
             return false;
         }
 
-        w8io_trace( 'i', "$host $method $url ($ms ms)" );
-
         return $data;
+    }
+
+    public function broadcast( $tx )
+    {
+        $json = json_decode( self::get( '/transactions/broadcast', 'POST', false, json_encode( $tx ) ), true, 512, JSON_BIGINT_AS_STRING );
+
+        if( !isset( $json['id'] ) )
+            return false;
+
+        return $json['id'];
+    }
+
+    public function txid( $id )
+    {
+        $json = json_decode( self::get( "/transactions/info/$id" ), true, 512, JSON_BIGINT_AS_STRING );
+
+        if( !isset( $json['id'] ) || $json['id'] != $id )
+            return false;
+
+        return $json;
     }
 
     public function get_height()
