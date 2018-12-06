@@ -169,8 +169,9 @@ class w8io_blockchain_balances
 
             case 10: // alias
             case 12: // data
-            case 13: // script
+            case 13: // smart account
             case 14: // sponsorship
+            case 15: // smart asset
                 $procs_a[$afee] = -$fee;
                 $is_a = true;
                 $is_b = false;

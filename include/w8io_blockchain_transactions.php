@@ -783,10 +783,13 @@ class w8io_blockchain_transactions
                     $wtx['data'] = [ 'd' => $this->get_dataid( json_encode( $tx['data'] ), true ) ];
                     break;
 
-                case 13: // script
+                case 13: // smart account
+                case 15: // smart asset
                     $wtx['a'] = $tx['sender'];
                     $wtx['b'] = 'NULL';
                     $wtx['data'] = [ 's' => $this->get_dataid( json_encode( $tx['script'] ), true ) ];
+                    if( $type == 15 )
+                        $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
                     break;
 
                 case 14: // sponsorship
