@@ -23,6 +23,14 @@ $arg2 = isset( $uri[3] ) ? flt( $uri[3] ) : false;
 $arg3 = isset( $uri[4] ) ? flt( $uri[4] ) : false;
 $arg4 = isset( $uri[5] ) ? flt( $uri[5] ) : false;
 
+$light = ( isset( $_COOKIE['light'] ) && (bool)$_COOKIE['light'] ) ? true : false;
+if( $address === 'ld' )
+{
+    $address = '';
+    $light = !$light;
+    setcookie( 'light', $light, 0x7FFFFFFF, '/' );
+}
+else
 if( $address === 'GENERATORS' )
 {
     //$showtime = true;
@@ -40,9 +48,20 @@ if( $address === 'GENERATORS' )
         $showfile = "GENERATORS-$arg-$f.html";
         if( file_exists( $showfile ) )
             exit( file_get_contents( $showfile ) );
-            
+
         ob_start();
     }
+}
+
+if( $light )
+{
+    $bcolor = 'FFFFFF';
+    $tcolor = '000000';
+}
+else
+{
+    $bcolor = '404840';
+    $tcolor = 'A0A8C0';
 }
 
 echo sprintf( '
@@ -60,13 +79,14 @@ echo sprintf( '
         body, table
         {
             font-size: 12pt; font-size: %s; font-family: "Courier New", Courier, monospace;
-            background-color: #404840;
-            color: #A0A8C0;
+            background-color: #%s;
+            color: #%s;
+            border-collapse: collapse;
             overflow-y: scroll;%s
         }
         a
         {
-            color: #A0A8C0;%s
+            color: #%s;%s
         }
         hr
         {
@@ -80,7 +100,9 @@ echo sprintf( '
         <pre>
 ', empty( $address ) ? '' : " / $address", W8IO_ROOT,
 isset( $showtime ) ? '0.66vw' : '0.90vw',
-isset( $showtime ) ? 'margin: 1em 2em 1em 2em; filter: brightness(144%);' : 'margin: 0.5em;',
+$bcolor, $tcolor,
+isset( $showtime ) ? 'margin: 1em 2em 1em 2em; filter: brightness(144%);' : '',
+$tcolor,
 isset( $showtime ) ? 'text-decoration: none;' : '' );
 
 if( empty( $address ) )
@@ -112,8 +134,13 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
 {
     foreach( $wtxs as $wtx )
     {
+        $wtx = w8io_filter_wtx( $wtx );
+
+        $type = $wtx['type'];
         $asset = $wtx['asset'];
         $amount = $wtx['amount'];
+        $a = $wtx['a'];
+        $b = $wtx['b'];
 
         if( $asset )
         {
@@ -121,22 +148,25 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
             if( $spam && isset( $info['scam'] ) )
                 continue;
 
-            $asset = "<a href=\"" . W8IO_ROOT . "$address/f/{$info['id']}\">{$info['name']}</a>";
             $decimals = $info['decimals'];
             $amount = number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' );
             $furl = W8IO_ROOT . "$address/f/{$info['id']}";
+            $asset = " <a href=\"$furl\">{$info['name']}</a>";
+            $amount = ' ' . ( $b === $aid ? '+' : '-' ) . $amount;
+        }
+        else if( $b !== - 3 )
+        {
+            $amount = number_format( $amount / 100000000, 8, '.', '' );
+            $furl = W8IO_ROOT . "$address/f/Waves";
+            $asset = " <a href=\"$furl\">Waves</a>";
+            $amount = ' ' . ( $b === $aid ? '+' : '-' ) . $amount;
         }
         else
         {
-            $asset = "<a href=\"" . W8IO_ROOT . "$address/f/Waves\">Waves</a>";
-            $amount = number_format( $amount / 100000000, 8, '.', '' );
-            $furl = W8IO_ROOT . "$address/f/Waves";
+            $asset = '';
+            $amount = '';
         }
 
-        $a = (int)$wtx['a'];
-        $b = (int)$wtx['b'];
-
-        $amount = ( $b === $aid ? '+' : '-' ) . $amount;
         $isa = $a === $aid;
         $isb = $b === $aid;
         $a = $isa ? $address : $api->get_address( $a );
@@ -172,16 +202,19 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
         {
             $data = json_decode( $data, true );
 
+            if( $type === 10 )
+                $b = $api->get_data( $data['d'] );
+            else
             if( isset( $data['b'] ) )
                 $b = $api->get_data( $data['b'] );
         }
 
-        $type = w8io_tx_type( $wtx['type'] );
+        $wtype = w8io_tx_type( $wtx['type'] );
 
         $ashow = $isa ? "<b>$a</b>" : $a;
         $bshow = $isb ? "<b>$b</b>" : $b;
 
-        echo "<small>" . date( 'Y.m.d H:i', $wtx['timestamp'] ) ." ({$wtx['block']})</small> (<a href=\"". W8IO_ROOT . "$address/t/{$wtx['type']}\">$type</a>) <a href=\"". W8IO_ROOT . $a ."\">$ashow</a> >> <a href=\"". W8IO_ROOT . $b ."\">$bshow</a> $amount $asset$fee" . PHP_EOL;
+        echo "<small>" . date( 'Y.m.d H:i', $wtx['timestamp'] ) ." ({$wtx['block']})</small> (<a href=\"". W8IO_ROOT . "$address/t/{$wtx['type']}\">$wtype</a>) <a href=\"". W8IO_ROOT . $a ."\">$ashow</a> >> <a href=\"". W8IO_ROOT . $b ."\">$bshow</a>$amount$asset$fee" . PHP_EOL;
     }
 }
 
@@ -663,6 +696,8 @@ if( file_exists( '.git/FETCH_HEAD' ) )
 if( !isset( $showtime ) )
 {
     echo PHP_EOL . sprintf( '%.02f ms ', 1000 * ( microtime( true ) - $_SERVER['REQUEST_TIME_FLOAT'] ) );
+    $light = $light ? '&#9680' : '&#9681;';
+    echo '<a href="'. W8IO_ROOT . "ld\" style=\"text-decoration: none;\">$light</a> ";
     if( defined( 'W8IO_ANALYTICS' ) )
         echo PHP_EOL . PHP_EOL . W8IO_ANALYTICS . ' ';
 }
