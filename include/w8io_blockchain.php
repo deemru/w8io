@@ -58,13 +58,38 @@ class w8io_blockchain
 
         if( $to <= $from ) // no new blocks
         {
-            if( !$trynext && time() - $this->last_update > 300 )
+            $rollback = false;
+
+            if( !$trynext && $this->last_update && time() - $this->last_update > 300 )
             {
-                w8io_trace( 'w', 'no new blocks for 300 seconds (try next node)' );
-                return $this->update( true );
+                // rollback detection
+                if( W8IO_NETWORK !== 'W' && $to < $from )
+                {
+                    $local_block = $this->get_block( $to );
+                    $nodes_block = $this->nodes->get_block( $to );
+                    if( $nodes_block === false )
+                    {
+                        w8io_trace( 'w', "can not get_block()" );
+                        return false;
+                    }
+        
+                    if( $nodes_block['reference'] !== $local_block['signature'] )
+                    {
+                        w8io_trace( 'w', "rollback detected ($from >> $to)" );
+                        $from = $to - 1;
+                        $rollback = true;
+                    }
+                }
+
+                if( !$rollback )
+                {
+                    w8io_trace( 'w', 'no new blocks for 300 seconds (try next node)' );
+                    return $this->update( true );
+                }
             }
 
-            return true;
+            if( !$rollback )
+                return true;
         }
 
         if( !$this->blocks->begin() )
