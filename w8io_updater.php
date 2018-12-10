@@ -221,6 +221,6 @@ for( ;; )
     update_tickers( $transactions );
     update_scam( $transactions );
 
-    if( sleep( W8IO_UPDATE_DELAY ) )
+    if( sleep( defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17 ) )
         w8io_error( "signal" );
 }
