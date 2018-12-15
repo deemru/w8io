@@ -15,23 +15,8 @@ function w8io_lock()
     return $lock;
 }
 
-function w8io_sleeping_dots( $ticks )
-{
-    for( $i = 0; $i < $ticks; $i++ )
-    {
-        echo '.';
-        if( sleep( 1 ) )
-            w8io_error( "signal" );
-    }
-}
-
-$lock = w8io_lock();
-if( $lock === false )
-{
+while( false === ( $lock = w8io_lock() ) )
     w8io_trace( 'w', 'w8io_lock() failed' );
-    w8io_sleeping_dots( 7 );
-    exit;
-}
 
 w8io_trace( 'i', 'w8io_updater started' );
 
@@ -221,6 +206,5 @@ for( ;; )
     update_tickers( $transactions );
     update_scam( $transactions );
 
-    if( sleep( defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17 ) )
-        w8io_error( "signal" );
+    sleep( defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17 );
 }
