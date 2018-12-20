@@ -7,7 +7,8 @@ Highcharts.merge(true, options, {
   tooltip: {
     crosshairs: [true],
     formatter: function() {
-        var s = "<b>" + this.x + "";"</b>"
+        var s = "<b>" + this.x + "</b>";
+        this.points.sort( function( a, b ) { return ( b.y - a.y ); } );
         this.points.forEach( function( point ) { s += "<br/><span style=\"color:" + point.color + "\">\u25CF</span> " + point.series.name.replace( / \((.+)\)/, "" ) + ": " + point.y; } );
         return s;
     }
