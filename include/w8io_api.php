@@ -328,4 +328,76 @@ class w8io_api
 
         return isset( $waves_balance ) ? $waves_balance - $waves : $waves;
     }
+
+    private function aggregate_dataset( &$dataset, $height, $json )
+    {
+        $txs = 0;
+        foreach( $json as $type => $value )
+        {
+            if( !isset( $dataset[$type] ) )
+                $dataset[$type] = [];
+
+            $dataset[$type][$height] = $value;
+
+            if( $type !== 0 )
+                $txs += $value;
+
+            if( !isset( $dataset['totals'][$type] ) )
+                $dataset['totals'][$type] = $value;
+            else
+                $dataset['totals'][$type] += $value;
+        }
+
+        $dataset['txs'][$height] = $txs;
+        $dataset['totals']['txs'] += $txs;
+    }
+
+    public function get_height()
+    {
+        require_once 'w8io_pairs.php';
+        $checkpoint = new w8io_pairs( W8IO_DB_BLOCKCHAIN_AGGREGATE, 'checkpoint' );
+        return $checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE, 'i' );
+    }
+
+    public function get_dataset( $Q, $from, $to )
+    {
+        require_once 'w8io_pairs.php';
+
+        $db_name = "db_$Q";
+        $db_Q = new w8io_pairs( W8IO_DB_BLOCKCHAIN_AGGREGATE, $db_name );
+        $query = $db_Q->query( "SELECT * from $db_name WHERE id > $from AND id <= $to ORDER BY id ASC" );
+
+        if( false === $query )
+            return false;
+
+        $dataset = [ 'txs' => [], 'totals' => [ 'txs' => 0 ] ];
+        foreach( $query as $rec )
+        {
+            $height = $rec['id'];
+            $json = json_decode( $rec['value'], true, 512, JSON_BIGINT_AS_STRING );
+            $this->aggregate_dataset( $dataset, $height, $json );
+        }
+
+        $height = $to;
+        $json = [];
+
+        while( $to % $Q )
+        {
+            $from = $to - ( $to % $Q );
+            $Q = intdiv( $Q , 10 );
+            $from += $Q;
+
+            if( $from > $to )
+                continue;
+
+            $db_name = "db_$Q";
+            $db_Q = new w8io_pairs( W8IO_DB_BLOCKCHAIN_AGGREGATE, $db_name );
+
+            $json = w8io_aggregate_jsons( $db_Q, $from, $to, $Q, $json );
+        }
+
+        $this->aggregate_dataset( $dataset, $height, $json );
+
+        return $dataset;
+    }
 }

@@ -138,6 +138,27 @@ function w8io_tx_type( $type )
     }
 }
 
+function w8io_aggregate_jsons( $db, $from, $to, $q, $sum = [] )
+{       
+    for( $i = $from; $i <= $to; $i += $q )
+    {
+        $json = $db->get_value( $i, 'j' );
+
+        if( false === $json )
+            w8io_error( 'get_value() failed' );
+
+        foreach( $json as $type => $value )
+        {
+            if( isset( $sum[$type] ) )
+                $sum[$type] += $value;
+            else
+                $sum[$type] = $value;
+        }
+    }
+
+    return $sum;
+}
+
 function w8io_filter_wtx( $wtx )
 {
     return 

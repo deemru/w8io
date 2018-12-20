@@ -5,7 +5,7 @@ require_once 'w8io_config.php';
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'GENERATORS/64/64';
+    $uri = 'CHARTS/100000/200000';
 
 $uri = explode( '/', $uri );
 
@@ -51,6 +51,67 @@ if( $address === 'GENERATORS' )
 
         ob_start();
     }
+}
+else
+if( $address === 'api' )
+{
+    if( $f === 'chart' )
+    {
+        require_once './include/w8io_base.php';
+        require_once './include/w8io_api.php';
+        $api = new w8io_api();
+
+        $from = (int)$arg;
+        $to = (int)$arg2;
+
+        if( $from > $to )
+            exit;
+
+        $height = $api->get_height();
+        $to = min( $height, $to );
+        $Q = 1;
+
+        while( ( $to - $from ) / $Q > 2500 && $Q < 1000 )
+            $Q *= 10;
+    
+        $from -= $from % $Q;
+        $dataset = $api->get_dataset( $Q, $from, $to );
+
+        $out = 'block';
+        $total = $dataset['totals']['txs'];
+        $out .= ", total ($total)";
+
+        for( $i = 1; $i < 15; $i++ )
+        {
+            $name = w8io_tx_type( $i );
+            $total = isset( $dataset['totals'][$i] ) ? $dataset['totals'][$i] : 0;
+            $out .= ", $name ($total)";
+        }
+
+        $out .= PHP_EOL;
+
+        foreach( $dataset['txs'] as $key => $value )
+        {
+            $tvalue = $value;
+            $out .= "$key, $tvalue";
+            for( $i = 1; $i < 15; $i++ )
+                if( isset( $dataset[$i][$key] ) )
+                {
+                    $tvalue = $dataset[$i][$key];
+                    $out .= ", $tvalue";
+                }
+                else
+                {
+                    $out .= ", 0";
+                }
+            
+            $out .= PHP_EOL;
+        }
+
+        echo $out;
+    }
+    
+    exit;
 }
 
 if( $light )
@@ -247,6 +308,30 @@ function prios( $tickers )
     return array_merge( $t_prios, $t_other );
 }
 
+if( $address === 'CHARTS' )
+{
+    $height = $api->get_height();
+
+    $from = $f ? (int)$f : 0;
+    $to = $arg ? (int)$arg : $height;
+
+    if( $from > $to )
+        exit;
+
+    $to = min( $height, $to );
+    $Q = 1;
+
+    while( ( $to - $from ) / $Q > 2500 && $Q < 1000 )
+        $Q *= 10;
+    
+    $from -= $from % $Q;
+    $froms = max( 1, $from );
+    
+    require_once './include/w8io_charts.php';
+    $hostroot = 'http' . ( ( isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == 'on' ) ? 's' : '' ) . '://' . $_SERVER['HTTP_HOST'] . W8IO_ROOT;
+    echo w8io_chart( "Waves Main", "$froms .. $to", $hostroot . "api/chart/$from/$to" );
+}
+else
 if( $address === 'b' )
 {
 

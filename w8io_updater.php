@@ -5,6 +5,7 @@ require_once './include/w8io_nodes.php';
 require_once './include/w8io_blockchain.php';
 require_once './include/w8io_blockchain_transactions.php';
 require_once './include/w8io_blockchain_balances.php';
+require_once './include/w8io_blockchain_aggregate.php';
 
 function w8io_lock()
 {
@@ -20,7 +21,7 @@ while( false === ( $lock = w8io_lock() ) )
 
 w8io_trace( 'i', 'w8io_updater started' );
 
-function update_proc( $blockchain, $transactions, $balances )
+function update_proc( $blockchain, $transactions, $balances, $aggregate )
 {
     $timer = 0;
     w8io_timer( $timer );
@@ -38,6 +39,7 @@ function update_proc( $blockchain, $transactions, $balances )
 
                 $blockchain_from_to['from'] = $transactions_from_to['to'];
 
+                $transactions_from = $transactions_from_to['from'];
                 for( ;; )
                 {
                     $balances_from_to = $balances->update( $transactions_from_to );
@@ -58,6 +60,19 @@ function update_proc( $blockchain, $transactions, $balances )
                         break;
 
                     $transactions_from_to['from'] = $balances_from_to['to'];
+                }
+
+                $transactions_from_to['from'] = $transactions_from;
+                for( ;; )
+                {
+                    $aggregate_from_to = $aggregate->update( $transactions_from_to );
+                    if( !is_array( $aggregate_from_to ) )
+                        w8io_error( 'unexpected update balances error' );
+
+                    if( $transactions_from_to['to'] <= $aggregate_from_to['to'] )
+                        break;
+
+                    $transactions_from_to['from'] = $aggregate_from_to['to'];
                 }
 
                 if( $blockchain_from_to['to'] <= $transactions_from_to['to'] )
@@ -198,10 +213,11 @@ function update_scam( $transactions )
 $blockchain = new w8io_blockchain();
 $transactions = new w8io_blockchain_transactions();
 $balances = new w8io_blockchain_balances();
+$aggregate = new w8io_blockchain_aggregate();
 
 for( ;; )
 {
-    update_proc( $blockchain, $transactions, $balances );
+    update_proc( $blockchain, $transactions, $balances, $aggregate );
 
     update_tickers( $transactions );
     update_scam( $transactions );

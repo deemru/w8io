@@ -16,8 +16,10 @@ define( 'W8IO_DB_WRITE_PRAGMAS', 'PRAGMA synchronous = NORMAL; PRAGMA journal_mo
 define( 'W8IO_DB_BLOCKCHAIN', W8IO_DB_DIR . 'blockchain.sqlite3' );
 define( 'W8IO_DB_BLOCKCHAIN_TRANSACTIONS', W8IO_DB_DIR . 'blockchain_transactions.sqlite3' );
 define( 'W8IO_DB_BLOCKCHAIN_BALANCES', W8IO_DB_DIR . 'blockchain_balances.sqlite3' );
+define( 'W8IO_DB_BLOCKCHAIN_AGGREGATE', W8IO_DB_DIR . 'blockchain_aggregate.sqlite3' );
 define( 'W8IO_CHECKPOINT_BLOCKCHAIN', 0 );
 define( 'W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS', 1 );
 define( 'W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES', 2 );
+define( 'W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE', 3 );
 define( 'W8IO_MAX_UPDATE_BATCH', 100 );
 define( 'W8IO_UPDATE_DELAY', 10 );
