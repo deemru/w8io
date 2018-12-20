@@ -326,10 +326,11 @@ if( $address === 'CHARTS' )
     
     $from -= $from % $Q;
     $froms = max( 1, $from );
+    $title = "Waves " . ( W8IO_NETWORK == 'W' ? "MAINNET" : "TESTNET" );
     
     require_once './include/w8io_charts.php';
     $hostroot = 'http' . ( ( isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == 'on' ) ? 's' : '' ) . '://' . $_SERVER['HTTP_HOST'] . W8IO_ROOT;
-    echo w8io_chart( "Waves Main", "$froms .. $to", $hostroot . "api/chart/$from/$to" );
+    echo w8io_chart( $title, "$froms .. $to", $hostroot . "api/chart/$from/$to" );
 }
 else
 if( $address === 'b' )
