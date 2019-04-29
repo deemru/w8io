@@ -103,6 +103,12 @@ class w8io_blockchain_balances
 
             case W8IO_TYPE_FEES: // fees
             case 1: // genesis
+            case 101: // genesis role
+            case 102: // role
+            case 110: // genesis unknown
+            case 105: // data unknown
+            case 106: // invoke 1 unknown
+            case 107: // invoke 2 unknown
             case 2: // payment
             case 4: // transfer
             case 7: // exchange

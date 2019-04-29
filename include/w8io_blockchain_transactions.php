@@ -615,6 +615,31 @@ class w8io_blockchain_transactions
                     $wtx['a'] = 'GENESIS';
                     $wtx['b'] = $tx['recipient'];
                     break;
+                case 101: // genesis role
+                    $wtx['a'] = 'GENESIS';
+                    $wtx['b'] = $tx['target'];
+                    $wtx['data'] = [ 'd' => $this->get_dataid( $tx['role'], true ) ];
+                    break;
+                case 102: // role
+                    $wtx['a'] = $tx['sender'];
+                    $wtx['b'] = $tx['target'];
+                    //$wtx['data'] = [ 'opType' => $this->get_dataid( $tx['opType'], true ) ];
+                    $wtx['data'] = [ 'd' => $this->get_dataid( $tx['role'], true ) ];
+                    //$wtx['data'] = [ 'dueTimestamp' => $this->get_dataid( $tx['dueTimestamp'], true ) ];
+                    break;
+                case 110: // genesis unknown
+                    $wtx['a'] = 'GENESIS';
+                    $wtx['b'] = $tx['target'];
+                    break;
+                case 105: // data unknown
+                    $wtx['a'] = $tx['sender'];
+                    $wtx['b'] = 'NULL';
+                    break;
+                case 106: // invoke 1 unknown
+                case 107: // invoke 2 unknown
+                    $wtx['a'] = $tx['sender'];
+                    $wtx['b'] = 'NULL';
+                    break;
                 case 2: // payment
                     $wtx['a'] = $tx['sender'];
                     $wtx['b'] = $tx['recipient'];
@@ -645,7 +670,7 @@ class w8io_blockchain_transactions
                         if( null !== ( $asset = $tx['assetId'] ) )
                             $wtx['asset'] = $this->get_assetid( $asset );
 
-                        if( null !== ( $asset = $tx['feeAsset'] ) )
+                        if( null !== ( $asset = $tx['feeAssetId'] ) )
                             $wtx['afee'] = $this->get_assetid( $asset );
                     }
                     break;
@@ -740,7 +765,7 @@ class w8io_blockchain_transactions
                 case 10: // alias
                     $wtx['b'] = 'NULL';
                     {
-                        $aid = $this->get_aid( $tx['sender'] );
+                        $aid = $this->get_aid( $tx['sender'], $wtx['fee'] === 0 ? true : false );
 
                         $wtx['a'] = $aid;
 

@@ -120,6 +120,12 @@ function w8io_tx_type( $type )
         case W8IO_TYPE_FEES: return 'fees';
         case W8IO_TYPE_SPONSOR: return 'sponsor';
         case 1: return 'genesis';
+        case 101: return 'genesis role';
+        case 102: return 'role';
+        case 110: return 'genesis unknown';
+        case 105: return 'data unknown';
+        case 106: return 'invoke 1 unknown';
+        case 107: return 'invoke 2 unknown';
         case 2: return 'payment';
         case 3: return 'issue';
         case 4: return 'transfer';
