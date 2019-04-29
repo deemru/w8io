@@ -1,5 +1,10 @@
 <?php
 
+require_once __DIR__ . '/include/error_handler.php';
+require_once __DIR__ . '/vendor/autoload.php';
+
+use deemru\WavesKit;
+
 require_once 'w8io_config.php';
 require_once './include/w8io_nodes.php';
 require_once './include/w8io_blockchain.php';
@@ -7,17 +12,12 @@ require_once './include/w8io_blockchain_transactions.php';
 require_once './include/w8io_blockchain_balances.php';
 require_once './include/w8io_blockchain_aggregate.php';
 
-function w8io_lock()
-{
-    require_once './third_party/secqru/include/secqru_flock.php';
-    $lock = new secqru_flock( W8IO_DB_DIR . 'w8io.lock' );
-    if( false === $lock->open() )
-        return false;
-    return $lock;
-}
+$wk = new WavesKit( W8IO_NETWORK );
 
-while( false === ( $lock = w8io_lock() ) )
-    w8io_trace( 'w', 'w8io_lock() failed' );
+require_once __DIR__ . '/include/secqru_flock.php';
+$lock = new \secqru_flock( W8IO_DB_DIR . 'w8io.lock' );
+if( false === $lock->open() )
+    exit( $wk->log( 'e', 'flock failed, already running?' ) );
 
 w8io_trace( 'i', 'w8io_updater started' );
 
