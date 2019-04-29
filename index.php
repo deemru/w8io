@@ -39,7 +39,7 @@ if( $address === 'GENERATORS' )
         $f = 1472;
 
     $f = intval( $f );
-    $n = min( max( $f, isset( $showtime ) ? 1 : 64 ), 100000 );
+    $n = min( max( $f, isset( $showtime ) ? 1 : 80 ), 100000 );
     if( $n !== $f )
         exit( header("location: " . W8IO_ROOT . "$address/$n" ) );
 
@@ -425,7 +425,7 @@ if( $address === 'GENERATORS' )
 
         $balance = $generator['balance'];
         $percent = str_pad( number_format( $gentotal ? ( $balance / $gentotal * 100 ) : 0, 2, '.', '' ) . '%', 7, ' ', STR_PAD_LEFT );
-        $balance = str_pad( number_format( $balance / 100000000, 0, '', '.' ), 10, ' ', STR_PAD_LEFT );
+        $balance = str_pad( number_format( $balance / 100000000, 0, '', ' ' ), 10, ' ', STR_PAD_LEFT );
 
         $wtxs = $generator['wtxs'];
         $count = count( $wtxs );
