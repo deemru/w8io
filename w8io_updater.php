@@ -219,8 +219,11 @@ for( ;; )
 {
     update_proc( $blockchain, $transactions, $balances, $aggregate );
 
-    update_tickers( $transactions );
-    update_scam( $transactions );
+    if( W8IO_NETWORK === 'W' )
+    {
+        update_tickers( $transactions );
+        update_scam( $transactions );
+    }
 
     sleep( defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17 );
 }

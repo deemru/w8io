@@ -81,7 +81,8 @@ if( $address === 'api' )
         $total = $dataset['totals']['txs'];
         $out .= ", total ($total)";
 
-        for( $i = 1; $i < 15; $i++ )
+        $types = [ 1, 101, 102, 110, 105, 106, 107, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ];
+        foreach( $types as $i )
         {
             $name = w8io_tx_type( $i );
             $total = isset( $dataset['totals'][$i] ) ? $dataset['totals'][$i] : 0;
@@ -94,7 +95,7 @@ if( $address === 'api' )
         {
             $tvalue = $value;
             $out .= "$key, $tvalue";
-            for( $i = 1; $i < 15; $i++ )
+            foreach( $types as $i )
                 if( isset( $dataset[$i][$key] ) )
                 {
                     $tvalue = $dataset[$i][$key];
@@ -323,11 +324,11 @@ if( $address === 'CHARTS' )
 
     while( ( $to - $from ) / $Q > 2500 && $Q < 1000 )
         $Q *= 10;
-    
+
     $from -= $from % $Q;
     $froms = max( 1, $from );
     $title = "Waves " . ( W8IO_NETWORK == 'W' ? "MAINNET" : "TESTNET" );
-    
+
     require_once './include/w8io_charts.php';
     $hostroot = 'http' . ( ( isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == 'on' ) ? 's' : '' ) . '://' . $_SERVER['HTTP_HOST'] . W8IO_ROOT;
     echo w8io_chart( $title, "$froms .. $to", $hostroot . "api/chart/$from/$to" );
