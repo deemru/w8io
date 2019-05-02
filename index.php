@@ -105,12 +105,18 @@ if( $address === 'api' )
         $out .= ", total ($total)";
 
         $types = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ];
+        $etypes = [];
         foreach( $types as $i )
         {
             $name = w8io_tx_type( $i );
-            $total = isset( $dataset['totals'][$i] ) ? $dataset['totals'][$i] : 0;
-            $out .= ", $name ($total)";
+            if( isset( $dataset['totals'][$i] ) )
+            {
+                $total = $dataset['totals'][$i];
+                $out .= ", $name ($total)";
+                $etypes[] = $i;
+            }
         }
+        $types = $etypes;
 
         $out .= PHP_EOL;
 
