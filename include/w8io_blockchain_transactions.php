@@ -1,6 +1,9 @@
 <?php
 
-require_once 'w8io_blockchain.php';
+use deemru\WavesKit;
+use deemru\Pairs;
+
+require_once "w8io_base.php";
 
 class w8io_blockchain_transactions
 {
@@ -35,13 +38,13 @@ class w8io_blockchain_transactions
 
         if( $writable )
         {
-            $this->checkpoint = new w8io_pairs( $this->transactions, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-            $this->pairs_txids = new w8io_pairs( $this->transactions, 'txids', true );
-            $this->pairs_addresses = new w8io_pairs( $this->transactions, 'addresses', true );
-            $this->pairs_assets = new w8io_pairs( $this->transactions, 'assets', true );
-            $this->pairs_asset_info = new w8io_pairs( $this->transactions, 'asset_info', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-            $this->pairs_aliases = new w8io_pairs( $this->transactions, 'aliases', true, 'TEXT PRIMARY KEY|INTEGER|0|1' );
-            $this->pairs_addons = new w8io_pairs( $this->transactions, 'addons', true );
+            $this->checkpoint = new Pairs( $this->transactions, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->pairs_txids = new Pairs( $this->transactions, 'txids', true );
+            $this->pairs_addresses = new Pairs( $this->transactions, 'addresses', true );
+            $this->pairs_assets = new Pairs( $this->transactions, 'assets', true );
+            $this->pairs_asset_info = new Pairs( $this->transactions, 'asset_info', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->pairs_aliases = new Pairs( $this->transactions, 'aliases', true, 'TEXT PRIMARY KEY|INTEGER|0|1' );
+            $this->pairs_addons = new Pairs( $this->transactions, 'addons', true );
 
             $this->transactions->exec( W8IO_DB_WRITE_PRAGMAS );
             $this->transactions->exec( "CREATE TABLE IF NOT EXISTS transactions (
@@ -68,11 +71,11 @@ class w8io_blockchain_transactions
             $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_ta    ON transactions( a, type )" );
             $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_tb    ON transactions( b, type )" );
 
-            $this->pairs_addresses->set_pair(  0, 'GENESIS' );
-            $this->pairs_addresses->set_pair( -1, 'GENERATOR' );
-            $this->pairs_addresses->set_pair( -2, 'MATCHER' );
-            $this->pairs_addresses->set_pair( -3, 'NULL' );
-            $this->pairs_addresses->set_pair( -4, 'SPONSOR' );
+            $this->pairs_addresses->setKeyValue(  0, 'GENESIS' );
+            $this->pairs_addresses->setKeyValue( -1, 'GENERATOR' );
+            $this->pairs_addresses->setKeyValue( -2, 'MATCHER' );
+            $this->pairs_addresses->setKeyValue( -3, 'NULL' );
+            $this->pairs_addresses->setKeyValue( -4, 'SPONSOR' );
         }
     }
 
@@ -121,7 +124,7 @@ class w8io_blockchain_transactions
 
     public function get_height()
     {
-        $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, 'i' );
+        $height = $this->checkpoint->getValue( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, 'i' );
         if( !$height )
             return 0;
 
@@ -150,28 +153,28 @@ class w8io_blockchain_transactions
 
     private function get_pair_txid( $id, $new = false )
     {
-        if( false === ( $id = $this->pairs_txids->get_id( $id, $new ) ) )
+        if( false === ( $id = $this->pairs_txids->getKey( $id, $new ) ) )
             w8io_error();
         return $id;
     }
 
     private function get_assetid( $id, $new = false )
     {
-        if( false === ( $id = $this->pairs_assets->get_id( $id, $new ) ) )
+        if( false === ( $id = $this->pairs_assets->getKey( $id, $new ) ) )
             w8io_error( $id );
         return $id;
     }
 
     private function get_dataid( $id, $new = false )
     {
-        if( false === ( $id = $this->pairs_addons->get_id( $id, $new ) ) )
+        if( false === ( $id = $this->pairs_addons->getKey( $id, $new ) ) )
             w8io_error();
         return $id;
     }
 
     private function get_aid( $id, $new = false )
     {
-        if( false === ( $id = $this->pairs_addresses->get_id( $id, $new ) ) )
+        if( false === ( $id = $this->pairs_addresses->getKey( $id, $new ) ) )
             w8io_error();
         return $id;
     }
@@ -204,20 +207,24 @@ class w8io_blockchain_transactions
         return $query;
     }
 
-    public function get_txs_where( $aid, $where, $limit = 100 )
+    public function get_txs_where( $aid, $where, $uid = false, $limit = 100 )
     {
         if( $aid !== false )
         {
-            $where = $where ? "AND $where" : '';
+            $where = $where ? ' AND ' . $where : '';
+            if( $uid )
+                $where .= ' AND uid <= ' . $uid;
             $where =
-                "SELECT * FROM ( SELECT * FROM transactions WHERE a = $aid $where ORDER BY uid DESC LIMIT $limit ) UNION
-                 SELECT * FROM ( SELECT * FROM transactions WHERE b = $aid $where ORDER BY uid DESC LIMIT $limit ) ORDER BY uid DESC LIMIT $limit";
+                "SELECT * FROM ( SELECT * FROM transactions WHERE a = $aid$where ORDER BY uid DESC LIMIT $limit ) UNION
+                 SELECT * FROM ( SELECT * FROM transactions WHERE b = $aid$where ORDER BY uid DESC LIMIT $limit ) ORDER BY uid DESC LIMIT $limit";
         }
         else
         {
-            $where = $where ? "WHERE $where" : '';
+            $where = $where ? ' WHERE ' . $where : '';
+            if( $uid )
+                $where .= ( strlen( $where ) ? ' AND ' : ' WHERE ' ) . 'uid <= ' . $uid;
             $where =
-                "SELECT * FROM transactions $where ORDER BY uid DESC LIMIT $limit";
+                "SELECT * FROM transactions$where ORDER BY uid DESC LIMIT $limit";
         }
 
         $query_where = $this->transactions->prepare( $where );
@@ -283,11 +290,11 @@ class w8io_blockchain_transactions
 
     public function mark_scam( $scam, $mark )
     {
-        $id = $this->pairs_assets->get_id( $scam );
+        $id = $this->pairs_assets->getKey( $scam );
         if( $id === false )
             return;
 
-        $info = $this->pairs_asset_info->get_value( $id, 'j' );
+        $info = $this->pairs_asset_info->getValue( $id, 'j' );
         if( $info === false )
             return;
 
@@ -306,16 +313,16 @@ class w8io_blockchain_transactions
             unset( $info['scam'] );
         }
 
-        $this->pairs_asset_info->set_pair( $id, $info, 'j' );
+        $this->pairs_asset_info->setKeyValue( $id, $info, 'j' );
     }
 
     public function mark_tickers( $ticker, $mark )
     {
-        $id = $this->pairs_assets->get_id( $ticker );
+        $id = $this->pairs_assets->getKey( $ticker );
         if( $id === false )
             return;
 
-        $info = $this->pairs_asset_info->get_value( $id, 'j' );
+        $info = $this->pairs_asset_info->getValue( $id, 'j' );
         if( $info === false )
             return;
 
@@ -334,7 +341,7 @@ class w8io_blockchain_transactions
             unset( $info['ticker'] );
         }
 
-        $this->pairs_asset_info->set_pair( $id, $info, 'j' );
+        $this->pairs_asset_info->setKeyValue( $id, $info, 'j' );
     }
 
     private function sponsor_swap( $wtx, $sponsor, $wfee )
@@ -404,7 +411,7 @@ class w8io_blockchain_transactions
             }
             else if( $a[0] === '3' )
             {
-                $a = $this->pairs_addresses->get_id( $wtx['a'], true );
+                $a = $this->pairs_addresses->getKey( $wtx['a'], true );
                 if( $a === false )
                     return false;
             }
@@ -435,7 +442,7 @@ class w8io_blockchain_transactions
             {
                 $alias = substr( $b, 8 );
 
-                $b = $this->pairs_aliases->get_value( $alias, 'i' );
+                $b = $this->pairs_aliases->getValue( $alias, 'i' );
                 if( $b === false )
                     return false;
 
@@ -446,7 +453,7 @@ class w8io_blockchain_transactions
             }
             else if( $b[0] === '3' )
             {
-                $b = $this->pairs_addresses->get_id( $wtx['b'], true );
+                $b = $this->pairs_addresses->getKey( $wtx['b'], true );
                 if( $b === false )
                     return false;
             }
@@ -584,6 +591,8 @@ class w8io_blockchain_transactions
 
     private function set_transactions( $block )
     {
+        global $wk;
+
         $at = $block['height'];
         $txs = $block['transactions'];
 
@@ -598,7 +607,7 @@ class w8io_blockchain_transactions
         {
             $type = $tx['type'];
             $wtx = [];
-            $wtx['txid'] = $this->get_pair_txid( $tx['id'], true );
+            $wtx['txid'] = $this->get_pair_txid( $wk->base58Decode( $tx['id'] ), true );
             $wtx['block'] = $at;
             $wtx['type'] = $type;
             $wtx['timestamp'] = $this->timestamp( $tx['timestamp'] );
@@ -652,7 +661,7 @@ class w8io_blockchain_transactions
                         $asset = $this->get_assetid( $tx['assetId'], true );
 
                         $tx['name'] = htmlentities( trim( preg_replace( '/\s+/', ' ', $tx['name'] ) ) );
-                        if( $this->pairs_asset_info->set_pair( $asset, $tx, 'j' ) === false )
+                        if( $this->pairs_asset_info->setKeyValue( $asset, $tx, 'j' ) === false )
                             w8io_error();
 
                         $wtx['asset'] = $asset;
@@ -744,7 +753,7 @@ class w8io_blockchain_transactions
                 case 9: // cancel lease
                     $wtx['a'] = $tx['sender'];
                     {
-                        $wtxs = $this->get_txid( $this->get_pair_txid( $tx['leaseId'] ) );
+                        $wtxs = $this->get_txid( $this->get_pair_txid( $wk->base58Decode( $tx['leaseId'] ) ) );
                         if( $wtxs === false )
                             w8io_error();
 
@@ -771,7 +780,7 @@ class w8io_blockchain_transactions
 
                         $alias = $tx['alias'];
 
-                        if( false === $this->pairs_aliases->set_pair( $alias, $aid ) )
+                        if( false === $this->pairs_aliases->setKeyValue( $alias, $aid ) )
                             w8io_error();
 
                         $wtx['data'] = [ 'd' => $this->get_dataid( $alias, true ) ];
@@ -840,7 +849,7 @@ class w8io_blockchain_transactions
         return true;
     }
 
-    public function update( $upcontext )
+    public function update( $upcontext, $balances )
     {
         $blockchain = $upcontext['blockchain'];
         $from = $upcontext['from'];
@@ -852,19 +861,22 @@ class w8io_blockchain_transactions
             $from = min( $local_height, $from );
 
             if( $local_height > $from )
+            // ROLLBACK
             {
-                w8io_warning( "clear_transactions( $from )" );
+                $balances->rollback( $this, $from );
+                w8io_warning( "transactions (rollback to $from)" );
+
                 for( $i = $local_height;; )
                 {
                     $i -= W8IO_MAX_UPDATE_BATCH;
                     $i = max( $from, $i );
-                    w8io_info( "clear_transactions( $i )" );
+                    w8io_info( "transactions (rollback to $i)" );
 
                     if( !$this->transactions->beginTransaction() )
                         w8io_error( 'unexpected begin() error' );
                     if( !$this->clear_transactions( $i ) )
                         w8io_error( 'unexpected clear_transactions() error' );
-                    if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, $i ) )
+                    if( false === $this->checkpoint->setKeyValue( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, $i ) )
                         w8io_error( 'set checkpoint_transactions failed' );
                     if( !$this->transactions->commit() )
                         w8io_error( 'unexpected commit() error' );
@@ -873,6 +885,7 @@ class w8io_blockchain_transactions
                         break;
                 }
                 unset( $this->sponsors );
+                w8io_trace( 's', "transactions (rollback to $from) (done)" );
             }
         }
 
@@ -896,7 +909,7 @@ class w8io_blockchain_transactions
                 w8io_error( 'unexpected set_transactions() corruption' );
         }
 
-        if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, $to ) )
+        if( false === $this->checkpoint->setKeyValue( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, $to ) )
             w8io_error( 'set checkpoint_transactions failed' );
 
         if( !$this->transactions->commit() )

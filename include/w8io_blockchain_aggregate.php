@@ -1,7 +1,6 @@
 <?php
 
-require_once 'w8io_pairs.php';
-require_once 'w8io_blockchain_transactions.php';
+use deemru\Pairs;
 
 class w8io_blockchain_aggregate
 {
@@ -21,18 +20,18 @@ class w8io_blockchain_aggregate
 
         if( $writable )
         {
-            $this->checkpoint = new w8io_pairs( $this->aggregate, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-            $this->db_1 = new w8io_pairs( $this->aggregate, 'db_1', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-            $this->db_10 = new w8io_pairs( $this->aggregate, 'db_10', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-            $this->db_100 = new w8io_pairs( $this->aggregate, 'db_100', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-            $this->db_1000 = new w8io_pairs( $this->aggregate, 'db_1000', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-            $this->db_10000 = new w8io_pairs( $this->aggregate, 'db_10000', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->checkpoint = new Pairs( $this->aggregate, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->db_1 = new Pairs( $this->aggregate, 'db_1', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->db_10 = new Pairs( $this->aggregate, 'db_10', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->db_100 = new Pairs( $this->aggregate, 'db_100', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->db_1000 = new Pairs( $this->aggregate, 'db_1000', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->db_10000 = new Pairs( $this->aggregate, 'db_10000', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
         }
     }
 
     public function get_height()
     {
-        $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE, 'i' );
+        $height = $this->checkpoint->getValue( W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE, 'i' );
         if( !$height )
             return 0;
 
@@ -88,15 +87,15 @@ class w8io_blockchain_aggregate
     private function aggregate_db( $db_Q, $db_N, $height, $Q, $count )
     {
         $data = w8io_aggregate_jsons( $db_Q, $height - $Q * ( $count - 1 ), $height, $Q );
-        if( false === $db_N->set_pair( $height, $data, 'j' ) )
-            w8io_error( 'set_pair() failed' );
+        if( false === $db_N->setKeyValue( $height, $data, 'j' ) )
+            w8io_error( 'setKeyValue() failed' );
     }
 
     private function aggregate( $height, $wtxs )
     {
         $data = $this->aggregate_wtxs( $wtxs );
-        if( false === $this->db_1->set_pair( $height, $data, 'j' ) )
-            w8io_error( 'set_pair() failed' );
+        if( false === $this->db_1->setKeyValue( $height, $data, 'j' ) )
+            w8io_error( 'setKeyValue() failed' );
 
         if( $height % 10 === 0 )
             $this->aggregate_db( $this->db_1, $this->db_10, $height, 1, 10 );
@@ -155,7 +154,7 @@ class w8io_blockchain_aggregate
                 w8io_warning( 'full reset (aggregate)' );
                 $local_height = 0;
 
-                if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE, $local_height ) )
+                if( false === $this->checkpoint->setKeyValue( W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE, $local_height ) )
                     w8io_error( 'set checkpoint_transactions failed' );
             }
 
@@ -178,7 +177,7 @@ class w8io_blockchain_aggregate
             $this->aggregate( $i, $wtxs );
         }
 
-        if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE, $to ) )
+        if( false === $this->checkpoint->setKeyValue( W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE, $to ) )
             w8io_error( 'set checkpoint_transactions failed' );
 
         if( !$this->aggregate->commit() )

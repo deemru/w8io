@@ -1,5 +1,8 @@
 <?php
 
+use deemru\WavesKit;
+use deemru\Pairs;
+
 class w8io_api
 {
     private $balances;
@@ -16,10 +19,10 @@ class w8io_api
         if( strlen( $address ) === 35 )
         {
             if( $address === preg_replace( '/[^123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]/', '', $address ) )
-                return $this->get_pairs_addresses()->get_id( $address );
+                return $this->get_pairs_addresses()->getKey( $address );
         }
         else if( $address === preg_replace( '/[^\-.0123456789@_abcdefghijklmnopqrstuvwxyz\-.]/', '', $address ) )
-            return $this->get_pairs_aliases()->get_value( $address, 'i' );
+            return $this->get_pairs_aliases()->getValue( $address, 'i' );
         else if( $address === 'GENESIS' )
             return 0;
         else if( $address === 'GENERATOR' )
@@ -36,32 +39,32 @@ class w8io_api
 
     public function get_address( $id )
     {
-        return $this->get_pairs_addresses()->get_value( $id, 's' );
+        return $this->get_pairs_addresses()->getValue( $id, 's' );
     }
 
     public function get_alias_id_by_alias( $alias )
     {
-        return $this->get_pairs_aliases()->get_value( $alias, 'i' );
+        return $this->get_pairs_aliases()->getValue( $alias, 'i' );
     }
 
     public function get_alias_by_id( $id )
     {
-        return $this->get_pairs_aliases()->get_id( $id, false, false );
+        return $this->get_pairs_aliases()->getKey( $id, false, false );
     }
 
     public function get_data( $id )
     {
-        return $this->get_pairs_data()->get_value( $id, 's' );
+        return $this->get_pairs_data()->getValue( $id, 's' );
     }
 
     public function get_asset_info( $id )
     {
-        return $this->get_pairs_asset_info()->get_value( $id, 'j' );
+        return $this->get_pairs_asset_info()->getValue( $id, 'j' );
     }
 
     public function get_asset( $id )
     {
-        return $this->get_pairs_assets()->get_id( $id );
+        return $this->get_pairs_assets()->getKey( $id );
     }
 
     public function get_address_balance( $aid )
@@ -70,8 +73,16 @@ class w8io_api
         if( $balance === false )
             return false;
 
-        $balance['balance'] = json_decode( $balance['balance'], true, 512, JSON_BIGINT_AS_STRING );
         return $balance;
+    }
+
+    public function get_asset_distribution( $id )
+    {
+        $distribution = $this->get_balances()->get_distribution( $id );
+        if( $distribution === false )
+            return false;
+            
+        return $distribution;
     }
 
     public function get_address_transactions( $aid, $height, $limit = 100 )
@@ -82,9 +93,9 @@ class w8io_api
         return $this->get_transactions()->get_txs( $aid, $height, $limit );
     }
 
-    public function get_transactions_where( $aid, $where, $limit = 100 )
+    public function get_transactions_where( $aid, $where, $uid = false, $limit = 100 )
     {
-        return $this->get_transactions()->get_txs_where( $aid, $where, $limit );
+        return $this->get_transactions()->get_txs_where( $aid, $where, $uid, $limit );
     }
 
     public function get_transactions_query( $query )
@@ -100,10 +111,7 @@ class w8io_api
     private function get_pairs_aliases()
     {
         if( !isset( $this->pairs_aliases ) )
-        {
-            require_once 'w8io_pairs.php';
-            $this->pairs_aliases = new w8io_pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'aliases' );
-        }
+            $this->pairs_aliases = new Pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'aliases' );
 
         return $this->pairs_aliases;
     }
@@ -111,10 +119,7 @@ class w8io_api
     private function get_pairs_data()
     {
         if( !isset( $this->pairs_data ) )
-        {
-            require_once 'w8io_pairs.php';
-            $this->pairs_data = new w8io_pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'addons' );
-        }
+            $this->pairs_data = new Pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'addons' );
 
         return $this->pairs_data;
     }
@@ -122,10 +127,7 @@ class w8io_api
     private function get_pairs_addresses()
     {
         if( !isset( $this->pairs_addresses ) )
-        {
-            require_once 'w8io_pairs.php';
-            $this->pairs_addresses = new w8io_pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'addresses' );
-        }
+            $this->pairs_addresses = new Pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'addresses' );
 
         return $this->pairs_addresses;
     }
@@ -133,10 +135,7 @@ class w8io_api
     private function get_pairs_asset_info()
     {
         if( !isset( $this->pairs_asset_info ) )
-        {
-            require_once 'w8io_pairs.php';
-            $this->pairs_asset_info = new w8io_pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'asset_info' );
-        }
+            $this->pairs_asset_info = new Pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'asset_info' );
 
         return $this->pairs_asset_info;
     }
@@ -144,10 +143,7 @@ class w8io_api
     private function get_pairs_assets()
     {
         if( !isset( $this->pairs_assets ) )
-        {
-            require_once 'w8io_pairs.php';
-            $this->pairs_assets = new w8io_pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'assets' );
-        }
+            $this->pairs_assets = new Pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'assets' );
 
         return $this->pairs_assets;
     }
@@ -354,18 +350,15 @@ class w8io_api
 
     public function get_height()
     {
-        require_once 'w8io_pairs.php';
-        $checkpoint = new w8io_pairs( W8IO_DB_BLOCKCHAIN_AGGREGATE, 'checkpoint' );
-        return $checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE, 'i' );
+        $checkpoint = new Pairs( W8IO_DB_BLOCKCHAIN_AGGREGATE, 'checkpoint' );
+        return $checkpoint->getValue( W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE, 'i' );
     }
 
     public function get_dataset( $Q, $from, $to )
     {
-        require_once 'w8io_pairs.php';
-
         $db_name = "db_$Q";
-        $db_Q = new w8io_pairs( W8IO_DB_BLOCKCHAIN_AGGREGATE, $db_name );
-        $query = $db_Q->query( "SELECT * from $db_name WHERE id > $from AND id <= $to ORDER BY id ASC" );
+        $db_Q = new Pairs( W8IO_DB_BLOCKCHAIN_AGGREGATE, $db_name );
+        $query = $db_Q->query( "SELECT * from $db_name WHERE key > $from AND key <= $to ORDER BY key ASC" );
 
         if( false === $query )
             return false;
@@ -373,7 +366,7 @@ class w8io_api
         $dataset = [ 'txs' => [], 'totals' => [ 'txs' => 0 ] ];
         foreach( $query as $rec )
         {
-            $height = $rec['id'];
+            $height = $rec['key'];
             $json = json_decode( $rec['value'], true, 512, JSON_BIGINT_AS_STRING );
             $this->aggregate_dataset( $dataset, $height, $json );
         }
@@ -391,7 +384,7 @@ class w8io_api
                 continue;
 
             $db_name = "db_$Q";
-            $db_Q = new w8io_pairs( W8IO_DB_BLOCKCHAIN_AGGREGATE, $db_name );
+            $db_Q = new Pairs( W8IO_DB_BLOCKCHAIN_AGGREGATE, $db_name );
 
             $json = w8io_aggregate_jsons( $db_Q, $from, $to, $Q, $json );
         }

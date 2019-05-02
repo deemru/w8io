@@ -1,24 +1,30 @@
 <?php
 
-require_once 'w8io_pairs.php';
-require_once 'w8io_blockchain_transactions.php';
+use deemru\Pairs;
 
 class w8io_blockchain_balances
 {
-    private $balances;
-    private $checkpoint;
-
-    private $query_get_balance;
-
     public function __construct( $writable = true )
     {
-        $this->balances = new w8io_pairs( W8IO_DB_BLOCKCHAIN_BALANCES, 'balances', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-        $this->checkpoint = new w8io_pairs( $this->balances->get_db(), 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+        $this->checkpoint = new Pairs( W8IO_DB_BLOCKCHAIN_BALANCES, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+        $this->balances = $this->checkpoint->db();
+
+        if( $writable )
+        {
+            $this->balances->exec( "CREATE TABLE IF NOT EXISTS balances (
+                uid INTEGER PRIMARY KEY AUTOINCREMENT,
+                address INTEGER,
+                asset INTEGER,
+                amount INTEGER )" );
+            $this->balances->exec( "CREATE INDEX IF NOT EXISTS balances_index_address ON balances( address )" );
+            $this->balances->exec( "CREATE INDEX IF NOT EXISTS balances_index_asset   ON balances( asset )" );
+            $this->balances->exec( "CREATE INDEX IF NOT EXISTS balances_index_aa      ON balances( address, asset )" );
+        }
     }
 
     public function get_height()
     {
-        $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES, 'i' );
+        $height = $this->checkpoint->getValue( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES, 'i' );
         if( !$height )
             return 0;
 
@@ -30,49 +36,132 @@ class w8io_blockchain_balances
         if( !isset( $this->query_get_balance ) )
         {
             $id = W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES;
-            $this->query_get_balance = $this->balances->get_db()->prepare( "SELECT ( SELECT value FROM checkpoint WHERE id = $id ) AS height, ( SELECT value FROM balances WHERE id = :aid ) AS balance" );
+            $this->query_get_balance = $this->checkpoint->db()->prepare( "SELECT value AS k, NULL AS v FROM checkpoint WHERE key = $id UNION ALL SELECT asset, amount FROM balances WHERE address = :aid" );
             if( !is_object( $this->query_get_balance ) )
                 return false;
         }
 
-        if( $this->query_get_balance->execute( [ 'aid' => $aid ] ) === false )
+        if( false === $this->query_get_balance->execute( [ 'aid' => $aid ] ) )
             return false;
 
         $data = $this->query_get_balance->fetchAll( PDO::FETCH_ASSOC );
 
-        if( !isset( $data[0]['balance'] ) )
+        if( !isset( $data[1] ) )
             return false;
 
-        return $data[0];
-    }
-
-    private function commit_balance( $aid, $procs )
-    {
-        $balance = $this->balances->get_value( $aid, 'j' );
-        if( $balance === false )
-            $balance = [];
-
-        foreach( $procs as $asset => $amount )
+        $balance = [];
+        $n = count( $data );
+        for( $i = 1; $i < $n; $i++ )
         {
-            if( isset( $balance[$asset] ) )
-            {
-                $amount += $balance[$asset];
-
-                if( $amount )
-                    $balance[$asset] = $amount;
-                else
-                    unset( $balance[$asset] );
-            }
-            else if( $amount )
-            {
-                $balance[$asset] = $amount;
-            }
+            $kv = $data[$i];
+            $balance[(int)$kv['k']] = (int)$kv['v'];
         }
 
-        return $this->balances->set_pair( $aid, $balance, 'j' );
+        return [ 'height' => $data[0]['k'], 'balance' => $balance ];
     }
 
-    public function update_balances( $wtx )
+    public function get_distribution( $aid )
+    {
+        if( !isset( $this->query_get_distribution ) )
+        {
+            $id = W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES;
+            $this->query_get_distribution = $this->checkpoint->db()->prepare( 'SELECT address, amount FROM balances WHERE asset = :aid ORDER BY amount DESC' );
+            if( !is_object( $this->query_get_distribution ) )
+                return false;
+        }
+
+        if( false === $this->query_get_distribution->execute( [ 'aid' => $aid ] ) )
+            return false;
+
+        return $this->query_get_distribution;
+    }
+
+    private function update_procs( $aid, $temp_procs, &$procs )
+    {
+        foreach( $temp_procs as $asset => $amount )
+        {
+            if( $amount === 0 )
+                continue;
+                
+            if( isset( $procs[$aid][$asset] ) )
+                $procs[$aid][$asset] += $amount;
+            else
+                $procs[$aid][$asset] = $amount;
+        }
+    }
+
+    private function commit_procs( $procs, $rollback = false )
+    {
+        foreach( $procs as $address => $aprocs )
+        foreach( $aprocs as $asset => $amount )
+        {
+            if( $rollback )
+                $amount = -$amount;
+
+            if( !isset( $this->queryBalanceId ) )
+            {
+                $this->queryBalanceId = $this->balances->prepare( "SELECT uid FROM balances WHERE address = :address AND asset = :asset" );
+                if( $this->queryBalanceId === false )
+                    return false;
+            }
+
+            if( false === $this->queryBalanceId->execute( [ 'address' => $address, 'asset' => $asset ] ) )
+                return false;
+
+            $uid = $this->queryBalanceId->fetchAll( \PDO::FETCH_ASSOC );
+            $uid = isset( $uid[0]['uid'] ) ? (int)$uid[0]['uid'] : false;
+
+            if( $uid === false )
+            // INSERT
+            {
+                if( !isset( $this->queryBalanceInsert ) )
+                {
+                    $this->queryBalanceInsert = $this->balances->prepare( "INSERT INTO balances( address, asset, amount ) VALUES( :address, :asset, :amount )" );
+                    if( $this->queryBalanceInsert === false )
+                        return false;
+                }
+
+                if( false === $this->queryBalanceInsert->execute( [ 'address' => $address, 'asset' => $asset, 'amount' => $amount ] ) )
+                    return false;
+            }
+            else
+            // UPDATE
+            {
+                if( !isset( $this->queryBalanceUpdate ) )
+                {
+                    $this->queryBalanceUpdate = $this->balances->prepare( "UPDATE balances SET amount = amount + :amount WHERE uid = :uid" );
+                    if( $this->queryBalanceUpdate === false )
+                        return false;
+                }
+
+                if( false === $this->queryBalanceUpdate->execute( [ 'amount' => $amount, 'uid' => $uid ] ) )
+                    return false;
+            }
+        }
+    }
+
+    public function rollback( $transactions, $from )
+    {
+        $local_height = $this->get_height();
+
+        if( $local_height > $from )
+        // ROLLBACK
+        {
+            w8io_warning( "balances (rollback to $from)" );
+
+            if( false === ( $wtxs = $transactions->get_from_to( $from, $local_height ) ) )
+            w8io_error( 'unexpected get_from_to() error' );
+            if( !$this->checkpoint->begin() )
+                w8io_error( 'unexpected begin() error' );
+            $this->apply_transactions( $wtxs, true );
+            if( false === $this->checkpoint->setKeyValue( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES, $from ) )
+                w8io_error( 'set checkpoint_transactions failed' );
+            if( !$this->checkpoint->commit() )
+                w8io_error( 'unexpected commit() error' );
+        }        
+    }
+
+    public function update_balances( $wtx, &$procs )
     {
         $procs_a = [];
         $procs_b = [];
@@ -210,18 +299,16 @@ class w8io_blockchain_balances
                 w8io_error( 'unknown tx type' );
         }
 
-        if( $is_a && $this->commit_balance( $wtx['a'], $procs_a ) === false )
-            w8io_trace( 'commit_balance for a' );
+        if( $is_a )
+            $this->update_procs( $wtx['a'], $procs_a, $procs );
 
-        if( $is_b && $this->commit_balance( $wtx['b'], $procs_b ) === false )
-            w8io_trace( 'commit_balance for b' );
-
-        return true;
+        if( $is_b ) 
+            $this->update_procs( $wtx['b'], $procs_b, $procs );
     }
 
     public function get_all_waves( $ret = false )
     {
-        $balances = $this->balances->get_db()->prepare( "SELECT * FROM balances" );
+        $balances = $this->checkpoint->db()->prepare( "SELECT amount FROM balances WHERE address > 0 AND asset = 0" );
         $balances->execute();
 
         if( $ret )
@@ -230,17 +317,28 @@ class w8io_blockchain_balances
         $waves = 0;
 
         foreach( $balances as $balance )
-        {
-            if( $balance['id'] > 0 )
-            {
-                $values = json_decode( $balance['value'], true, 512, JSON_BIGINT_AS_STRING );
-
-                if( isset( $values[0] ) )
-                    $waves += $values[0];
-            }
-        }
+            $waves += $balance[0];
 
         return $waves;
+    }
+
+    private function apply_transactions( $wtxs, $rollback = false )
+    {
+        $procs = [];
+        $i = 0;
+        foreach( $wtxs as $wtx )
+        {
+            if( $i !== $wtx['block'] )
+            {
+                $i = $wtx['block'];
+                w8io_info( "$i (balances)" );
+            }
+
+            $this->update_balances( $wtx, $procs );
+        }
+
+        if( false === $this->commit_procs( $procs, $rollback ) )
+            w8io_error( 'set commit_procs failed' );
     }
 
     public function update( $upcontext )
@@ -252,93 +350,22 @@ class w8io_blockchain_balances
 
         if( $local_height !== $from )
         {
-            if( $local_height > $from )
-            {
-                $backup = W8IO_DB_BLOCKCHAIN_BALANCES . '.backup';
-                if( file_exists( $backup ) )
-                {
-                    unset( $this->checkpoint );
-                    unset( $this->balances );
-
-                    $backup_diff = md5_file( $backup ) !== md5_file( W8IO_DB_BLOCKCHAIN_BALANCES );
-
-                    if( $backup_diff )
-                    {
-                        unlink( W8IO_DB_BLOCKCHAIN_BALANCES );
-                        copy( $backup, W8IO_DB_BLOCKCHAIN_BALANCES );
-                        chmod( W8IO_DB_BLOCKCHAIN_BALANCES, 0666 );
-                        if( file_exists( W8IO_DB_BLOCKCHAIN_BALANCES . '-shm' ) )
-                            chmod( W8IO_DB_BLOCKCHAIN_BALANCES . '-shm', 0666 );
-                        if( file_exists( W8IO_DB_BLOCKCHAIN_BALANCES . '-wal' ) )
-                            chmod( W8IO_DB_BLOCKCHAIN_BALANCES . '-wal', 0666 );
-                    }
-
-                    $this->__construct();
-
-                    if( $backup_diff )
-                    {
-                        w8io_warning( 'restoring from backup (balances)' );
-                        return $this->update( $upcontext );
-                    }
-                }
-
-                w8io_warning( 'full reset (balances)' );
-                $this->balances->reset();
-                $local_height = 0;
-
-                if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES, $local_height ) )
-                    w8io_error( 'set checkpoint_transactions failed' );
-            }
-
             $from = min( $local_height, $from );
+
+            if( $local_height > $from )
+                w8io_error( 'unexpected balances rollback' );
         }
 
         $to = min( $to, $from + W8IO_MAX_UPDATE_BATCH );
-
-        $wtxs = $transactions->get_from_to( $from, $to );
-        if( $wtxs === false )
+        if( false === ( $wtxs = $transactions->get_from_to( $from, $to ) ) )
             w8io_error( 'unexpected get_from_to() error' );
-
-        if( !$this->balances->begin() )
+        if( !$this->checkpoint->begin() )
             w8io_error( 'unexpected begin() error' );
-
-        $i = 0;
-        foreach( $wtxs as $wtx )
-        {
-            if( $i !== $wtx['block'] )
-            {
-                $i = $wtx['block'];
-                w8io_trace( 'i', "$i (balances)" );
-            }
-
-            if( !$this->update_balances( $wtx ) )
-                w8io_error( 'unexpected update_balances() error' );
-        }
-
-        if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES, $to ) )
+        $this->apply_transactions( $wtxs );
+        if( false === $this->checkpoint->setKeyValue( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES, $to ) )
             w8io_error( 'set checkpoint_transactions failed' );
-
-        if( !$this->balances->commit() )
+        if( !$this->checkpoint->commit() )
             w8io_error( 'unexpected commit() error' );
-
-        if( $to % 1337 === 0 )
-        {
-            $copy = W8IO_DB_BLOCKCHAIN_BALANCES . '.copy';
-            $backup = W8IO_DB_BLOCKCHAIN_BALANCES . '.backup';
-
-            if( file_exists( $copy ) )
-            {
-                if( file_exists( $backup ) )
-                    unlink( $backup );
-
-                rename( $copy, $backup );
-            }
-
-            unset( $this->checkpoint );
-            unset( $this->balances );
-            copy( W8IO_DB_BLOCKCHAIN_BALANCES, $copy );
-            $this->__construct();
-        }
 
         return [ 'from' => $from, 'to' => $to ];
     }

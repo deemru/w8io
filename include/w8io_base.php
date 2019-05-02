@@ -108,10 +108,10 @@ function w8io_aggregate_jsons( $db, $from, $to, $q, $sum = [] )
 {       
     for( $i = $from; $i <= $to; $i += $q )
     {
-        $json = $db->get_value( $i, 'j' );
+        $json = $db->getValue( $i, 'j' );
 
         if( false === $json )
-            w8io_error( 'get_value() failed' );
+            w8io_error( 'getValue() failed' );
 
         foreach( $json as $type => $value )
         {

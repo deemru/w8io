@@ -1,27 +1,22 @@
 <?php
 
+require_once __DIR__ . '/vendor/autoload.php';
 require_once 'w8io_config.php';
 
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'CHARTS/100000/200000';
+    $uri = 'api/DQL6mCgJydARBit3CWQCS2Dv9428X2fT8Gc8qG7qsk5C4TL5rb1KKWYPsMx2jGcvk4Smhd8wwNRpUGDR4nAMCDNQp';
+    //$uri = 't';
 
-$uri = explode( '/', $uri );
+$uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $uri . chr( 0 ) ) );
 
-function flt( $string )
-{
-    $filter = preg_filter( '/[^a-zA-Z0-9_.@\-]+/', '', $string );
-    return isset( $filter ) ? $filter : $string;
-}
-
-$address = flt( $uri[0] );
-
-$f = isset( $uri[1] ) ? flt( $uri[1] ) : false;
-$arg = isset( $uri[2] ) ? flt( $uri[2] ) : false;
-$arg2 = isset( $uri[3] ) ? flt( $uri[3] ) : false;
-$arg3 = isset( $uri[4] ) ? flt( $uri[4] ) : false;
-$arg4 = isset( $uri[5] ) ? flt( $uri[5] ) : false;
+$address = $uri[0];
+$f = isset( $uri[1] ) ? $uri[1] : false;
+$arg = isset( $uri[2] ) ? $uri[2] : false;
+$arg2 = isset( $uri[3] ) ? $uri[3] : false;
+$arg3 = isset( $uri[4] ) ? $uri[4] : false;
+$arg4 = isset( $uri[5] ) ? $uri[5] : false;
 
 $light = ( isset( $_COOKIE['light'] ) && (bool)$_COOKIE['light'] ) ? true : false;
 if( $address === 'ld' )
@@ -55,6 +50,34 @@ if( $address === 'GENERATORS' )
 else
 if( $address === 'api' )
 {
+    if( strlen( $f ) > 20 )
+    {
+        $wk = wk();
+        if( false === ( $f = $wk->base58Decode( $f ) ) ||
+            false === ( $call = $wk->decryptash( $f ) ) ||
+            false === ( $call = $wk->json_decode( $call ) ) )
+            exit( $wk->log( 'e', 'bad API call' ) );
+
+        switch( $call['f'] )
+        {
+            case 't':
+            {
+                require_once './include/w8io_blockchain_transactions.php';
+                require_once './include/w8io_api.php';
+                $api = new w8io_api();
+                
+                $aid = $call['i'];
+                $where = $call['w'];
+                $uid = $call['u'];
+                $address = $call['a'];
+
+                w8io_print_transactions( $aid, $where, $uid, 100, $address, !( $f === 'f' ) );
+                return;
+            }
+        }
+
+        exit( $wk->log( 'e', 'bad API call' ) );
+    }
     if( $f === 'chart' )
     {
         require_once './include/w8io_base.php';
@@ -81,7 +104,7 @@ if( $address === 'api' )
         $total = $dataset['totals']['txs'];
         $out .= ", total ($total)";
 
-        $types = [ 1, 101, 102, 110, 105, 106, 107, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ];
+        $types = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ];
         foreach( $types as $i )
         {
             $name = w8io_tx_type( $i );
@@ -127,6 +150,7 @@ else
 }
 
 echo sprintf( '
+<!DOCTYPE html>
 <html>
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -136,6 +160,53 @@ echo sprintf( '
         <meta name="format-detection" content="email=no">
         <title>w8io%s</title>
         <link rel="shortcut icon" href="%sfavicon.ico" type="image/x-icon">
+        <script type="text/javascript" src="%sjquery.js" charset="UTF-8"></script>
+<script>
+$(document).ready( function()
+{
+    g_loading = false;
+    g_lazyload = $(".lazyload");
+    if( g_lazyload.length )
+    {
+        $(window).scroll( lazyload );
+        lazyload();
+    }
+} );
+
+function lazyload()
+{
+    if( g_loading )
+        return;
+
+    var wt = this.scrollY;
+    var wb = wt + this.innerHeight;
+    var ot = g_lazyload.offset().top;
+    var ob = ot + g_lazyload.height();
+
+    if( wt <= ob && wb >= ot )
+    {
+        g_loading = true;
+        $.get( g_lazyload.attr( "url" ), null, function( data )
+        {
+            g_lazyload.remove();
+
+            if( data )
+            {
+                $(".base").append( data );
+
+                g_lazyload = $(".lazyload");
+                if( g_lazyload.length )
+                {
+                    g_loading = false;
+                    return lazyload();
+                }
+            }
+
+            $(window).off( "scroll", lazyload );
+        } );
+    }
+}
+</script>
     </head>
     <style>
         body, table
@@ -160,7 +231,7 @@ echo sprintf( '
     </style>
     <body>
         <pre>
-', empty( $address ) ? '' : " / $address", W8IO_ROOT,
+', empty( $address ) ? '' : " / $address", W8IO_ROOT, W8IO_ROOT,
 isset( $showtime ) ? '0.66vw' : '0.90vw',
 $bcolor, $tcolor,
 isset( $showtime ) ? 'margin: 1em 2em 1em 2em; filter: brightness(144%);' : '',
@@ -170,7 +241,6 @@ isset( $showtime ) ? 'text-decoration: none;' : '' );
 if( empty( $address ) )
     $address = 'GENESIS';
 
-require_once './include/w8io_nodes.php';
 require_once './include/w8io_blockchain.php';
 require_once './include/w8io_blockchain_transactions.php';
 require_once './include/w8io_blockchain_balances.php';
@@ -192,10 +262,77 @@ if( $f === 'f' )
 elseif( $arg !== false )
     $arg = (int)$arg;
 
-function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
+function w8io_amount( $amount, $decimals, $pad = 20 )
 {
+    $amount = (string)$amount;
+    if( $decimals )
+    {
+        if( strlen( $amount ) <= $decimals )
+            $amount = str_pad( $amount, $decimals + 1, '0', STR_PAD_LEFT );
+        $amount = substr_replace( $amount, '.', -$decimals, 0 );
+    }
+
+    return $pad ? str_pad( $amount, $pad, ' ', STR_PAD_LEFT ) : $amount;
+}
+
+function w8io_print_distribution( $assetId )
+{
+    global $api;
+
+    if( $assetId )
+    {
+        $info = $api->get_asset_info( $assetId );
+        $decimals = $info['decimals'];
+        $name = $info['name'];
+    }
+    else
+    {
+        $decimals = 8;
+        $name = 'Waves';
+    }
+    
+    $balances = $api->get_asset_distribution( $assetId );
+    $total = 0;
+    foreach( $balances as $balance )
+    {
+        $aid = (int)$balance[0];
+        if( $aid > 0 )
+        {
+            $amount = (int)$balance[1];
+            if( $amount === 0 )
+                break;
+            $address = $api->get_address( $aid );
+            $total += $amount;
+            $amount = w8io_amount( $amount, $decimals );
+            echo '<a href="' . W8IO_ROOT . $address . '\">' . $address . '</a>: ' . $amount . PHP_EOL;
+        }    
+    }
+}
+
+function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = true )
+{
+    global $api;
+
+    $wtxs = $api->get_transactions_where( $aid, $where, $uid, $count + 1 );
+
+    $n = 0;
     foreach( $wtxs as $wtx )
     {
+        if( $count && ++$n > $count )
+        {
+            $wk = wk();
+            $call = [
+                'f' => 't',
+                'i' => $aid,
+                'w' => $where,
+                'u' => $wtx['uid'],
+                'a' => $address,
+            ];
+            $call = W8IO_ROOT . 'api/' . $wk->base58Encode( $wk->encryptash( json_encode( $call ) ) );
+            echo '<pre class="lazyload" url="' . $call . '">...</pre>';
+            return;
+        }
+
         $wtx = w8io_filter_wtx( $wtx );
 
         $type = $wtx['type'];
@@ -211,14 +348,14 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
                 continue;
 
             $decimals = $info['decimals'];
-            $amount = number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' );
+            $amount = w8io_amount( $amount, $decimals, 0 );
             $furl = W8IO_ROOT . "$address/f/{$info['id']}";
             $asset = " <a href=\"$furl\">{$info['name']}</a>";
             $amount = ' ' . ( $b === $aid ? '+' : '-' ) . $amount;
         }
         else if( $b !== - 3 )
         {
-            $amount = number_format( $amount / 100000000, 8, '.', '' );
+            $amount = w8io_amount( $amount, 8, 0 );
             $furl = W8IO_ROOT . "$address/f/Waves";
             $asset = " <a href=\"$furl\">Waves</a>";
             $amount = ' ' . ( $b === $aid ? '+' : '-' ) . $amount;
@@ -245,13 +382,13 @@ function w8io_print_transactions( $aid, $address, $wtxs, $api, $spam = true )
                 $info = $api->get_asset_info( $afee );
                 $afee = $info['name'];
                 $decimals = $info['decimals'];
-                $fee = number_format( $fee / pow( 10, $decimals ), $decimals, '.', '' );
+                $fee = w8io_amount( $fee, $decimals, 0 );
                 $fee = " ($fee <a href=\"" . W8IO_ROOT . "$address/f/{$info['id']}\">$afee</a> fee)";
             }
             else
             {
                 $afee = "Waves";
-                $fee = number_format( $fee / 100000000, 8, '.', '' );
+                $fee = w8io_amount( $fee, 8, 0 );
                 $fee = " ($fee <a href=\"" . W8IO_ROOT . "$address/f/Waves\">Waves</a> fee)";
             }
         }
@@ -426,7 +563,7 @@ if( $address === 'GENERATORS' )
 
         $balance = $generator['balance'];
         $percent = str_pad( number_format( $gentotal ? ( $balance / $gentotal * 100 ) : 0, 2, '.', '' ) . '%', 7, ' ', STR_PAD_LEFT );
-        $balance = str_pad( number_format( $balance / 100000000, 0, '', ' ' ), 10, ' ', STR_PAD_LEFT );
+        $balance = str_pad( number_format( $balance / 100000000, 0, '', "'" ), 10, ' ', STR_PAD_LEFT );
 
         $wtxs = $generator['wtxs'];
         $count = count( $wtxs );
@@ -443,7 +580,7 @@ if( $address === 'GENERATORS' )
         }
 
         $feetotal += $fee;
-        $fee = str_pad( number_format( $fee / 100000000, 8, '.', '' ), 14, ' ', STR_PAD_LEFT );
+        $fee = w8io_amount( $fee, 8, 14 );
 
         $mxprint = '';
         for( $i = 0; $i < $Q; $i++ )
@@ -472,7 +609,7 @@ if( $address === 'GENERATORS' )
     }
 
     $ntotal = str_pad( isset( $showtime ) ? $n : '', isset( $showtime ) ? 4 : 3, ' ', STR_PAD_LEFT );
-    $gentotal = str_pad( number_format( $gentotal / 100000000, 0, '', '.' ), 80, ' ', STR_PAD_LEFT );
+    $gentotal = str_pad( number_format( $gentotal / 100000000, 0, '', "'" ), 80, ' ', STR_PAD_LEFT );
     $feetotal = str_pad( number_format( $feetotal / 100000000, 8, '.', '' ), ( isset( $showtime ) ? 48 : 0 ) + 104, ' ', STR_PAD_LEFT );
 
     echo "<small style=\"font-size: 50%;\"><br></small><b>$ntotal $gentotal $feetotal</b> ($blktotal)" .  PHP_EOL;
@@ -480,40 +617,6 @@ if( $address === 'GENERATORS' )
     if( isset( $showtime ) )
         for( $i = $n; $i <= 64; $i++ )
             echo PHP_EOL;
-}
-else
-if( $address === 'SUM' )
-{
-    $balances = $api->get_all_balances();
-
-    $sum = [];
-
-    foreach( $balances as $balance )
-    {
-        if( $balance['id'] > 0 )
-        {
-            $values = json_decode( $balance['value'], true, 512, JSON_BIGINT_AS_STRING );
-
-            if( isset( $values[0] ) || isset( $values[W8IO_ASSET_WAVES_LEASED] ) )
-            {
-                $waves = isset( $values[0] ) ? $values[0] : 0;
-                $waves += isset( $values[W8IO_ASSET_WAVES_LEASED] ) ? $values[W8IO_ASSET_WAVES_LEASED] : 0;
-                if( $waves >= 100000000000 )
-                    $sum[$api->get_address( $balance['id'] )] = $waves;
-            }
-        }
-    }
-
-    arsort( $sum );
-
-    foreach( $sum as $address => $waves )
-    {
-
-        $amount = str_pad( number_format( $waves / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
-        $url = W8IO_ROOT . "$address";
-
-        echo "$amount Waves -- <a href=\"$url\">$address</a>" . PHP_EOL;
-    }
 }
 else
 {
@@ -528,8 +631,19 @@ else
     $aid = $api->get_aid( $address );
     if( $aid === false )
     {
-        $wtxs = $api->get_transactions_where( false, $where, 1000 );
-        w8io_print_transactions( false, $address, $wtxs, $api, !( $f === 'f' ) );
+        $assetId = $address === 'WAVES' ? 0 : $api->get_asset( $address );
+        if( $assetId === false )
+        {
+            echo '<pre class="base">';
+            w8io_print_transactions( false, $where, false, 100, $address, !( $f === 'f' ) );
+            echo '</pre>';
+        }
+        else
+        {
+            echo '<pre class="base">';
+            w8io_print_distribution( $assetId );
+            echo '</pre>';
+        }
     }
     else
     {
@@ -543,7 +657,7 @@ else
         $balance = $balance['balance'];
         $full_address = $full_address !== $address ? " / <a href=\"". W8IO_ROOT . $full_address ."\">$full_address</a>" : '';
 
-        echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height" . PHP_EOL . PHP_EOL;
+        echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height" . PHP_EOL;
         echo '<table><tr><td valign="top"><pre>';
 
         $tickers = [];
@@ -555,7 +669,7 @@ else
         // WAVES
         {
             $asset = "Waves";
-            $amount = str_pad( number_format( $balance[0] / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
+            $amount = w8io_amount( $balance[0], 8 );
 
             $furl = W8IO_ROOT . "$address/f/Waves";
 
@@ -566,10 +680,10 @@ else
         {
             $amount = $balance[W8IO_ASSET_WAVES_LEASED] + ( isset( $balance[0] ) ? $balance[0] : 0 );
 
-            if( $amount > 100000000000 )
+            if( $balance[0] !== $amount )
             {
                 $asset = "Waves (GENERATOR)";
-                $amount = str_pad( number_format( $amount / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT );
+                $amount = w8io_amount( $amount, 8 );
 
                 $furl = W8IO_ROOT . "$address/f/Waves";
 
@@ -588,7 +702,7 @@ else
                 $b = $asset === $arg;
                 $asset = $info['name'];
                 $decimals = $info['decimals'];
-                $amount = str_pad( number_format( $amount / pow( 10, $decimals ), $decimals, '.', '' ), 24, ' ', STR_PAD_LEFT );
+                $amount = w8io_amount( $amount, $decimals );
 
                 $id = $info['id'];
                 $furl = W8IO_ROOT . "$address/f/$id";
@@ -619,7 +733,7 @@ else
             echo "$bs{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>$be" . PHP_EOL;
         }
 
-        echo "------------------------------------------&nbsp;" . PHP_EOL;
+        echo '<span style="color:#606870">'.str_repeat( '—', 38) . '&nbsp;</span>' .  PHP_EOL;
 
         foreach( $unlisted as $record )
         {
@@ -635,13 +749,10 @@ else
             echo "$bs{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>$be" . PHP_EOL;
         }
 
-        echo '</pre></td><td valign="top"><pre>';
+        echo '</pre></td><td valign="top"><pre class="base">';
 
         if( $f !== 'pay' )
-        {
-            $wtxs = $api->get_transactions_where( $aid, $where, 1000 );
-            w8io_print_transactions( $aid, $address, $wtxs, $api, !( $f === 'f' ) );
-        }
+            w8io_print_transactions( $aid, $where, false, 100, $address, !( $f === 'f' ) );
         else
         {
             $from = $arg;
@@ -696,8 +807,8 @@ else
                 $mrt_fees = intval( $mrt_fees * $percent / 100 );
 
                 echo "pay ($from .. $to) ($percent %):" . PHP_EOL . PHP_EOL;
-                echo str_pad( number_format( $waves_fees / 100000000, 8, '.', '' ), 24, ' ', STR_PAD_LEFT ) . " Waves" . PHP_EOL;
-                echo str_pad( number_format( $mrt_fees / 100, 2, '.', '' ), 24, ' ', STR_PAD_LEFT ) . " MinersReward" . PHP_EOL;
+                echo w8io_amount( $waves_fees, 8 ) . " Waves" . PHP_EOL;
+                echo w8io_amount( $mrt_fees, 2 ) . " MinersReward" . PHP_EOL;
 
                 $payments = [];
                 foreach( $incomes as $a => $p )
@@ -772,7 +883,7 @@ else
     }
 }
 
-echo '</pre></td></tr></table>'. PHP_EOL . PHP_EOL;
+echo '</pre></td></tr></table>';
 echo '<hr><div width="100%" align="right"><pre><small>';
 echo "<a href=\"https://github.com/deemru/w8io\">github/deemru/w8io</a>";
 if( file_exists( '.git/FETCH_HEAD' ) )

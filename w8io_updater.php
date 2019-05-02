@@ -4,15 +4,29 @@ require_once __DIR__ . '/include/error_handler.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
 use deemru\WavesKit;
+use deemru\Pairs;
 
 require_once 'w8io_config.php';
-require_once './include/w8io_nodes.php';
+require_once './include/w8io_base.php';
 require_once './include/w8io_blockchain.php';
 require_once './include/w8io_blockchain_transactions.php';
 require_once './include/w8io_blockchain_balances.php';
 require_once './include/w8io_blockchain_aggregate.php';
 
 $wk = new WavesKit( W8IO_NETWORK );
+$nodes = explode( '|', W8IO_NODES );
+$wk->setNodeAddress( $nodes[0], 1, array_slice( $nodes, 1 ) );
+
+if( 0 )
+{
+    $a = '3PAWwWa6GbwcJaFzwqXQN5KQm7H96Y7SHTQ';
+
+    $tt = microtime( true );
+    for( $i = 0; $i < 200; $i++ )
+        $ab = $wk->base58Encode( $a );
+
+        exit( $wk->log( 'i', ( microtime( true ) - $tt ) ) );
+}
 
 require_once __DIR__ . '/include/secqru_flock.php';
 $lock = new \secqru_flock( W8IO_DB_DIR . 'w8io.lock' );
@@ -23,6 +37,8 @@ w8io_trace( 'i', 'w8io_updater started' );
 
 function update_proc( $blockchain, $transactions, $balances, $aggregate )
 {
+    global $wk;
+
     $timer = 0;
     w8io_timer( $timer );
 
@@ -33,7 +49,7 @@ function update_proc( $blockchain, $transactions, $balances, $aggregate )
         {
             for( ;; )
             {
-                $transactions_from_to = $transactions->update( $blockchain_from_to );
+                $transactions_from_to = $transactions->update( $blockchain_from_to, $balances );
                 if( !is_array( $transactions_from_to ) )
                     w8io_error( 'unexpected update transactions error' );
 
@@ -215,15 +231,21 @@ $transactions = new w8io_blockchain_transactions();
 $balances = new w8io_blockchain_balances();
 $aggregate = new w8io_blockchain_aggregate();
 
+$wk->setBestNode();
+$wk->log( 'i', "setBestNode = " . $wk->getNodeAddress() );
+
+$update_addon = defined( 'W8IO_UPDATE_ADDON' ) && W8IO_UPDATE_ADDON && W8IO_NETWORK === 'W';
+$sleep = defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17;
+
 for( ;; )
 {
     update_proc( $blockchain, $transactions, $balances, $aggregate );
 
-    if( W8IO_NETWORK === 'W' )
+    if( $update_addon )
     {
         update_tickers( $transactions );
         update_scam( $transactions );
     }
 
-    sleep( defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17 );
+    sleep( $sleep );
 }

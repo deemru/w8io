@@ -1,26 +1,20 @@
 <?php
 
-require_once 'w8io_pairs.php';
-require_once 'w8io_nodes.php';
+use deemru\WavesKit;
+use deemru\Pairs;
 
 class w8io_blockchain
 {
-    private $blocks;
-    private $checkpoint;
-    private $nodes;
-
-    private $last_update = 0;
-
     public function __construct( $writable = true )
     {
-        $this->blocks = new w8io_pairs( W8IO_DB_BLOCKCHAIN, 'blocks', $writable, 'INTEGER PRIMARY KEY|BLOB|0|0', W8IO_CACHE_BLOCKS );
-        $this->checkpoint = new w8io_pairs( $this->blocks->get_db(), 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-        $this->nodes = new w8io_nodes( explode( '|', W8IO_NODES ) );
+        $this->blocks = new Pairs( W8IO_DB_BLOCKCHAIN, 'blocks', $writable, 'INTEGER PRIMARY KEY|BLOB|0|0', W8IO_CACHE_BLOCKS );
+        $this->checkpoint = new Pairs( $this->blocks->db(), 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+        $this->last_update = 0;
     }
 
     public function get_height()
     {
-        $height = $this->checkpoint->get_value( W8IO_CHECKPOINT_BLOCKCHAIN, 'i' );
+        $height = $this->checkpoint->getValue( W8IO_CHECKPOINT_BLOCKCHAIN, 'i' );
 
         if( !$height )
             return 0;
@@ -30,21 +24,20 @@ class w8io_blockchain
 
     public function get_block( $at )
     {
-        return $this->blocks->get_value( $at, 'jz' );
+        return $this->blocks->getValue( $at, 'jz' );
     }
 
     private function set_block( $block )
     {
-        return $this->blocks->set_pair( $block['height'], $block, 'jz' );
+        return $this->blocks->setKeyValue( $block['height'], $block, 'jz' );
     }
 
-    public function update( $trynext = false )
+    public function update()
     {
-        if( $trynext )
-            $this->nodes->trynext();
+        global $wk;
 
         $from = $this->get_height();
-        $to = $this->nodes->get_height();
+        $to = $wk->height();
         $shift = 0;
 
         if( !$to )
@@ -60,13 +53,13 @@ class w8io_blockchain
         {
             $rollback = false;
 
-            if( !$trynext && $this->last_update && time() - $this->last_update > 300 )
+            if( $this->last_update && time() - $this->last_update > 300 )
             {
                 // rollback detection
                 if( W8IO_NETWORK !== 'W' && $to < $from )
                 {
                     $local_block = $this->get_block( $to );
-                    $nodes_block = $this->nodes->get_block( $to );
+                    $nodes_block = $wk->getBlockAt( $to );
                     if( $nodes_block === false )
                     {
                         w8io_trace( 'w', "can not get_block()" );
@@ -83,8 +76,10 @@ class w8io_blockchain
 
                 if( !$rollback )
                 {
-                    w8io_trace( 'w', 'no new blocks for 300 seconds (try next node)' );
-                    return $this->update( true );
+                    w8io_trace( 'w', 'no new blocks for 300 seconds (setBestNode)' );
+                    $wk->setBestNode();
+                    $wk->log( 'i', "setBestNode = " . $wk->getNodeAddress() );
+                    return $this->update();
                 }
             }
 
@@ -99,7 +94,7 @@ class w8io_blockchain
         {
             // check new blocks
             $local_block = $this->get_block( $from );
-            $nodes_block = $this->nodes->get_block( $from + 1 );
+            $nodes_block = $wk->getBlockAt( $from + 1 );
             if( $nodes_block === false )
             {
                 w8io_trace( 'w', "can not get_block()" );
@@ -126,7 +121,7 @@ class w8io_blockchain
                     break;
 
                 $local_block = $this->get_block( $from );
-                $nodes_block = $this->nodes->get_block( $from );
+                $nodes_block = $wk->getBlockAt( $from );
                 if( $nodes_block === false )
                 {
                     w8io_trace( 'w', 'can not get_block()' );
@@ -148,7 +143,7 @@ class w8io_blockchain
 
         for( $i = $from + $shift + 1; $i <= $to; $i++ )
         {
-            if( false === ( $nodes_block = $this->nodes->get_block( $i ) ) )
+            if( false === ( $nodes_block = $wk->getBlockAt( $i ) ) )
             {
                 w8io_trace( 'w', 'can not get_block()' );
                 $this->blocks->rollback();
@@ -169,7 +164,7 @@ class w8io_blockchain
             $signature = $nodes_block['signature'];
         }
 
-        if( false === $this->checkpoint->set_pair( W8IO_CHECKPOINT_BLOCKCHAIN, $i - 1 ) )
+        if( false === $this->checkpoint->setKeyValue( W8IO_CHECKPOINT_BLOCKCHAIN, $i - 1 ) )
             w8io_error( 'set checkpoint_transactions failed' );
 
         if( !$this->blocks->commit() )
