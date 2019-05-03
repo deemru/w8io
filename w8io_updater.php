@@ -106,7 +106,7 @@ function update_proc( $blockchain, $transactions, $balances, $aggregate )
 
 function update_tickers( $transactions )
 {
-    $tickers_file = './var/tickers.txt';
+    $tickers_file = W8IO_DB_DIR . 'tickers.txt';
 
     if( file_exists( $tickers_file ) )
     {
@@ -141,8 +141,9 @@ function update_tickers( $transactions )
     else
         $last_tickers = [];
 
-    $fresh_tickers = new w8io_nodes( [ 'marketdata.wavesplatform.com' ] );
-    $fresh_tickers = $fresh_tickers->get( '/api/tickers' );
+    $wkt = new WavesKit();
+    $wkt->setNodeAddress( 'https://marketdata.wavesplatform.com' );
+    $fresh_tickers = $wkt->fetch( '/api/tickers' );
     if( $fresh_tickers === false )
     {
         w8io_trace( 'w', 'fresh_tickers->get() failed' );
@@ -181,7 +182,7 @@ function update_tickers( $transactions )
 
 function update_scam( $transactions )
 {
-    $scam_file = './var/scam.txt';
+    $scam_file = W8IO_DB_DIR . 'scam.txt';
 
     if( file_exists( $scam_file ) )
     {
@@ -200,8 +201,9 @@ function update_scam( $transactions )
     else
         $last_scam = [];
 
-    $fresh_scam = new w8io_nodes( [ 'raw.githubusercontent.com' ] );
-    $fresh_scam = $fresh_scam->get( '/wavesplatform/waves-community/master/Scam%20tokens%20according%20to%20the%20opinion%20of%20Waves%20Community.csv' );
+    $wks = new WavesKit();
+    $wks->setNodeAddress( 'https://raw.githubusercontent.com' );
+    $fresh_scam = $wks->fetch( '/wavesplatform/waves-community/master/Scam%20tokens%20according%20to%20the%20opinion%20of%20Waves%20Community.csv' );
     if( $fresh_scam === false )
     {
         w8io_warning( 'fresh_scam->get() failed' );
