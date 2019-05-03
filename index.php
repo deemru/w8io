@@ -270,6 +270,14 @@ elseif( $arg !== false )
 
 function w8io_amount( $amount, $decimals, $pad = 20 )
 {
+    if( $amount < 0 )
+    {
+        $sign = '-';
+        $amount = -$amount;
+    }
+    else
+        $sign = '';
+
     $amount = (string)$amount;
     if( $decimals )
     {
@@ -278,6 +286,7 @@ function w8io_amount( $amount, $decimals, $pad = 20 )
         $amount = substr_replace( $amount, '.', -$decimals, 0 );
     }
 
+    $amount = $sign . $amount;
     return $pad ? str_pad( $amount, $pad, ' ', STR_PAD_LEFT ) : $amount;
 }
 
@@ -699,6 +708,9 @@ else
 
         foreach( $balance as $asset => $amount )
         {
+            if( $amount === 0 )
+                continue;
+
             if( $asset > 0 )
             {
                 $info = $api->get_asset_info( $asset );
