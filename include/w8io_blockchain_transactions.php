@@ -591,8 +591,6 @@ class w8io_blockchain_transactions
 
     private function set_transactions( $block )
     {
-        global $wk;
-
         $at = $block['height'];
         $txs = $block['transactions'];
 
@@ -602,251 +600,318 @@ class w8io_blockchain_transactions
             $prev_wtxs = false;
 
         $this->wtxs = [];
-
         foreach( $txs as $tx )
-        {
-            $type = $tx['type'];
-            $wtx = [];
-            $wtx['txid'] = $this->get_pair_txid( $wk->base58Decode( $tx['id'] ), true );
-            $wtx['block'] = $at;
-            $wtx['type'] = $type;
-            $wtx['timestamp'] = $this->timestamp( $tx['timestamp'] );
-            $wtx['amount'] = isset( $tx['amount'] ) ? $tx['amount'] : 0;
-            $wtx['asset'] = 0;
-            $wtx['fee'] = isset( $tx['fee'] ) ? $tx['fee'] : 0;
-            $wtx['afee'] = 0;
-            $wtx['data'] = false;
-            $saved = false;
-
-            switch( $type )
-            {
-                case 1: // genesis
-                    $wtx['a'] = 'GENESIS';
-                    $wtx['b'] = $tx['recipient'];
-                    break;
-                case 101: // genesis role
-                    $wtx['a'] = 'GENESIS';
-                    $wtx['b'] = $tx['target'];
-                    $wtx['data'] = [ 'd' => $this->get_dataid( $tx['role'], true ) ];
-                    break;
-                case 102: // role
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = $tx['target'];
-                    //$wtx['data'] = [ 'opType' => $this->get_dataid( $tx['opType'], true ) ];
-                    $wtx['data'] = [ 'd' => $this->get_dataid( $tx['role'], true ) ];
-                    //$wtx['data'] = [ 'dueTimestamp' => $this->get_dataid( $tx['dueTimestamp'], true ) ];
-                    break;
-                case 110: // genesis unknown
-                    $wtx['a'] = 'GENESIS';
-                    $wtx['b'] = $tx['target'];
-                    break;
-                case 105: // data unknown
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = 'NULL';
-                    break;
-                case 106: // invoke 1 unknown
-                case 107: // invoke 2 unknown
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = 'NULL';
-                    break;
-                case 2: // payment
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = $tx['recipient'];
-                    break;
-                case 3: // issue
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = 'NULL';
-                    $wtx['amount'] = $tx['quantity'];
-                    {
-                        $asset = $this->get_assetid( $tx['assetId'], true );
-
-                        $tx['name'] = htmlentities( trim( preg_replace( '/\s+/', ' ', $tx['name'] ) ) );
-                        if( $this->pairs_asset_info->setKeyValue( $asset, $tx, 'j' ) === false )
-                            w8io_error();
-
-                        $wtx['asset'] = $asset;
-                    }
-                    break;
-                case 4: // transfer
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = $tx['recipient'];
-                    {
-                        $attachment = $tx['attachment'];
-                        if( is_string( $attachment ) && strlen( $attachment ) > 0 )
-                            $wtx['data'] = [ 'd' => $this->get_dataid( $attachment, true ) ];
-                    }
-                    {
-                        if( null !== ( $asset = $tx['assetId'] ) )
-                            $wtx['asset'] = $this->get_assetid( $asset );
-
-                        if( null !== ( $asset = $tx['feeAssetId'] ) )
-                            $wtx['afee'] = $this->get_assetid( $asset );
-                    }
-                    break;
-                case 5: // reissue
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = 'NULL';
-                    $wtx['amount'] = $tx['quantity'];
-                    $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
-                    break;
-                case 6: // burn
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = 'NULL';
-                    $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
-                    break;
-                case 7: // exchange
-                    {
-                        $buyer = $tx['order1'];
-                        $seller = $tx['order2'];
-                        $ba = $this->get_aid( $buyer['sender'] );
-                        $sa = $this->get_aid( $seller['sender'] );
-
-                        $basset = $buyer['assetPair']['amountAsset'];
-                        $basset = $basset !== null ? $this->get_assetid( $basset ) : 0;
-
-                        $sasset = $buyer['assetPair']['priceAsset'];
-                        $sasset = $sasset !== null ? $this->get_assetid( $sasset ) : 0;
-                    }
-                    {
-                        $bfee = $tx['buyMatcherFee'];
-                        $sfee = $tx['sellMatcherFee'];
-                        $fee = $tx['fee'];
-                        $amount = $tx['amount'];
-                    }
-                    // MATCHER;
-                    {
-                        $wtx['a'] = 'MATCHER';
-                        $wtx['b'] = $tx['sender'];
-                        $wtx['amount'] = $bfee + $sfee - $fee;
-
-                        if( !$this->set_tx( $wtx ) )
-                            w8io_error();
-                    }
-                    // SELLER -> BUYER
-                    {
-                        $wtx['a'] = $sa;
-                        $wtx['b'] = $ba;
-                        $wtx['amount'] = $amount;
-                        $wtx['asset'] = $basset;
-                        $wtx['fee'] = $sfee;
-
-                        if( !$this->set_tx( $wtx ) )
-                            w8io_error();
-                    }
-                    // BUYER -> SELLER
-                    {
-                        $wtx['a'] = $ba;
-                        $wtx['b'] = $sa;
-                        $wtx['amount'] = gmp_intval( gmp_div( gmp_mul( $tx['price'], $amount ), 100000000 ) );
-                        $wtx['asset'] = $sasset;
-                        $wtx['fee'] = $bfee;
-
-                        if( !$this->set_tx( $wtx ) )
-                            w8io_error();
-                    }
-                    $saved = true;
-                    break;
-                case 8: // start lease
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = $tx['recipient'];
-                    break;
-                case 9: // cancel lease
-                    $wtx['a'] = $tx['sender'];
-                    {
-                        $wtxs = $this->get_txid( $this->get_pair_txid( $wk->base58Decode( $tx['leaseId'] ) ) );
-                        if( $wtxs === false )
-                            w8io_error();
-
-                        $wtx_lease = $wtxs[0];
-                        $wtx['b'] = $wtx_lease['b'];
-
-                        if( count( $wtxs ) === 1 )
-                        {
-                            $wtx['txid'] = $wtx_lease['txid'];
-                            $wtx['amount'] = $wtx_lease['amount'];
-                        }
-                        else
-                        {
-                            $wtx['amount'] = 0; // already cancelled
-                        }
-                    }
-                    break;
-                case 10: // alias
-                    $wtx['b'] = 'NULL';
-                    {
-                        $aid = $this->get_aid( $tx['sender'], $wtx['fee'] === 0 ? true : false );
-
-                        $wtx['a'] = $aid;
-
-                        $alias = $tx['alias'];
-
-                        if( false === $this->pairs_aliases->setKeyValue( $alias, $aid ) )
-                            w8io_error();
-
-                        $wtx['data'] = [ 'd' => $this->get_dataid( $alias, true ) ];
-                    }
-                    break;
-                case 11: // mass transfer
-                    // SENDER
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = 'NULL';
-                    $wtx['amount'] = $tx['totalAmount'];
-                    {
-                        if( null !== ( $asset = $tx['assetId'] ) )
-                            $wtx['asset'] = $this->get_assetid( $asset );
-
-                        if( !$this->set_tx( $wtx ) )
-                            w8io_error();
-                    }
-                    // RECIPIENTS
-                    $wtx['fee'] = 0;
-                    $mtxs = $tx['transfers'];
-                    foreach( $mtxs as $mtx )
-                    {
-                        $wtx['b'] = $mtx['recipient'];
-                        $wtx['amount'] = $mtx['amount'];
-
-                        if( !$this->set_tx( $wtx ) )
-                            w8io_error();
-                    }
-                    $saved = true;
-                    break;
-                case 12: // data
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = 'NULL';
-                    $wtx['data'] = [ 'd' => $this->get_dataid( json_encode( $tx['data'] ), true ) ];
-                    break;
-
-                case 13: // smart account
-                case 15: // smart asset
-                    $wtx['a'] = $tx['sender'];
-                    $wtx['b'] = 'NULL';
-                    $wtx['data'] = [ 's' => $this->get_dataid( json_encode( $tx['script'] ), true ) ];
-                    if( $type == 15 )
-                        $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
-                    break;
-
-                case 14: // sponsorship
-                    $wtx['a'] = $this->get_aid( $tx['sender'] );
-                    $wtx['b'] = 'NULL';
-                    $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
-                    $wtx['amount'] = $tx['minSponsoredAssetFee'];
-                    $this->set_sponsor( $wtx['asset'], $wtx['a'], $wtx['amount'] );
-                    break;
-
-                default:
-                    w8io_error( json_encode( $wtx ) );
-            }
-
-            if( $saved === false && $this->set_tx( $wtx ) === false )
-                w8io_error( "set_tx() failed" );
-        }
+            $this->set_transaction( $tx, $at );
 
         if( !$this->set_fees( $block, $this->wtxs, $prev_wtxs ) )
             w8io_error( "set_fees() failed" );
 
         $prev_wtxs = $this->wtxs;
         return true;
+    }
+
+    private function set_transaction( $tx, $at )
+    {
+        $type = $tx['type'];
+        $wtx = [];
+        $wtx['txid'] = $this->get_pair_txid( wk()->base58Decode( $tx['id'] ), true );
+        $wtx['block'] = $at;
+        $wtx['type'] = $type;
+        $wtx['timestamp'] = $this->timestamp( $tx['timestamp'] );
+        $wtx['amount'] = isset( $tx['amount'] ) ? $tx['amount'] : 0;
+        $wtx['asset'] = 0;
+        $wtx['fee'] = isset( $tx['fee'] ) ? $tx['fee'] : 0;
+        $wtx['afee'] = 0;
+        $wtx['data'] = false;
+
+        switch( $type )
+        {
+            case 1: // genesis
+                $wtx['a'] = 'GENESIS';
+                $wtx['b'] = $tx['recipient'];
+                break;
+            case 101: // genesis role
+                $wtx['a'] = 'GENESIS';
+                $wtx['b'] = $tx['target'];
+                $wtx['data'] = [ 'd' => $this->get_dataid( $tx['role'], true ) ];
+                break;
+            case 102: // role
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = $tx['target'];
+                //$wtx['data'] = [ 'opType' => $this->get_dataid( $tx['opType'], true ) ];
+                $wtx['data'] = [ 'd' => $this->get_dataid( $tx['role'], true ) ];
+                //$wtx['data'] = [ 'dueTimestamp' => $this->get_dataid( $tx['dueTimestamp'], true ) ];
+                break;
+            case 110: // genesis unknown
+                $wtx['a'] = 'GENESIS';
+                $wtx['b'] = $tx['target'];
+                break;
+            case 105: // data unknown
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                break;
+            case 106: // invoke 1 unknown
+            case 107: // invoke 2 unknown
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                break;
+            case 2: // payment
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = $tx['recipient'];
+                break;
+            case 3: // issue
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                $wtx['amount'] = $tx['quantity'];
+                {
+                    $asset = $this->get_assetid( $tx['assetId'], true );
+
+                    $tx['name'] = htmlentities( trim( preg_replace( '/\s+/', ' ', $tx['name'] ) ) );
+                    if( $this->pairs_asset_info->setKeyValue( $asset, $tx, 'j' ) === false )
+                        w8io_error();
+
+                    $wtx['asset'] = $asset;
+                }
+                break;
+
+            case W8IO_TYPE_INVOKE_TRANSFER:
+            case 4: // transfer
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = $tx['recipient'];
+                {
+                    $attachment = $tx['attachment'];
+                    if( is_string( $attachment ) && strlen( $attachment ) > 0 )
+                        $wtx['data'] = [ 'd' => $this->get_dataid( $attachment, true ) ];
+                }
+                {
+                    if( null !== ( $asset = $tx['assetId'] ) )
+                        $wtx['asset'] = $this->get_assetid( $asset );
+
+                    if( null !== ( $asset = $tx['feeAssetId'] ) )
+                        $wtx['afee'] = $this->get_assetid( $asset );
+                }
+                break;
+            case 5: // reissue
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                $wtx['amount'] = $tx['quantity'];
+                $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
+                break;
+            case 6: // burn
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
+                break;
+            case 7: // exchange
+                {
+                    $buyer = $tx['order1'];
+                    $seller = $tx['order2'];
+                    $ba = $this->get_aid( $buyer['sender'] );
+                    $sa = $this->get_aid( $seller['sender'] );
+
+                    $basset = $buyer['assetPair']['amountAsset'];
+                    $basset = $basset !== null ? $this->get_assetid( $basset ) : 0;
+
+                    $sasset = $buyer['assetPair']['priceAsset'];
+                    $sasset = $sasset !== null ? $this->get_assetid( $sasset ) : 0;
+                }
+                {
+                    $bfee = $tx['buyMatcherFee'];
+                    $sfee = $tx['sellMatcherFee'];
+                    $fee = $tx['fee'];
+                    $amount = $tx['amount'];
+                }
+                // MATCHER;
+                {
+                    $wtx['a'] = 'MATCHER';
+                    $wtx['b'] = $tx['sender'];
+                    $wtx['amount'] = $bfee + $sfee - $fee;
+
+                    if( !$this->set_tx( $wtx ) )
+                        w8io_error();
+                }
+                // SELLER -> BUYER
+                {
+                    $wtx['a'] = $sa;
+                    $wtx['b'] = $ba;
+                    $wtx['amount'] = $amount;
+                    $wtx['asset'] = $basset;
+                    $wtx['fee'] = $sfee;
+
+                    if( !$this->set_tx( $wtx ) )
+                        w8io_error();
+                }
+                // BUYER -> SELLER
+                {
+                    $wtx['a'] = $ba;
+                    $wtx['b'] = $sa;
+                    $wtx['amount'] = gmp_intval( gmp_div( gmp_mul( $tx['price'], $amount ), 100000000 ) );
+                    $wtx['asset'] = $sasset;
+                    $wtx['fee'] = $bfee;
+
+                    if( !$this->set_tx( $wtx ) )
+                        w8io_error();
+                }
+                return;
+
+            case 8: // start lease
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = $tx['recipient'];
+                break;
+            case 9: // cancel lease
+                $wtx['a'] = $tx['sender'];
+                {
+                    $wtxs = $this->get_txid( $this->get_pair_txid( wk()->base58Decode( $tx['leaseId'] ) ) );
+                    if( $wtxs === false )
+                        w8io_error();
+
+                    $wtx_lease = $wtxs[0];
+                    $wtx['b'] = $wtx_lease['b'];
+
+                    if( count( $wtxs ) === 1 )
+                    {
+                        $wtx['txid'] = $wtx_lease['txid'];
+                        $wtx['amount'] = $wtx_lease['amount'];
+                    }
+                    else
+                    {
+                        $wtx['amount'] = 0; // already cancelled
+                    }
+                }
+                break;
+            case 10: // alias
+                $wtx['b'] = 'NULL';
+                {
+                    $aid = $this->get_aid( $tx['sender'], $wtx['fee'] === 0 ? true : false );
+
+                    $wtx['a'] = $aid;
+
+                    $alias = $tx['alias'];
+
+                    if( false === $this->pairs_aliases->setKeyValue( $alias, $aid ) )
+                        w8io_error();
+
+                    $wtx['data'] = [ 'd' => $this->get_dataid( $alias, true ) ];
+                }
+                break;
+            case 11: // mass transfer
+                // SENDER
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                $wtx['amount'] = $tx['totalAmount'];
+                {
+                    if( null !== ( $asset = $tx['assetId'] ) )
+                        $wtx['asset'] = $this->get_assetid( $asset );
+
+                    if( !$this->set_tx( $wtx ) )
+                        w8io_error();
+                }
+                // RECIPIENTS
+                $wtx['fee'] = 0;
+                $mtxs = $tx['transfers'];
+                foreach( $mtxs as $mtx )
+                {
+                    $wtx['b'] = $mtx['recipient'];
+                    $wtx['amount'] = $mtx['amount'];
+
+                    if( !$this->set_tx( $wtx ) )
+                        w8io_error();
+                }
+                return;
+            
+            case W8IO_TYPE_INVOKE_DATA:
+            case 12: // data
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                $wtx['data'] = [ 'd' => $this->get_dataid( json_encode( $tx['data'] ), true ) ];
+                break;
+
+            case 13: // smart account
+            case 15: // smart asset
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                $wtx['data'] = [ 's' => $this->get_dataid( json_encode( $tx['script'] ), true ) ];
+                if( $type == 15 )
+                    $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
+                break;
+
+            case 14: // sponsorship
+                $wtx['a'] = $this->get_aid( $tx['sender'] );
+                $wtx['b'] = 'NULL';
+                $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
+                $wtx['amount'] = $tx['minSponsoredAssetFee'];
+                $this->set_sponsor( $wtx['asset'], $wtx['a'], $wtx['amount'] );
+                break;
+
+            case 16: // invoke
+            {
+                if( false === ( $stateChanges = wk()->getStateChanges( $tx['id'] ) ) )
+                    w8io_error( "getStateChanges( {$tx['id']} ) failed" );
+                if( json_encode( $tx ) !== json_encode( $stateChanges['transaction'] ) )
+                    w8io_error( "tx vs. ftx diff found ({$tx['id']})" );
+
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = $tx['dApp'];
+                if( isset( $tx['payment'][0] ) )
+                {
+                    $payment = $tx['payment'][0];
+                    if( null !== ( $asset = $payment['assetId'] ) )
+                        $wtx['asset'] = $this->get_assetid( $asset );
+                    $wtx['amount'] = $payment['amount'];
+                }
+
+                if( null !== ( $asset = $tx['feeAssetId'] ) )
+                    $wtx['afee'] = $this->get_assetid( $asset );
+
+                if( isset( $tx['call'] ) )
+                {
+                    $call = [ $tx['call']['function'] => $tx['call']['args'] ];
+                    $wtx['data'] = [ 'c' => $this->get_dataid( json_encode( $call ), true ) ];
+                }
+
+                if( !$this->set_tx( $wtx ) )
+                    w8io_error();
+
+                $stateChanges = $stateChanges['stateChanges'];
+                $data = $stateChanges['data'];
+                $transfers = $stateChanges['transfers'];
+
+                if( count( $data ) || count( $transfers ) )
+                {
+                    $tx['sender'] = $tx['dApp'];
+                    $tx['fee'] = 0;
+                    $tx['feeAssetId'] = null;
+
+                    if( count( $data ) )
+                    {
+                        $tx['type'] = W8IO_TYPE_INVOKE_DATA;
+                        $tx['data'] = $data;
+                        $this->set_transaction( $tx, $at );
+                    }
+                    
+                    if( count( $transfers ) )
+                    {
+                        $tx['type'] = W8IO_TYPE_INVOKE_TRANSFER;
+                        $tx['attachment'] = null;
+                        foreach( $transfers as $transfer )
+                        {
+                            $tx['recipient'] = $transfer['address'];
+                            $tx['assetId'] = $transfer['asset'];
+                            $tx['amount'] = $transfer['amount'];
+                            $this->set_transaction( $tx, $at );
+                        }
+                    }                    
+                }                
+
+                return;
+            }
+
+            default:
+                w8io_error( json_encode( $wtx ) );
+        }
+
+        if( $this->set_tx( $wtx ) === false )
+            w8io_error( "set_tx() failed" );
     }
 
     public function update( $upcontext, $balances )

@@ -167,6 +167,10 @@ class w8io_blockchain_balances
         $procs_b = [];
 
         $type = $wtx['type'];
+
+        if( $type === W8IO_TYPE_INVOKE_DATA )
+            return;
+
         $amount = $wtx['amount'];
         $asset = $wtx['asset'];
         $fee = $wtx['fee'];
@@ -199,8 +203,10 @@ class w8io_blockchain_balances
             case 106: // invoke 1 unknown
             case 107: // invoke 2 unknown
             case 2: // payment
+            case W8IO_TYPE_INVOKE_TRANSFER:
             case 4: // transfer
             case 7: // exchange
+            case 16: // invoke
                 if( $asset === $afee )
                 {
                     $procs_a[$asset] = -$amount -$fee;

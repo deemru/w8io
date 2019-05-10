@@ -7,6 +7,8 @@ define( 'W8IO_ASSET_EMPTY', -1 ); // to skip select with empty fee
 define( 'W8IO_ASSET_WAVES_LEASED', -2 ); // to monitor waves leased
 define( 'W8IO_TYPE_FEES', 0 ); // internal tx type for fees
 define( 'W8IO_TYPE_SPONSOR', -1 ); // internal tx type for sponsor
+define( 'W8IO_TYPE_INVOKE_DATA', -2 ); // internal tx type for invoke data
+define( 'W8IO_TYPE_INVOKE_TRANSFER', -3 ); // internal tx type for invoke transfer
 
 function w8io_timer( &$timer )
 {
@@ -77,6 +79,8 @@ function w8io_tx_type( $type )
 {
     switch( $type )
     {
+        case W8IO_TYPE_INVOKE_TRANSFER: return 'invoke transfer';
+        case W8IO_TYPE_INVOKE_DATA: return 'invoke data';
         case W8IO_TYPE_FEES: return 'fees';
         case W8IO_TYPE_SPONSOR: return 'sponsor';
         case 1: return 'genesis';
@@ -100,6 +104,7 @@ function w8io_tx_type( $type )
         case 13: return 'smart account';
         case 14: return 'sponsorship';
         case 15: return 'smart asset';
+        case 16: return 'invoke';
         default: return 'unknown';
     }
 }

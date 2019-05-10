@@ -104,7 +104,7 @@ if( $address === 'api' )
         $total = $dataset['totals']['txs'];
         $out .= ", total ($total)";
 
-        $types = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ];
+        $types = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, W8IO_TYPE_INVOKE_DATA, W8IO_TYPE_INVOKE_TRANSFER ];
         $etypes = [];
         foreach( $types as $i )
         {
