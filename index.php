@@ -414,7 +414,6 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
         }
 
         $wtype = w8io_tx_type( $type );
-        $wlen = strlen( $wtype );
 
         $ashow = $isa ? "<b>$a</b>" : $a;
         $bshow = $isb ? "<b>$b</b>" : $b;
@@ -423,9 +422,9 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
 
         echo
             '<small>' . date( 'Y.m.d H:i', $wtx['timestamp'] ) . ' (<a href="' . W8IO_ROOT . 'blocks/' . $block . '">' . $block . '</a>)</small> ' .
-            '(<a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>) ' . 
-            '<a href="' . W8IO_ROOT . $a . '">' . ( $isa ? '<b>' . $a . '</b>' : $a ) . '</a> -> ' . 
-            '<a href="' . W8IO_ROOT . $b . '">' . ( $isb ? '<b>' . $b . '</b>' : $b ) . '</a>' . 
+            '(<a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>) ' .
+            '<a href="' . W8IO_ROOT . $a . '">' . ( $isa ? '<b>' . $a . '</b>' : $a ) . '</a> -> ' .
+            '<a href="' . W8IO_ROOT . $b . '">' . ( $isb ? '<b>' . $b . '</b>' : $b ) . '</a>' .
             $amount . $asset . $fee . PHP_EOL;
     }
 }
