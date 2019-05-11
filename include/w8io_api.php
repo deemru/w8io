@@ -33,8 +33,23 @@ class w8io_api
             return -3;
         else if( $address === 'SPONSOR' )
             return -4;
+        else if( $address === 'MASS' )
+            return -5;
 
         return false;
+    }
+
+    private function getBlockPairs()
+    {
+        if( !isset( $this->pairsBlock ) )
+            $this->pairsBlock = new Pairs( W8IO_DB_BLOCKCHAIN, 'blocks' );
+
+        return $this->pairsBlock;
+    }
+
+    public function getBlockAt( $height )
+    {
+        return $this->getBlockPairs()->getValue( $height, 'jz' );
     }
 
     public function get_address( $id )

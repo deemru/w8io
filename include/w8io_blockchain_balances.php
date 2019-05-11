@@ -291,7 +291,8 @@ class w8io_blockchain_balances
                         $procs_a[$afee] = -$fee;
                     }
                     $is_a = true;
-                    $is_b = false;
+                    $procs_b[$afee] = +$fee;
+                    $is_b = true;
                 }
                 else
                 {

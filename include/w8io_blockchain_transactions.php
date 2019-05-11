@@ -76,6 +76,7 @@ class w8io_blockchain_transactions
             $this->pairs_addresses->setKeyValue( -2, 'MATCHER' );
             $this->pairs_addresses->setKeyValue( -3, 'NULL' );
             $this->pairs_addresses->setKeyValue( -4, 'SPONSOR' );
+            $this->pairs_addresses->setKeyValue( -5, 'MASS' );
         }
     }
 
@@ -465,6 +466,10 @@ class w8io_blockchain_transactions
             {
                 $b = -4;
             }
+            else if( $b === 'MASS' )
+            {
+                $b = -5;
+            }
             else
                 w8io_error( json_encode( $wtx ) );
         }
@@ -797,7 +802,7 @@ class w8io_blockchain_transactions
             case 11: // mass transfer
                 // SENDER
                 $wtx['a'] = $tx['sender'];
-                $wtx['b'] = 'NULL';
+                $wtx['b'] = 'MASS';
                 $wtx['amount'] = $tx['totalAmount'];
                 {
                     if( null !== ( $asset = $tx['assetId'] ) )
@@ -888,7 +893,7 @@ class w8io_blockchain_transactions
                         $tx['data'] = $data;
                         $this->set_transaction( $tx, $at );
                     }
-                    
+
                     if( count( $transfers ) )
                     {
                         $tx['type'] = W8IO_TYPE_INVOKE_TRANSFER;
@@ -900,8 +905,8 @@ class w8io_blockchain_transactions
                             $tx['amount'] = $transfer['amount'];
                             $this->set_transaction( $tx, $at );
                         }
-                    }                    
-                }                
+                    }
+                }
 
                 return;
             }

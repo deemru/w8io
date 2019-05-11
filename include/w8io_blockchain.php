@@ -34,10 +34,8 @@ class w8io_blockchain
 
     public function update()
     {
-        global $wk;
-
         $from = $this->get_height();
-        $to = $wk->height();
+        $to = wk()->height();
         $shift = 0;
 
         if( !$to )
@@ -59,7 +57,7 @@ class w8io_blockchain
                 if( W8IO_NETWORK !== 'W' && $to < $from )
                 {
                     $local_block = $this->get_block( $to );
-                    $nodes_block = $wk->getBlockAt( $to );
+                    $nodes_block = wk()->getBlockAt( $to );
                     if( $nodes_block === false )
                     {
                         w8io_trace( 'w', "can not get_block()" );
@@ -77,8 +75,8 @@ class w8io_blockchain
                 if( !$rollback )
                 {
                     w8io_trace( 'w', 'no new blocks for 300 seconds (setBestNode)' );
-                    $wk->setBestNode();
-                    $wk->log( 'i', "setBestNode = " . $wk->getNodeAddress() );
+                    wk()->setBestNode();
+                    wk()->log( 'i', "setBestNode = " . wk()->getNodeAddress() );
                     return $this->update();
                 }
             }
@@ -94,7 +92,7 @@ class w8io_blockchain
         {
             // check new blocks
             $local_block = $this->get_block( $from );
-            $nodes_block = $wk->getBlockAt( $from + 1 );
+            $nodes_block = wk()->getBlockAt( $from + 1 );
             if( $nodes_block === false )
             {
                 w8io_trace( 'w', "can not get_block()" );
@@ -121,7 +119,7 @@ class w8io_blockchain
                     break;
 
                 $local_block = $this->get_block( $from );
-                $nodes_block = $wk->getBlockAt( $from );
+                $nodes_block = wk()->getBlockAt( $from );
                 if( $nodes_block === false )
                 {
                     w8io_trace( 'w', 'can not get_block()' );
@@ -143,7 +141,7 @@ class w8io_blockchain
 
         for( $i = $from + $shift + 1; $i <= $to; $i++ )
         {
-            if( false === ( $nodes_block = $wk->getBlockAt( $i ) ) )
+            if( false === ( $nodes_block = wk()->getBlockAt( $i ) ) )
             {
                 w8io_trace( 'w', 'can not get_block()' );
                 $this->blocks->rollback();

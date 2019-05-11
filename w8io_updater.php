@@ -13,32 +13,15 @@ require_once './include/w8io_blockchain_transactions.php';
 require_once './include/w8io_blockchain_balances.php';
 require_once './include/w8io_blockchain_aggregate.php';
 
-$wk = new WavesKit( W8IO_NETWORK );
-$nodes = explode( '|', W8IO_NODES );
-$wk->setNodeAddress( $nodes[0], 1, array_slice( $nodes, 1 ) );
-
-if( 0 )
-{
-    $a = '3PAWwWa6GbwcJaFzwqXQN5KQm7H96Y7SHTQ';
-
-    $tt = microtime( true );
-    for( $i = 0; $i < 200; $i++ )
-        $ab = $wk->base58Encode( $a );
-
-        exit( $wk->log( 'i', ( microtime( true ) - $tt ) ) );
-}
-
 require_once __DIR__ . '/include/secqru_flock.php';
 $lock = new \secqru_flock( W8IO_DB_DIR . 'w8io.lock' );
 if( false === $lock->open() )
-    exit( $wk->log( 'e', 'flock failed, already running?' ) );
+    exit( wk()->log( 'e', 'flock failed, already running?' ) );
 
 w8io_trace( 'i', 'w8io_updater started' );
 
 function update_proc( $blockchain, $transactions, $balances, $aggregate )
 {
-    global $wk;
-
     $timer = 0;
     w8io_timer( $timer );
 
@@ -233,8 +216,8 @@ $transactions = new w8io_blockchain_transactions();
 $balances = new w8io_blockchain_balances();
 $aggregate = new w8io_blockchain_aggregate();
 
-$wk->setBestNode();
-$wk->log( 'i', "setBestNode = " . $wk->getNodeAddress() );
+wk()->setBestNode();
+wk()->log( 'i', "setBestNode = " . wk()->getNodeAddress() );
 
 $update_addon = defined( 'W8IO_UPDATE_ADDON' ) && W8IO_UPDATE_ADDON && W8IO_NETWORK === 'W';
 $sleep = defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17;

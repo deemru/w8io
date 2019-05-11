@@ -6,7 +6,7 @@ require_once 'w8io_config.php';
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'api/DQL6mCgJydARBit3CWQCS2Dv9428X2fT8Gc8qG7qsk5C4TL5rb1KKWYPsMx2jGcvk4Smhd8wwNRpUGDR4nAMCDNQp';
+    $uri = 'blocks/1004021';
     //$uri = 't';
 
 $uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $uri . chr( 0 ) ) );
@@ -362,18 +362,13 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             if( $spam && isset( $info['scam'] ) )
                 continue;
 
-            $decimals = $info['decimals'];
-            $amount = w8io_amount( $amount, $decimals, 0 );
-            $furl = W8IO_ROOT . "$address/f/{$info['id']}";
-            $asset = " <a href=\"$furl\">{$info['name']}</a>";
-            $amount = ' ' . ( $b === $aid ? '+' : '-' ) . $amount;
+            $amount = ' ' . ( $b === $aid ? '+' : '-' ) . w8io_amount( $amount, $info['decimals'], 0 );
+            $asset = ' <a href="' . W8IO_ROOT . $address . '/f/' . $info['id'] . '">' . $info['name'] . '</a>';
         }
         else if( $b !== - 3 )
         {
-            $amount = w8io_amount( $amount, 8, 0 );
-            $furl = W8IO_ROOT . "$address/f/Waves";
-            $asset = " <a href=\"$furl\">Waves</a>";
-            $amount = ' ' . ( $b === $aid ? '+' : '-' ) . $amount;
+            $amount = ' ' . ( ( $type === 9 ^ $b === $aid ) ? '+' : '-' ) . w8io_amount( $amount, 8, 0 );
+            $asset = ' <a href="' . W8IO_ROOT . $address . '/f/Waves">Waves</a>';
         }
         else
         {
@@ -395,16 +390,11 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             if( $afee )
             {
                 $info = $api->get_asset_info( $afee );
-                $afee = $info['name'];
-                $decimals = $info['decimals'];
-                $fee = w8io_amount( $fee, $decimals, 0 );
-                $fee = " ($fee <a href=\"" . W8IO_ROOT . "$address/f/{$info['id']}\">$afee</a> fee)";
+                $fee = ' (' . w8io_amount( $fee, $info['decimals'], 0 ) . ' <a href="' . W8IO_ROOT . $address . '/f/' . $info['id'] . '">' . $info['name'] . '</a> fee)';
             }
             else
             {
-                $afee = "Waves";
-                $fee = w8io_amount( $fee, 8, 0 );
-                $fee = " ($fee <a href=\"" . W8IO_ROOT . "$address/f/Waves\">Waves</a> fee)";
+                $fee = ' (' . w8io_amount( $fee, 8, 0 ) . ' <a href="' . W8IO_ROOT . $address . '/f/Waves">Waves</a> fee)';
             }
         }
         else
@@ -423,12 +413,20 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                 $b = $api->get_data( $data['b'] );
         }
 
-        $wtype = w8io_tx_type( $wtx['type'] );
+        $wtype = w8io_tx_type( $type );
+        $wlen = strlen( $wtype );
 
         $ashow = $isa ? "<b>$a</b>" : $a;
         $bshow = $isb ? "<b>$b</b>" : $b;
 
-        echo "<small>" . date( 'Y.m.d H:i', $wtx['timestamp'] ) ." ({$wtx['block']})</small> (<a href=\"". W8IO_ROOT . "$address/t/{$wtx['type']}\">$wtype</a>) <a href=\"". W8IO_ROOT . $a ."\">$ashow</a> >> <a href=\"". W8IO_ROOT . $b ."\">$bshow</a>$amount$asset$fee" . PHP_EOL;
+        $block = $wtx['block'];
+
+        echo
+            '<small>' . date( 'Y.m.d H:i', $wtx['timestamp'] ) . ' (<a href="' . W8IO_ROOT . 'blocks/' . $block . '">' . $block . '</a>)</small> ' .
+            '(<a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>) ' . 
+            '<a href="' . W8IO_ROOT . $a . '">' . ( $isa ? '<b>' . $a . '</b>' : $a ) . '</a> -> ' . 
+            '<a href="' . W8IO_ROOT . $b . '">' . ( $isb ? '<b>' . $b . '</b>' : $b ) . '</a>' . 
+            $amount . $asset . $fee . PHP_EOL;
     }
 }
 
@@ -461,6 +459,11 @@ function prios( $tickers )
     return array_merge( $t_prios, $t_other );
 }
 
+function w8io_a( $address )
+{
+    return '<a href=' . W8IO_ROOT . $address . '>' . $address . '</a>';
+}
+
 if( $address === 'CHARTS' )
 {
     $height = $api->get_height();
@@ -486,9 +489,53 @@ if( $address === 'CHARTS' )
     echo w8io_chart( $title, "$froms .. $to", $hostroot . "api/chart/$from/$to" );
 }
 else
-if( $address === 'b' )
+if( $address === 'blocks' )
 {
+    $height = (int)$f;
+    $block = $api->getBlockAt( (int)$f );
+    $txs = $block['transactions'];
+    unset( $block['transactions'] );
 
+    if( $block === false )
+    {
+        echo 'block not found';
+    }
+    else
+    {
+        $block['generator'] = w8io_a( $block['generator'] );
+        if( $height > 1 )
+        {
+            unset( $block['height'] );
+            $block['previous'] = $height - 1;
+        }
+        $block['height'] = $height;
+        $block['next'] = $height + 1;
+        foreach( $txs as &$tx )
+        {
+            $tx['id'] = w8io_a( $tx['id'] );
+            $tx['sender'] = w8io_a( $tx['sender'] );
+            if( isset( $tx['target'] ) )
+                $tx['target'] = w8io_a( $tx['target'] );
+            if( isset( $tx['recipient'] ) )
+                $tx['recipient'] = w8io_a( $tx['recipient'] );
+            
+            switch( $tx['type'] )
+            {
+                case 7:
+                {
+                    $tx['order1']['id'] = w8io_a( $tx['order1']['id'] );
+                    $tx['order1']['sender'] = w8io_a( $tx['order1']['sender'] );
+                    $tx['order2']['id'] = w8io_a( $tx['order2']['id'] );
+                    $tx['order2']['sender'] = w8io_a( $tx['order2']['sender'] );
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+        $block['transactions'] = $txs;
+        echo json_encode( $block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+    }
 }
 else
 if( $address === 'GENERATORS' )
