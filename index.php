@@ -184,7 +184,7 @@ function lazyload()
     if( g_loading )
         return;
 
-    var wt = this.scrollY;
+    var wt = typeof this.scrollY !== "undefined" ? this.scrollY : $(window).scrollTop();
     var wb = wt + this.innerHeight;
     var ot = g_lazyload.offset().top;
     var ob = ot + g_lazyload.height();
@@ -213,28 +213,35 @@ function lazyload()
     }
 }
 </script>
+<style>
+    body, table
+    {
+        font-size: 12pt; font-size: %s; font-family: monospace, monospace;
+        background-color: #%s;
+        color: #%s;
+        border-collapse: collapse;
+        overflow-y: scroll;%s
+    }
+    a
+    {
+        color: #%s;%s
+        text-decoration: none;
+        border-bottom: 1px solid #606870;
+        
+    }
+    a:hover
+    {
+        border-bottom: 2px solid #%s;
+    }
+    hr
+    {
+        margin: 1em 0 1em 0;
+        height: 1px;
+        border: 0;
+        background-color: #606870;
+    }
+</style>
     </head>
-    <style>
-        body, table
-        {
-            font-size: 12pt; font-size: %s; font-family: "Courier New", Courier, monospace;
-            background-color: #%s;
-            color: #%s;
-            border-collapse: collapse;
-            overflow-y: scroll;%s
-        }
-        a
-        {
-            color: #%s;%s
-        }
-        hr
-        {
-            margin: 1em 0 1em 0;
-            height: 1px;
-            border: 0;
-            background-color: #606870;
-        }
-    </style>
     <body>
         <pre>
 ', empty( $address ) ? '' : " / $address", W8IO_ROOT, W8IO_ROOT,
@@ -242,7 +249,8 @@ isset( $showtime ) ? '0.66vw' : '0.90vw',
 $bcolor, $tcolor,
 isset( $showtime ) ? 'margin: 1em 2em 1em 2em; filter: brightness(144%);' : '',
 $tcolor,
-isset( $showtime ) ? 'text-decoration: none;' : '' );
+isset( $showtime ) ? 'text-decoration: none;' : '',
+$tcolor );
 
 if( empty( $address ) )
     $address = 'GENESIS';
@@ -390,11 +398,11 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             if( $afee )
             {
                 $info = $api->get_asset_info( $afee );
-                $fee = ' (' . w8io_amount( $fee, $info['decimals'], 0 ) . ' <a href="' . W8IO_ROOT . $address . '/f/' . $info['id'] . '">' . $info['name'] . '</a> fee)';
+                $fee = ' <small>(' . w8io_amount( $fee, $info['decimals'], 0 ) . ' <a href="' . W8IO_ROOT . $address . '/f/' . $info['id'] . '">' . $info['name'] . '</a> fee)</small>';
             }
             else
             {
-                $fee = ' (' . w8io_amount( $fee, 8, 0 ) . ' <a href="' . W8IO_ROOT . $address . '/f/Waves">Waves</a> fee)';
+                $fee = ' <small>(' . w8io_amount( $fee, 8, 0 ) . ' <a href="' . W8IO_ROOT . $address . '/f/Waves">Waves</a> fee)</small>';
             }
         }
         else
@@ -963,7 +971,7 @@ if( !isset( $showtime ) )
     if( defined( 'W8IO_ANALYTICS' ) )
         echo PHP_EOL . PHP_EOL . W8IO_ANALYTICS . ' ';
 }
-echo '</small></div>';
+echo '</small></pre></div>';
 echo '
         </pre>
     </body>
