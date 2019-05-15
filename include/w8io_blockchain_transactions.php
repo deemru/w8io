@@ -836,7 +836,7 @@ class w8io_blockchain_transactions
                 $wtx['a'] = $tx['sender'];
                 $wtx['b'] = 'NULL';
                 $wtx['data'] = [ 's' => $this->get_dataid( json_encode( $tx['script'] ), true ) ];
-                if( $type == 15 )
+                if( $type === 15 )
                     $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
                 break;
 
