@@ -856,7 +856,31 @@ class w8io_blockchain_transactions
                     w8io_error( "tx vs. ftx diff found ({$tx['id']})" );
 
                 $wtx['a'] = $tx['sender'];
-                $wtx['b'] = $tx['dApp'];
+
+                if( strlen( $tx['dApp'] ) === 35 )
+                {
+                    $dAppAddress = $tx['dApp'];
+                    $wtx['b'] = $dAppAddress;
+                }
+                else
+                {
+                    $alias = $tx['dApp'];
+                    if( substr( $alias, 0, 6 ) !== 'alias:' )
+                        $alias = substr( wk()->base58Decode( $alias ), 4 );
+                    else
+                        $alias = substr( $alias, 8 );
+
+                    $wtx['b'] = 'alias:#:' . $alias;
+
+                    $alias = $this->pairs_aliases->getValue( $alias, 'i' );
+                    if( $alias === false )
+                        w8io_error();
+
+                    $dAppAddress = $this->pairs_addresses->getValue( $alias );
+                    if( $dAppAddress === false )
+                        w8io_error();
+                }
+
                 if( isset( $tx['payment'][0] ) )
                 {
                     $payment = $tx['payment'][0];
@@ -883,7 +907,7 @@ class w8io_blockchain_transactions
 
                 if( count( $data ) || count( $transfers ) )
                 {
-                    $tx['sender'] = $tx['dApp'];
+                    $tx['sender'] = $dAppAddress;
                     $tx['fee'] = 0;
                     $tx['feeAssetId'] = null;
 
