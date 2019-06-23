@@ -852,7 +852,7 @@ class w8io_blockchain_transactions
             {
                 if( false === ( $stateChanges = wk()->getStateChanges( $tx['id'] ) ) )
                     w8io_error( "getStateChanges( {$tx['id']} ) failed" );
-                if( json_encode( $tx ) !== json_encode( $stateChanges['transaction'] ) )
+                if( $tx['id'] !== $stateChanges['id'] )
                     w8io_error( "tx vs. ftx diff found ({$tx['id']})" );
 
                 $wtx['a'] = $tx['sender'];
