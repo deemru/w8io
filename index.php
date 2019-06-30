@@ -226,7 +226,7 @@ function lazyload()
     {
         color: #%s;%s
         text-decoration: none;
-        border-bottom: 1px solid #606870;
+        border-bottom: 1px dotted #606870;
         
     }
     a:hover
