@@ -71,7 +71,7 @@ if( $address === 'api' )
                 $uid = $call['u'];
                 $address = $call['a'];
 
-                w8io_print_transactions( $aid, $where, $uid, 100, $address, !( $f === 'f' ) );
+                w8io_print_transactions( $aid, $where, $uid, 100, $address, false === strpos( $where, 'asset' ) );
                 return;
             }
         }
