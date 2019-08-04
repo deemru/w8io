@@ -876,6 +876,12 @@ else
                     $wtx = w8io_filter_wtx( $wtx );
                     $mrt_fees += $wtx['amount'];
                 }
+                $query = $api->get_transactions_query( "SELECT * FROM transactions WHERE block >= $from AND block <= $to AND b = $aid AND type = 11 AND asset = $mrt_id" );
+                foreach( $query as $wtx )
+                {
+                    $wtx = w8io_filter_wtx( $wtx );
+                    $mrt_fees += $wtx['amount'];
+                }
                 $mrt_fees = intval( $mrt_fees * $percent / 100 );
 
                 echo "pay ($from .. $to) ($percent %):" . PHP_EOL . PHP_EOL;
