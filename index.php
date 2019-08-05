@@ -857,13 +857,17 @@ else
                 $percent = ( $percent > 0 && $percent < 100 ) ? $percent : 100;
 
                 // waves_fees
+                $waves_blocks = 0;
                 $waves_fees = 0;
                 $query = $api->get_transactions_query( "SELECT * FROM transactions WHERE block >= $from AND block <= $to AND b = $aid AND type = 0" );
                 foreach( $query as $wtx )
                 {
                     $wtx = w8io_filter_wtx( $wtx );
                     if( $wtx['asset'] === 0 )
+                    {
                         $waves_fees += $wtx['amount'];
+                        $waves_blocks++;
+                    }
                 }
                 $waves_fees = intval( $waves_fees * $percent / 100 );
 
@@ -885,6 +889,7 @@ else
                 $mrt_fees = intval( $mrt_fees * $percent / 100 );
 
                 echo "pay ($from .. $to) ($percent %):" . PHP_EOL . PHP_EOL;
+                echo w8io_amount( $waves_blocks, 0 ) . ' Blocks' . PHP_EOL;
                 echo w8io_amount( $waves_fees, 8 ) . " Waves" . PHP_EOL;
                 echo w8io_amount( $mrt_fees, 2 ) . " MinersReward" . PHP_EOL;
 
