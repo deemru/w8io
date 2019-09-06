@@ -123,7 +123,7 @@ class w8io_api
         return $this->get_balances()->get_all_waves( true );
     }
 
-    private function get_pairs_aliases()
+    public function get_pairs_aliases()
     {
         if( !isset( $this->pairs_aliases ) )
             $this->pairs_aliases = new Pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'aliases' );
@@ -131,7 +131,7 @@ class w8io_api
         return $this->pairs_aliases;
     }
 
-    private function get_pairs_data()
+    public function get_pairs_data()
     {
         if( !isset( $this->pairs_data ) )
             $this->pairs_data = new Pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'addons' );
@@ -183,6 +183,11 @@ class w8io_api
         }
 
         return $this->transactions;
+    }
+
+    public function get_transactions_id( $id )
+    {
+        return $this->get_transactions()->get_txid_by_id( $id );
     }
 
     public function get_incomes( $aid, $from, $to )

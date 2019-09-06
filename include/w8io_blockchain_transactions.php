@@ -159,6 +159,17 @@ class w8io_blockchain_transactions
         return $id;
     }
 
+    public function get_txid_by_id( $id )
+    {
+        if( !isset( $this->pairs_txids ) )
+            $this->pairs_txids = new Pairs( $this->transactions, 'txids' );
+
+        if( false === ( $id = $this->pairs_txids->getValue( $id, 's' ) ) )
+            w8io_error();
+
+        return $id;
+    }
+
     private function get_assetid( $id, $new = false )
     {
         if( false === ( $id = $this->pairs_assets->getKey( $id, $new ) ) )
