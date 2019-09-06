@@ -10,6 +10,10 @@ define( 'W8IO_TYPE_SPONSOR', -1 ); // internal tx type for sponsor
 define( 'W8IO_TYPE_INVOKE_DATA', -2 ); // internal tx type for invoke data
 define( 'W8IO_TYPE_INVOKE_TRANSFER', -3 ); // internal tx type for invoke transfer
 
+use deemru\ABCode;
+function base58Encode( $data ){ return ABCode::base58()->encode( $data ); }
+function base58Decode( $data ){ return ABCode::base58()->decode( $data ); }
+
 function w8io_timer( &$timer )
 {
     $now = microtime( true );

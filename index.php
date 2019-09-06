@@ -26,6 +26,17 @@ if( $address === 'ld' )
     setcookie( 'light', $light, 0x7FFFFFFF, '/' );
 }
 else
+if( $address === 'tx' && is_numeric( $f ) )
+{
+    require_once './include/w8io_blockchain_transactions.php';
+    require_once './include/w8io_api.php';
+    $api = new w8io_api();
+
+    $txid = $api->get_transactions_id( $f );
+    if( $txid !== false )
+        exit( header( 'location: ' . W8IO_ROOT . 'tx/' . base58Encode( $txid ) ) );
+}
+else
 if( $address === 'GENERATORS' )
 {
     //$showtime = true;
@@ -429,7 +440,8 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
         $block = $wtx['block'];
 
         echo
-            '<small>' . date( 'Y.m.d H:i', $wtx['timestamp'] ) . ' (<a href="' . W8IO_ROOT . 'blocks/' . $block . '">' . $block . '</a>)</small> ' .
+            '<small><a href="' . W8IO_ROOT . 'tx/' . $wtx['txid'] . '">' .
+            date( 'Y.m.d H:i', $wtx['timestamp'] ) . '</a> (<a href="' . W8IO_ROOT . 'blocks/' . $block . '">' . $block . '</a>)</small> ' .
             '(<a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>) ' .
             '<a href="' . W8IO_ROOT . $a . '">' . ( $isa ? '<b>' . $a . '</b>' : $a ) . '</a> -> ' .
             '<a href="' . W8IO_ROOT . $b . '">' . ( $isb ? '<b>' . $b . '</b>' : $b ) . '</a>' .
@@ -468,7 +480,36 @@ function prios( $tickers )
 
 function w8io_a( $address )
 {
+    if( $address[0] === 'a' )
+        $address = substr( $address, 8 );
     return '<a href=' . W8IO_ROOT . $address . '>' . $address . '</a>';
+}
+
+function w8io_txid( $txid )
+{
+    return '<a href=' . W8IO_ROOT . 'tx/' . $txid . '>' . $txid . '</a>';
+}
+
+function txproc( &$tx )
+{
+    $tx['id'] = w8io_txid( $tx['id'] );
+    $tx['sender'] = w8io_a( $tx['sender'] );
+    if( isset( $tx['target'] ) )
+        $tx['target'] = w8io_a( $tx['target'] );
+    if( isset( $tx['recipient'] ) )
+        $tx['recipient'] = w8io_a( $tx['recipient'] );
+    
+    switch( $tx['type'] )
+    {
+        case 7:
+        {
+            $tx['order1']['sender'] = w8io_a( $tx['order1']['sender'] );
+            $tx['order2']['sender'] = w8io_a( $tx['order2']['sender'] );
+            break;
+        }
+        default:
+            break;
+    }
 }
 
 if( $address === 'CHARTS' )
@@ -496,6 +537,18 @@ if( $address === 'CHARTS' )
     echo w8io_chart( $title, "$froms .. $to", $hostroot . "api/chart/$from/$to" );
 }
 else
+if( $address === 'tx' && isset( $f ) )
+{
+    $l = strlen( $f );
+    if( $l > 40 )
+    {
+        $wk = wk();
+        $tx = $wk->getTransactionById( $f );
+        txproc( $tx );
+        echo json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+    }    
+}
+else
 if( $address === 'blocks' )
 {
     $height = (int)$f;
@@ -518,28 +571,7 @@ if( $address === 'blocks' )
         $block['height'] = $height;
         $block['next'] = $height + 1;
         foreach( $txs as &$tx )
-        {
-            $tx['id'] = w8io_a( $tx['id'] );
-            $tx['sender'] = w8io_a( $tx['sender'] );
-            if( isset( $tx['target'] ) )
-                $tx['target'] = w8io_a( $tx['target'] );
-            if( isset( $tx['recipient'] ) )
-                $tx['recipient'] = w8io_a( $tx['recipient'] );
-            
-            switch( $tx['type'] )
-            {
-                case 7:
-                {
-                    $tx['order1']['id'] = w8io_a( $tx['order1']['id'] );
-                    $tx['order1']['sender'] = w8io_a( $tx['order1']['sender'] );
-                    $tx['order2']['id'] = w8io_a( $tx['order2']['id'] );
-                    $tx['order2']['sender'] = w8io_a( $tx['order2']['sender'] );
-                    break;
-                }
-                default:
-                    break;
-            }
-        }
+            txproc( $tx );
         $block['transactions'] = $txs;
         echo json_encode( $block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
     }
