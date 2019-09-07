@@ -34,7 +34,12 @@ if( $address === 'tx' && is_numeric( $f ) )
 
     $txid = $api->get_transactions_id( $f );
     if( $txid !== false )
-        exit( header( 'location: ' . W8IO_ROOT . 'tx/' . base58Encode( $txid ) ) );
+    {
+        if( strlen( $txid ) >= 32 )
+            exit( header( 'location: ' . W8IO_ROOT . 'tx/' . base58Encode( $txid ) ) );
+        else
+            exit( header( 'location: ' . W8IO_ROOT . 'blocks/' . $txid ) );
+    }
 }
 else
 if( $address === 'GENERATORS' )
