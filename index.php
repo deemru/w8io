@@ -110,9 +110,9 @@ if( $address === 'api' )
         $to = min( $height, $to );
         $Q = 1;
 
-        while( ( $to - $from ) / $Q > 2500 && $Q < 1000 )
+        while( ( $to - $from ) / $Q > 1000 && $Q < 10000 )
             $Q *= 10;
-    
+
         $from -= $from % $Q;
         $dataset = $api->get_dataset( $Q, $from, $to );
 
