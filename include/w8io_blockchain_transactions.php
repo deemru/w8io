@@ -519,9 +519,9 @@ class w8io_blockchain_transactions
         return true;
     }
 
-    private function block_fees( $at, $wtxs, $prev_wtxs )
+    private function block_fees( $at, $wtxs, $prev_wtxs, $block = null )
     {
-        $fees = [ 0 => 0 ];
+        $fees = [ 0 => isset( $block['reward'] ) ? $block['reward'] : 0 ];
         $prev = false;
 
         for( ;; )
@@ -578,7 +578,7 @@ class w8io_blockchain_transactions
     public function set_fees( $block, $wtxs, $prev_wtxs )
     {
         $at = $block['height'];
-        $fees = $this->block_fees( $at, $wtxs, $prev_wtxs );
+        $fees = $this->block_fees( $at, $wtxs, $prev_wtxs, $block );
 
         $wtx = [];
         $wtx['txid'] = $this->get_pair_txid( $at, true );
