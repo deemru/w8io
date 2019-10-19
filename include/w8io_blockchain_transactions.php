@@ -30,15 +30,10 @@ class w8io_blockchain_transactions
 
     public function __construct( $writable = true )
     {
-        $this->transactions = new PDO( 'sqlite:' . W8IO_DB_BLOCKCHAIN_TRANSACTIONS );
-        if( !$this->transactions->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING ) )
-            w8io_error( 'PDO->setAttribute()' );
-
-        $this->transactions->exec( W8IO_DB_PRAGMAS );
-
         if( $writable )
         {
-            $this->checkpoint = new Pairs( $this->transactions, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->checkpoint = new Pairs( W8IO_DB_BLOCKCHAIN_TRANSACTIONS, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->transactions = $this->checkpoint->db();
             $this->pairs_txids = new Pairs( $this->transactions, 'txids', true );
             $this->pairs_addresses = new Pairs( $this->transactions, 'addresses', true );
             $this->pairs_assets = new Pairs( $this->transactions, 'assets', true );
@@ -77,6 +72,13 @@ class w8io_blockchain_transactions
             $this->pairs_addresses->setKeyValue( -3, 'NULL' );
             $this->pairs_addresses->setKeyValue( -4, 'SPONSOR' );
             $this->pairs_addresses->setKeyValue( -5, 'MASS' );
+        }
+        else
+        {
+            $this->transactions = new PDO( 'sqlite:' . W8IO_DB_BLOCKCHAIN_TRANSACTIONS );
+            if( !$this->transactions->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING ) )
+                w8io_error( 'PDO->setAttribute()' );
+            $this->transactions->exec( W8IO_DB_PRAGMAS );
         }
     }
 

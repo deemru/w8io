@@ -1,7 +1,10 @@
 <?php
 
 require_once __DIR__ . '/vendor/autoload.php';
-require_once 'w8io_config.php';
+if( file_exists( 'w8io_config.php' ) ) 
+    require_once 'w8io_config.php';
+else
+    require_once 'w8io_config.sample.php';
 
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );

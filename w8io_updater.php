@@ -6,7 +6,10 @@ require_once __DIR__ . '/vendor/autoload.php';
 use deemru\WavesKit;
 use deemru\Pairs;
 
-require_once 'w8io_config.php';
+if( file_exists( 'w8io_config.php' ) ) 
+    require_once 'w8io_config.php';
+else
+    require_once 'w8io_config.sample.php';
 require_once './include/w8io_base.php';
 require_once './include/w8io_blockchain.php';
 require_once './include/w8io_blockchain_transactions.php';

@@ -14,18 +14,21 @@ class w8io_blockchain_aggregate
 
     public function __construct( $writable = true )
     {
-        $this->aggregate = new PDO( 'sqlite:' . W8IO_DB_BLOCKCHAIN_AGGREGATE );
-        if( !$this->aggregate->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING ) || false === $this->aggregate->exec( W8IO_DB_PRAGMAS ) )
-            w8io_error( 'PDO->setAttribute() || PDO->exec( pragmas )' );
-
         if( $writable )
         {
-            $this->checkpoint = new Pairs( $this->aggregate, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->checkpoint = new Pairs( W8IO_DB_BLOCKCHAIN_AGGREGATE, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+            $this->aggregate = $this->checkpoint->db();
             $this->db_1 = new Pairs( $this->aggregate, 'db_1', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
             $this->db_10 = new Pairs( $this->aggregate, 'db_10', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
             $this->db_100 = new Pairs( $this->aggregate, 'db_100', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
             $this->db_1000 = new Pairs( $this->aggregate, 'db_1000', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
             $this->db_10000 = new Pairs( $this->aggregate, 'db_10000', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
+        }
+        else
+        {
+            $this->aggregate = new PDO( 'sqlite:' . W8IO_DB_BLOCKCHAIN_AGGREGATE );
+            if( !$this->aggregate->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING ) || false === $this->aggregate->exec( W8IO_DB_PRAGMAS ) )
+                w8io_error( 'PDO->setAttribute() || PDO->exec( pragmas )' );
         }
     }
 
