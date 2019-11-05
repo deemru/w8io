@@ -82,6 +82,11 @@ class w8io_api
         return $this->get_pairs_assets()->getKey( $id );
     }
 
+    public function get_asset_id( $key )
+    {
+        return $this->get_pairs_assets()->getValue( $key, 's' );
+    }
+
     public function get_address_balance( $aid )
     {
         $balance = $this->get_balances()->get_balance( $aid );

@@ -15,6 +15,7 @@ require_once './include/w8io_blockchain.php';
 require_once './include/w8io_blockchain_transactions.php';
 require_once './include/w8io_blockchain_balances.php';
 require_once './include/w8io_blockchain_aggregate.php';
+require_once './include/w8io_api.php';
 
 require_once __DIR__ . '/include/secqru_flock.php';
 $lock = new \secqru_flock( W8IO_DB_DIR . 'w8io.lock' );
@@ -96,7 +97,7 @@ function update_tickers( $transactions )
 
     if( file_exists( $tickers_file ) )
     {
-        if( time() - filemtime( $tickers_file ) < 7200 )
+        if( time() - filemtime( $tickers_file ) < 3600 )
             return;
 
         $last_tickers = file_get_contents( $tickers_file );
@@ -109,50 +110,29 @@ function update_tickers( $transactions )
         $last_tickers = json_decode( $last_tickers, true, 512, JSON_BIGINT_AS_STRING );
         if( $last_tickers === false )
             $last_tickers = [];
-        else
-        {
-            $temp = [];
-            foreach( $last_tickers as $ticker )
-            {
-                if( $ticker['24h_volume'] > 0 )
-                {
-                    $temp[] = $ticker['amountAssetID'];
-                    $temp[] = $ticker['priceAssetID'];
-                }
-            }
-
-            $last_tickers = array_unique( $temp );
-        }
     }
     else
         $last_tickers = [];
 
-    $wkt = new WavesKit();
-    $wkt->setNodeAddress( 'https://marketdata.wavesplatform.com' );
-    $fresh_tickers = $wkt->fetch( '/api/tickers' );
-    if( $fresh_tickers === false )
-    {
-        w8io_trace( 'w', 'fresh_tickers->get() failed' );
-        return;
-    }
-
-    $tickers = json_decode( $fresh_tickers, true, 512, JSON_BIGINT_AS_STRING );
-    if( !is_array( $tickers ) )
-    {
-        w8io_trace( 'w', 'json_decode( fresh_tickers ) failed' );
-        return;
-    }
+    $height = $transactions->get_height() - 1440;
+    $exchanges = $transactions->query( 'SELECT type, asset FROM transactions WHERE block > ' . $height );
 
     $temp = [];
-    foreach( $tickers as $ticker )
+    foreach( $exchanges as $tx )
     {
-        if( $ticker['24h_volume'] > 0 )
-        {
-            $temp[] = $ticker['amountAssetID'];
-            $temp[] = $ticker['priceAssetID'];
-        }
+        if( $tx[0] !== '7' )
+            continue;
+        $asset = (int)$tx[1];
+        if( $asset > 0 )
+            $temp[] = $asset;
     }
-    $tickers = array_unique( $temp );
+
+    $api = new w8io_api();
+    $temp = array_unique( $temp );
+
+    $tickers[] = "WAVES";
+    foreach( $temp as $rec )
+        $tickers[] = $api->get_asset_id( $rec );
 
     $mark_tickers = array_diff( $tickers, $last_tickers );
     $unset_tickers = array_diff( $last_tickers, $tickers );
@@ -163,7 +143,7 @@ function update_tickers( $transactions )
     foreach( $unset_tickers as $ticker )
         $transactions->mark_tickers( $ticker, false );
 
-    file_put_contents( $tickers_file, $fresh_tickers );
+    file_put_contents( $tickers_file, json_encode( $tickers ) );
 }
 
 function update_scam( $transactions )
