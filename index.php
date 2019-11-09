@@ -90,7 +90,9 @@ if( $address === 'api' )
                 $uid = $call['u'];
                 $address = $call['a'];
 
+                echo '<pre>';
                 w8io_print_transactions( $aid, $where, $uid, 100, $address, false === strpos( $where, 'asset' ) );
+                echo '</pre>';
                 return;
             }
         }
@@ -213,11 +215,10 @@ function lazyload()
         g_loading = true;
         $.get( g_lazyload.attr( "url" ), null, function( data )
         {
-            g_lazyload.remove();
-
             if( data )
             {
-                $(".base").append( data );
+                $( data ).insertAfter( g_lazyload );
+                g_lazyload.remove();
 
                 g_lazyload = $(".lazyload");
                 if( g_lazyload.length )
@@ -258,6 +259,10 @@ function lazyload()
         height: 1px;
         border: 0;
         background-color: #606870;
+    }
+    pre
+    {
+        margin: 0;
     }
 </style>
     </head>
@@ -371,7 +376,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                 'a' => $address,
             ];
             $call = W8IO_ROOT . 'api/' . $wk->base58Encode( $wk->encryptash( json_encode( $call ) ) );
-            echo '<pre class="lazyload" url="' . $call . '">...</pre>';
+            echo '</pre><pre class="lazyload" url="' . $call . '">...';
             return;
         }
 
@@ -743,13 +748,13 @@ else
         $assetId = $address === 'WAVES' ? 0 : $api->get_asset( $address );
         if( $assetId === false )
         {
-            echo '<pre class="base">';
+            echo '<pre>';
             w8io_print_transactions( false, $where, false, 100, $address, !( $f === 'f' ) );
             echo '</pre>';
         }
         else
         {
-            echo '<pre class="base">';
+            echo '<pre>';
             w8io_print_distribution( $assetId );
             echo '</pre>';
         }
@@ -766,7 +771,7 @@ else
         $balance = $balance['balance'];
         $full_address = $full_address !== $address ? " / <a href=\"". W8IO_ROOT . $full_address ."\">$full_address</a>" : '';
 
-        echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height" . PHP_EOL;
+        echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height" . PHP_EOL . PHP_EOL;
         echo '<table><tr><td valign="top"><pre>';
 
         $tickers = [];
@@ -861,7 +866,7 @@ else
             echo "$bs{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>$be" . PHP_EOL;
         }
 
-        echo '</pre></td><td valign="top"><pre class="base">';
+        echo '</pre></td><td valign="top"><pre>';
 
         if( $f !== 'pay' )
             w8io_print_transactions( $aid, $where, false, 100, $address, !( $f === 'f' ) );
