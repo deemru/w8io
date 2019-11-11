@@ -49,14 +49,17 @@ function update_proc( $blockchain, $transactions, $balances, $aggregate )
                     if( !is_array( $balances_from_to ) )
                         w8io_error( 'unexpected update balances error' );
 
-                    // selfcheck: 100M WAVES
+                    // selfcheck: totalWavesAmount
                     if( 0 )
                     {
                         $waves = $balances->get_all_waves();
                         $waves += $transactions->get_hang_waves( $balances_from_to['to'] + 1 );
-                        if( $waves !== 10000000000000000 )
-                            w8io_error( $waves . ' != 10000000000000000' );
-                        w8io_trace( 's', $waves );
+                        $rewards = wk()->fetch( '/blockchain/rewards/' . $balances_from_to['to'] );
+                        $rewards = wk()->json_decode( $rewards );
+                        $totalWavesAmount = $rewards['totalWavesAmount'];
+                        if( $waves !== $totalWavesAmount )
+                            w8io_error( $waves . ' != ' . $totalWavesAmount );
+                        w8io_trace( 's', 'totalWavesAmount = ' . $waves );
                     }
 
                     if( $transactions_from_to['to'] <= $balances_from_to['to'] )
