@@ -737,13 +737,35 @@ class w8io_blockchain_transactions
                     $bfee = $tx['buyMatcherFee'];
                     $sfee = $tx['sellMatcherFee'];
                     $fee = $tx['fee'];
+                    $bafee = isset( $buyer['matcherFeeAssetId'] ) ? $this->get_assetid( $buyer['matcherFeeAssetId'] ) : 0;
+                    $safee = isset( $seller['matcherFeeAssetId'] ) ? $this->get_assetid( $seller['matcherFeeAssetId'] ) : 0;
+                    $afee = isset( $tx['feeAssetId'] ) ? $this->get_assetid( $tx['feeAssetId'] ) : 0;
                     $amount = $tx['amount'];
                 }
                 // MATCHER;
+                $diff = [];
+                $diff[$bafee] = $bfee;
+                $diff[$safee] = $sfee + ( isset( $diff[$safee] ) ? $diff[$safee] : 0 );
+                $diff[$afee] = -$fee + ( isset( $diff[$afee] ) ? $diff[$afee] : 0 );
+                foreach( $diff as $masset => $mamount )
                 {
+                    if( $masset === $afee )
+                    {
+                        $wtx['fee'] = $fee;
+                        $wtx['afee'] = $afee;
+                    }
+                    else if( $mamount )
+                    {
+                        $wtx['fee'] = 0;
+                        $wtx['afee'] = 0;
+                    }
+                    else
+                        continue;
+
                     $wtx['a'] = 'MATCHER';
                     $wtx['b'] = $tx['sender'];
-                    $wtx['amount'] = $bfee + $sfee - $fee;
+                    $wtx['amount'] = $mamount;
+                    $wtx['asset'] = $masset;
 
                     if( !$this->set_tx( $wtx ) )
                         w8io_error();
@@ -755,6 +777,7 @@ class w8io_blockchain_transactions
                     $wtx['amount'] = $amount;
                     $wtx['asset'] = $basset;
                     $wtx['fee'] = $sfee;
+                    $wtx['afee'] = $safee;
 
                     if( !$this->set_tx( $wtx ) )
                         w8io_error();
@@ -766,6 +789,7 @@ class w8io_blockchain_transactions
                     $wtx['amount'] = gmp_intval( gmp_div( gmp_mul( $tx['price'], $amount ), 100000000 ) );
                     $wtx['asset'] = $sasset;
                     $wtx['fee'] = $bfee;
+                    $wtx['afee'] = $bafee;
 
                     if( !$this->set_tx( $wtx ) )
                         w8io_error();
@@ -970,14 +994,13 @@ class w8io_blockchain_transactions
             if( $local_height > $from )
             // ROLLBACK
             {
-                $balances->rollback( $this, $from );
-                w8io_warning( "transactions (rollback to $from)" );
-
                 for( $i = $local_height;; )
                 {
                     $i -= W8IO_MAX_UPDATE_BATCH;
                     $i = max( $from, $i );
-                    w8io_info( "transactions (rollback to $i)" );
+
+                    $balances->rollback( $this, $i );
+                    w8io_warning( "transactions (rollback to $i)" );
 
                     if( !$this->transactions->beginTransaction() )
                         w8io_error( 'unexpected begin() error' );
