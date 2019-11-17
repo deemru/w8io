@@ -29,6 +29,23 @@ class w8io_blockchain
 
     private function set_block( $block )
     {
+        $txs = &$block['transactions'];
+        $n = count( $txs );
+        for( $i = 0; $i < $n; $i++ )
+        {
+            $tx = $txs[$i];
+            if( $tx['type'] === 16 )
+            {
+                $tx = wk()->getStateChanges( $tx['id'] );
+                if( $tx === false )
+                {
+                    wk()->log( 'i', 'OFFLINE: cannot get state changes' );
+                    return false;
+                }
+
+                $txs[$i] = $tx;
+            }
+        }
         return $this->blocks->setKeyValue( $block['height'], $block, 'jz' );
     }
 
@@ -105,7 +122,10 @@ class w8io_blockchain
                 w8io_trace( 'i', "{$nodes_block['height']} (blockchain)" );
 
                 if( !$this->set_block( $nodes_block ) )
-                    w8io_error( 'set_block() failed' );
+                {
+                    $this->blocks->rollback();
+                    return false;
+                }
 
                 $shift = 1;
                 $signature = $nodes_block['signature'];
@@ -157,7 +177,10 @@ class w8io_blockchain
             w8io_trace( 'i', "$i (blockchain)" );
 
             if( !$this->set_block( $nodes_block ) )
-                w8io_error( 'set_block() failed' );
+            {
+                $this->blocks->rollback();
+                return false;
+            }
 
             $signature = $nodes_block['signature'];
         }

@@ -67,9 +67,9 @@ class w8io_api
         return $this->get_pairs_aliases()->getKey( $id, false, false );
     }
 
-    public function get_data( $id )
+    public function get_data( $id, $type = 's' )
     {
-        return $this->get_pairs_data()->getValue( $id, 's' );
+        return $this->get_pairs_data()->getValue( $id, $type );
     }
 
     public function get_asset_info( $id )

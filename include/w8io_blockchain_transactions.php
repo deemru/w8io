@@ -732,6 +732,30 @@ class w8io_blockchain_transactions
 
                     $sasset = $buyer['assetPair']['priceAsset'];
                     $sasset = $sasset !== null ? $this->get_assetid( $sasset ) : 0;
+
+                    if( $basset )
+                    {
+                        $info = $this->pairs_asset_info->getValue( $basset, 'j' );
+                        $bname = $info['name'];
+                        $bdecimals = $info['decimals'];
+                    }
+                    else
+                    {
+                        $bname = 'WAVES';
+                        $bdecimals = 8;
+                    }
+
+                    if( $sasset )
+                    {
+                        $info = $this->pairs_asset_info->getValue( $sasset, 'j' );
+                        $sname = $info['name'];
+                        $sdecimals = $info['decimals'];
+                    }
+                    else
+                    {
+                        $sname = 'WAVES';
+                        $sdecimals = 8;
+                    }
                 }
                 {
                     $bfee = $tx['buyMatcherFee'];
@@ -770,6 +794,24 @@ class w8io_blockchain_transactions
                     if( !$this->set_tx( $wtx ) )
                         w8io_error();
                 }
+
+                // price
+                {
+                    $price = (string)$tx['price'];
+                    if( $bdecimals !== 8 )
+                        $price = substr( $price, 0, -8 + $bdecimals );
+
+                    if( $sdecimals )
+                    {
+                        if( strlen( $price ) <= $sdecimals )
+                            $price = str_pad( $price, $sdecimals + 1, '0', STR_PAD_LEFT );
+                        $price = substr_replace( $price, '.', -$sdecimals, 0 );
+                    }
+
+                    $price = $price . ' ' . $bname . '/' . $sname;
+                    $wtx['data'] = [ 'p' => $this->get_dataid( $price, true ) ];
+                }
+
                 // SELLER -> BUYER
                 {
                     $wtx['a'] = $sa;
@@ -865,6 +907,7 @@ class w8io_blockchain_transactions
             case 12: // data
                 $wtx['a'] = $tx['sender'];
                 $wtx['b'] = 'NULL';
+                if( 0 )
                 $wtx['data'] = [ 'd' => $this->get_dataid( json_encode( $tx['data'] ), true ) ];
                 break;
 
@@ -887,10 +930,8 @@ class w8io_blockchain_transactions
 
             case 16: // invoke
             {
-                if( false === ( $stateChanges = wk()->getStateChanges( $tx['id'] ) ) )
+                if( !isset( $tx['stateChanges'] ) )
                     w8io_error( "getStateChanges( {$tx['id']} ) failed" );
-                if( $tx['id'] !== $stateChanges['id'] )
-                    w8io_error( "tx vs. ftx diff found ({$tx['id']})" );
 
                 $wtx['a'] = $tx['sender'];
 
@@ -929,6 +970,7 @@ class w8io_blockchain_transactions
                 if( null !== ( $asset = $tx['feeAssetId'] ) )
                     $wtx['afee'] = $this->get_assetid( $asset );
 
+                if( 0 )
                 if( isset( $tx['call'] ) )
                 {
                     $call = [ $tx['call']['function'] => $tx['call']['args'] ];
@@ -938,7 +980,7 @@ class w8io_blockchain_transactions
                 if( !$this->set_tx( $wtx ) )
                     w8io_error();
 
-                $stateChanges = $stateChanges['stateChanges'];
+                $stateChanges = $tx['stateChanges'];
                 $data = $stateChanges['data'];
                 $transfers = $stateChanges['transfers'];
 
