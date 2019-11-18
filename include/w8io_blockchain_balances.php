@@ -35,8 +35,9 @@ class w8io_blockchain_balances
     {
         if( !isset( $this->query_get_balance ) )
         {
-            $id = W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES;
-            $this->query_get_balance = $this->checkpoint->db()->prepare( "SELECT value AS k, NULL AS v FROM checkpoint WHERE key = $id UNION ALL SELECT asset, amount FROM balances WHERE address = :aid" );
+            $this->query_get_balance = $this->checkpoint->db()->prepare( 
+                'SELECT value AS k, NULL AS v FROM checkpoint WHERE key = ' . W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES
+                . ' UNION ALL SELECT asset, amount FROM balances WHERE address = :aid' );
             if( !is_object( $this->query_get_balance ) )
                 return false;
         }
