@@ -84,14 +84,15 @@ function update_proc( $blockchain, $transactions, $balances, $aggregate )
                 if( $blockchain_from_to['to'] <= $transactions_from_to['to'] )
                     break;
             }
+
+            if( $blockchain_from_to['height'] > $blockchain_from_to['to'] )
+                continue;
+
+            w8io_trace( 's', "{$balances_from_to['from']} >> {$balances_from_to['to']} (" . w8io_ms( w8io_timer( $timer ) ) . ' ms)' );
         }
 
-        if( $blockchain_from_to['height'] <= $blockchain_from_to['to'] )
-            break;
+        break;
     }
-
-    if( isset( $balances_from_to ) )
-        w8io_trace( 's', "{$balances_from_to['from']} >> {$balances_from_to['to']} (" . w8io_ms( w8io_timer( $timer ) ) . ' ms)' );
 }
 
 function update_tickers( $transactions )
