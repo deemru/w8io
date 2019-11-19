@@ -496,7 +496,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
         $p1 = $out[1];
         $p1pad = $out[2];
         $price = $out[3];
-        $p2pad = strlen( $price );
+        $p2pad = mb_strlen( html_entity_decode( $price ), 'UTF-8' ); 
         $p3 = $out[4];
 
         if( $p2pad === 0 )
