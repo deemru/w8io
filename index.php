@@ -551,7 +551,7 @@ function prios( $tickers )
 
 function w8io_a( $address, $asset = null )
 {
-    if( $address[0] === 'a' )
+    if( isset( $address[5] ) && $address[5] === ':' )
         $address = substr( $address, 8 );
     $f = isset( $asset ) ? ( '/f/' . $asset ) : '';
     return '<a href=' . W8IO_ROOT . $address . $f . '>' . $address . '</a>';
