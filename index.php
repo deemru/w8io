@@ -998,10 +998,15 @@ else
         {
             $asset = "Waves";
             $amount = w8io_amount( $balance[0], 8 );
+            $furl = W8IO_ROOT . $address . '/f/Waves';
 
-            $furl = W8IO_ROOT . "$address/f/Waves";
-
-            $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl, 'b' => $arg === 0 && $f !== 't' ];
+            if( $arg === 0 && $f !== 't' )
+            {
+                echo '<b>' . $amount . ' <a href="' . $furl . '">' . $asset . '</a></b>' . PHP_EOL;
+                echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
+            }
+            else
+                $tickers[] = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
         }
 
         if( isset( $balance[W8IO_ASSET_WAVES_LEASED] ) )
@@ -1013,9 +1018,7 @@ else
                 $asset = "Waves (GENERATOR)";
                 $amount = w8io_amount( $amount, 8 );
 
-                $furl = W8IO_ROOT . "$address/f/Waves";
-
-                $tickers[] = $record = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl, 'b' => false ];
+                $tickers[] = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
             }
         }
 
@@ -1036,11 +1039,13 @@ else
                 $amount = w8io_amount( $amount, $decimals );
 
                 $id = $info['id'];
-                $furl = W8IO_ROOT . "$address/f/$id";
+                $furl = W8IO_ROOT . $address . '/f/' . $id;
 
-                $record = [ 'asset' => $asset, 'id' => $id, 'amount' => $amount, 'furl' => $furl, 'b' => $b ];
+                $record = [ 'id' => $id, 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
 
-                if( isset( $info['ticker'] ) )
+                if( $b )
+                    $frecord = $record;
+                else if( isset( $info['ticker'] ) )
                     $tickers[] = $record;
                 else
                     $unlisted[] = $record;
@@ -1050,35 +1055,19 @@ else
         $tickers = prios( $tickers );
         $unlisted = prios( $unlisted );
 
-        foreach( $tickers as $record )
+        if( isset( $frecord ) )
         {
-            if( $record['b'] )
-            {
-                $bs = '<b>';
-                $be = '</b>';
-            }
-            else
-            {
-                $bs = $be = '';
-            }
-            echo "$bs{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>$be" . PHP_EOL;
+            echo '<b>' . $frecord['amount'] . ' <a href="' . $frecord['furl'] . '">' . $frecord['asset'] . '</a></b>' . PHP_EOL;
+            echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
         }
 
-        echo '<span style="color:#606870">'.str_repeat( '—', 38) . '&nbsp;</span>' .  PHP_EOL;
+        foreach( $tickers as $record )
+            echo $record['amount'] . ' <a href="' . $record['furl'] . '">' . $record['asset'] . '</a>' . PHP_EOL;
+
+            echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
 
         foreach( $unlisted as $record )
-        {
-            if( $record['b'] )
-            {
-                $bs = '<b>';
-                $be = '</b>';
-            }
-            else
-            {
-                $bs = $be = '';
-            }
-            echo "$bs{$record['amount']} <a href=\"{$record['furl']}\">{$record['asset']}</a>$be" . PHP_EOL;
-        }
+            echo $record['amount'] . ' <a href="' . $record['furl'] . '">' . $record['asset'] . '</a>' . PHP_EOL;
 
         echo '</pre></td><td valign="top"><pre>';
 
