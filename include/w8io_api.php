@@ -391,8 +391,8 @@ class w8io_api
         $dataset = [ 'txs' => [], 'totals' => [ 'txs' => 0 ] ];
         foreach( $query as $rec )
         {
-            $height = $rec['key'];
-            $json = json_decode( $rec['value'], true, 512, JSON_BIGINT_AS_STRING );
+            $height = $rec[0];
+            $json = json_decode( $rec[1], true, 512, JSON_BIGINT_AS_STRING );
             $this->aggregate_dataset( $dataset, $height, $json );
         }
 

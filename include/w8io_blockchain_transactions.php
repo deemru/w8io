@@ -94,7 +94,7 @@ class w8io_blockchain_transactions
         if( $this->query_get_txid->execute( [ 'txid' => $txid ] ) === false )
             return false;
 
-        $data = $this->query_get_txid->fetchAll( PDO::FETCH_ASSOC );
+        $data = $this->query_get_txid->fetchAll( \PDO::FETCH_ASSOC );
 
         if( !isset( $data[0] ) )
             return false;
@@ -122,7 +122,7 @@ class w8io_blockchain_transactions
         if( $this->query_wtxs_at->execute( [ 'at' => $at ] ) === false )
             return false;
 
-        return array_map( 'w8io_filter_wtx', $this->query_wtxs_at->fetchAll( PDO::FETCH_ASSOC ) );
+        return array_map( 'w8io_filter_wtx', $this->query_wtxs_at->fetchAll( \PDO::FETCH_ASSOC ) );
     }
 
     public function get_height()
@@ -174,9 +174,21 @@ class w8io_blockchain_transactions
 
     private function get_assetid( $id, $new = false )
     {
-        if( false === ( $id = $this->pairs_assets->getKey( $id, $new ) ) )
-            w8io_error( $id );
-        return $id;
+        if( $id === 'm9' )
+            return 0;
+        if( false === ( $ret = $this->pairs_assets->getKey( $id, $new ) ) )
+        {
+            if( $new !== false )
+                w8io_error( $id );
+
+            $id = wk()->base58Decode( $id );
+            if( strlen( $id ) > 32 )
+                $id = substr( $id, -32 );
+            $id = wk()->base58Encode( $id );
+            if( false === ( $ret = $this->pairs_assets->getKey( $id ) ) )
+                w8io_error( $id );
+        }
+        return $ret;
     }
 
     private function get_dataid( $id, $new = false )
@@ -299,7 +311,7 @@ class w8io_blockchain_transactions
         if( $this->query_from_to->execute( [ 'from' => $from, 'to' => $to ] ) === false )
             return false;
 
-        return array_map( 'w8io_filter_wtx', $this->query_from_to->fetchAll( PDO::FETCH_ASSOC ) );
+        return array_map( 'w8io_filter_wtx', $this->query_from_to->fetchAll( \PDO::FETCH_ASSOC ) );
     }
 
     public function mark_scam( $scam, $mark )
@@ -393,7 +405,7 @@ class w8io_blockchain_transactions
 
         $this->sponsors = [];
 
-        foreach( $query_sponsorships as $wtx )
+        while( $wtx = $query_sponsorships->fetch( \PDO::FETCH_ASSOC ) )
             if( !isset( $this->sponsors[$wtx['asset']] ) )
                 $this->set_sponsor( (int)$wtx['asset'], (int)$wtx['a'], (int)$wtx['amount'] );
     }
@@ -408,7 +420,7 @@ class w8io_blockchain_transactions
 
     private function get_sponsor( $asset )
     {
-        if( !isset( $this->sponsors[$asset] ) )
+        if( !isset( $this->sponsors[$asset] ) || $this->sponsors[$asset]['f'] === 0 )
             return false;
 
         return $this->sponsors[$asset];

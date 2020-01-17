@@ -605,7 +605,9 @@ if( $address === 'CHARTS' )
     $title = "Waves " . ( W8IO_NETWORK == 'W' ? "MAINNET" : "TESTNET" );
 
     require_once './include/w8io_charts.php';
-    $hostroot = 'http' . ( ( isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] === 'on' ) ? 's' : '' ) . '://' . $_SERVER['HTTP_HOST'] . W8IO_ROOT;
+    $s = isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] === 'on';
+    $s |= isset( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https';
+    $hostroot = 'http' . ( $s ? 's' : '' ) . '://' . $_SERVER['HTTP_HOST'] . W8IO_ROOT;
     echo w8io_chart( $title, "$froms .. $to", $hostroot . "api/chart/$from/$to" );
 }
 else
@@ -1108,7 +1110,7 @@ else
                 $waves_blocks = 0;
                 $waves_fees = 0;
                 $query = $api->get_transactions_query( "SELECT * FROM transactions WHERE block >= $from AND block <= $to AND b = $aid AND type = 0" );
-                foreach( $query as $wtx )
+                while( $wtx = $query->fetch( \PDO::FETCH_ASSOC ) )
                 {
                     $wtx = w8io_filter_wtx( $wtx );
                     if( $wtx['asset'] === 0 )
@@ -1122,18 +1124,23 @@ else
                 // mrt_fees
                 $mrt_fees = 0;
                 $mrt_id = $api->get_asset( '4uK8i4ThRGbehENwa6MxyLtxAjAo1Rj9fduborGExarC' );
-                $query = $api->get_transactions_query( "SELECT * FROM transactions WHERE block >= $from AND block <= $to AND b = $aid AND type = 4 AND asset = $mrt_id" );
-                foreach( $query as $wtx )
+                if( $mrt_id !== false )
                 {
-                    $wtx = w8io_filter_wtx( $wtx );
-                    $mrt_fees += $wtx['amount'];
+                    $query = $api->get_transactions_query( "SELECT * FROM transactions WHERE block >= $from AND block <= $to AND b = $aid AND type = 4 AND asset = $mrt_id" );
+                    while( $wtx = $query->fetch( \PDO::FETCH_ASSOC ) )
+                    {
+                        $wtx = w8io_filter_wtx( $wtx );
+                        $mrt_fees += $wtx['amount'];
+                    }
+
+                    $query = $api->get_transactions_query( "SELECT * FROM transactions WHERE block >= $from AND block <= $to AND b = $aid AND type = 11 AND asset = $mrt_id" );
+                    while( $wtx = $query->fetch( \PDO::FETCH_ASSOC ) )
+                    {
+                        $wtx = w8io_filter_wtx( $wtx );
+                        $mrt_fees += $wtx['amount'];
+                    }
                 }
-                $query = $api->get_transactions_query( "SELECT * FROM transactions WHERE block >= $from AND block <= $to AND b = $aid AND type = 11 AND asset = $mrt_id" );
-                foreach( $query as $wtx )
-                {
-                    $wtx = w8io_filter_wtx( $wtx );
-                    $mrt_fees += $wtx['amount'];
-                }
+
                 $mrt_fees = intval( $mrt_fees * $percent / 100 );
 
                 echo "pay ($from .. $to) ($percent %):" . PHP_EOL . PHP_EOL;
