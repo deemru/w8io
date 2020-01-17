@@ -26,6 +26,7 @@ define( 'W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES', 2 );
 define( 'W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE', 3 );
 define( 'W8IO_MAX_UPDATE_BATCH', 100 );
 define( 'W8IO_UPDATE_DELAY', 10 );
+define( 'PDO_FETCH_NUM', true );
 
 function wk( $full = true )
 {
