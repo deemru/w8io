@@ -1,83 +1,177 @@
 <?php
 
+namespace w8io;
+
+require_once 'Markers.php';
+
 use deemru\WavesKit;
 use deemru\Pairs;
+use deemru\Triples;
+use deemru\KV;
 
-require_once "w8io_base.php";
+//require_once "w8io_base.php";
+require_once "KV2.php";
 
-class w8io_blockchain_transactions
+define( 'UID', 0 );
+define( 'TXKEY', 1 );
+define( 'TYPE', 2 );
+define( 'A', 3 );
+define( 'B', 4 );
+define( 'ASSET', 5 );
+define( 'AMOUNT', 6 );
+define( 'FEEASSET', 7 );
+define( 'FEE', 8 );
+define( 'ADDON', 9 );
+define( 'GROUP', 10 );
+
+define( 'GENESIS', 0 );
+define( 'GENERATOR', -1 );
+define( 'MATCHER', -2 );
+define( 'UNDEFINED', -3 );
+define( 'SPONSOR', -4 );
+define( 'MASS', -5 );
+
+define( 'TX_GENERATOR', 0 );
+define( 'TX_GENESIS', 1 );
+define( 'TX_PAYMENT', 2 );
+
+define( 'WAVES_ASSET', 0 );
+
+class BlockchainParser
 {
-    private $transactions;
-    private $checkpoint;
-
-    private $query_get_txs_all;
-    private $query_get_txs;
-    private $query_get_txs_asset;
-    private $query_get_txid;
-    private $query_set_tx;
-    private $query_clear;
-    private $query_from_to;
-    private $query_wtxs_at;
-
-    private $pairs_txids;
-    private $pairs_addresses;
-    private $pairs_assets;
-    private $pairs_asset_info;
-    private $pairs_aliases;
-
-    private $sponsors;
-    private $wtxs;
+    public Markers $markers;
+    public Triples $db;
+    public KV $kvAddresses;
+    public Blockchain $blockchain;
 
     public function __construct( $writable = true )
     {
-        $this->transactions = new PDO( 'sqlite:' . W8IO_DB_BLOCKCHAIN_TRANSACTIONS );
-        if( !$this->transactions->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING ) )
-            w8io_error( 'PDO->setAttribute()' );
+        $s = 'S:/w8io-refresh/parser.sqlite3';
 
-        $this->transactions->exec( W8IO_DB_PRAGMAS );
+        $this->markers = new Markers( $s );
+        $this->db = $this->markers->db();
 
-        if( $writable )
+        $this->pts = new Triples( $this->db , 'pts', 1,
+            // uid                 | txkey    | type     | a        | b        | asset    | amount   | feeasset | fee      | addon    | group
+            // r0                  | r1       | r2       | r3       | r4       | r5       | r6       | r7       | r8       | r9       | r10
+            [ 'INTEGER PRIMARY KEY', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER' ],
+            [ 0,                     1,         1,         1,         1,         1,         0,         1,         0,         0,         1 ] );
+
+        $this->kvAddresses =    ( new KV( true ) )->setStorage( $this->db, 'addresses', true );
+        $this->kvAliases =      ( new KV( false ) )->setStorage( $this->db, 'aliases', true, 'TEXT UNIQUE', 'INTEGER' );
+        $this->kvAddons =       ( new KV( true ) )->setStorage( $this->db, 'addons', true );
+        $this->kvAssets =       ( new KV( true ) )->setStorage( $this->db, 'assets', true );
+        $this->kvAssetInfo =    ( new KV( false ) )->setStorage( $this->db, 'assetInfo', true );
+
+        $this->kvs = [
+            $this->kvAddresses,
+            $this->kvAliases,
+            $this->kvAddons,
+            $this->kvAssets,
+            $this->kvAssetInfo,
+        ];
+        
+        $predefinedAddresses = [
+            GENESIS => 'GENESIS',
+            GENERATOR => 'GENERATOR',
+            MATCHER => 'MATCHER',
+            UNDEFINED => 'UNDEFINED',
+            SPONSOR => 'SPONSOR',
+            MASS => 'MASS',
+        ];
+
+        foreach( $predefinedAddresses as $k => $v )
+            if( $v !== $this->kvAddresses->getValueByKey( $k ) )
+                $this->kvAddresses->setKeyValue( $k, $v );
+        $this->kvAddresses->merge();
+        $this->kvAddresses->setHigh();
+
+        $predefinedAssets = [
+            WAVES_ASSET => 'Waves',
+        ];
+
+        foreach( $predefinedAssets as $k => $v )
+            if( $v !== $this->kvAssets->getValueByKey( $k ) )
+                $this->kvAssets->setKeyValue( $k, $v );
+        $this->kvAssets->merge();
+        $this->kvAssets->setHigh();
+
+        $blobs = [ 'GENESIS', 'GENERATOR', 'MATCHER', 'NULL', 'SPONSOR', 'MASS', 'HUYAS', '123', '12938' ];
+
+        //$ids = $this->getIdsByBlobs( $this->dbAddresses, $blobs );
+        //$ids = $this->setIdsByBlobs( $this->dbAddresses, $blobs );
+        //$ids = $this->setIdsByBlobs( $this->dbAddresses, $blobs );
+
+        $this->setUid();
+        $this->setTxHeight();
+        $this->recs = [];
+    }
+
+    private function setTxHeight()
+    {
+        $txheight = $this->pts->getHigh( 1 );
+        $this->txheight = $txheight === false ? 0 : $txheight;
+    }
+
+    public function setBlockchain( $blockchain )
+    {
+        $this->blockchain = $blockchain;
+    }
+
+    public function getIdsByBlobs( Triples $db, $blobs )
+    {
+        $n = count( $blobs );
+
+        $query = 'SELECT * FROM ' . $db->name() . ' WHERE r2 IN ( ' . ( $n > 1 ? str_repeat( '?,', $n - 1 ) : '' ) . '? )';
+        if( false === ( $query = $db->query( $query, $blobs ) ) )
+            return false;
+
+        $ids = [];
+        foreach( $query as $r )
+            $ids[$r[1]] = (int)$r[0];
+
+        return $ids;
+    }
+
+    public function getBlobsByIds( $db, $ids )
+    {
+        $n = count( $ids );
+
+        $query = 'SELECT * FROM ' . $db->name() . ' WHERE r1 IN ( ' . ( $n > 1 ? str_repeat( '?,', $n - 1 ) : '' ) . '? )';
+        if( false === ( $query = $db->query( $query, $ids ) ) )
+            return false;
+
+        $blobs = [];
+        foreach( $query as $r )
+            $blobs[$r[0]] = $r[1];
+
+        return $blobs;
+    }
+
+    public function setIdsByBlobs( $db, $blobs )
+    {
+        $ids = $this->getIdsByBlobs( $db, $blobs );
+
+        $n = count( $blobs );
+        if( $n === count( $ids ) )
+            return $ids;
+
+        $hi = $db->getHi( 1 );
+
+        $set = [];
+        for( $i = 0; $i < $n; $i++ )
         {
-            $this->checkpoint = new Pairs( $this->transactions, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-            $this->pairs_txids = new Pairs( $this->transactions, 'txids', true );
-            $this->pairs_addresses = new Pairs( $this->transactions, 'addresses', true );
-            $this->pairs_assets = new Pairs( $this->transactions, 'assets', true );
-            $this->pairs_asset_info = new Pairs( $this->transactions, 'asset_info', true, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-            $this->pairs_aliases = new Pairs( $this->transactions, 'aliases', true, 'TEXT PRIMARY KEY|INTEGER|0|1' );
-            $this->pairs_addons = new Pairs( $this->transactions, 'addons', true );
-
-            $this->transactions->exec( W8IO_DB_WRITE_PRAGMAS );
-            $this->transactions->exec( "CREATE TABLE IF NOT EXISTS transactions (
-                uid INTEGER PRIMARY KEY AUTOINCREMENT,
-                txid INTEGER,
-                block INTEGER,
-                type INTEGER,
-                timestamp INTEGER,
-                a INTEGER,
-                b INTEGER,
-                amount INTEGER,
-                asset INTEGER,
-                fee INTEGER,
-                afee INTEGER,
-                data TEXT )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_txid  ON transactions( txid )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_block ON transactions( block )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_a     ON transactions( a )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_b     ON transactions( b )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_as    ON transactions( asset )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_asa   ON transactions( a, asset )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_asb   ON transactions( b, asset )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_t     ON transactions( type )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_ta    ON transactions( a, type )" );
-            $this->transactions->exec( "CREATE INDEX IF NOT EXISTS transactions_index_tb    ON transactions( b, type )" );
-
-            $this->pairs_addresses->setKeyValue(  0, 'GENESIS' );
-            $this->pairs_addresses->setKeyValue( -1, 'GENERATOR' );
-            $this->pairs_addresses->setKeyValue( -2, 'MATCHER' );
-            $this->pairs_addresses->setKeyValue( -3, 'NULL' );
-            $this->pairs_addresses->setKeyValue( -4, 'SPONSOR' );
-            $this->pairs_addresses->setKeyValue( -5, 'MASS' );
+            $blob = $blobs[$i];
+            if( !isset( $ids[$blob] ) )
+            {
+                $id = ++$hi;                
+                $ids[$blob] = $id;
+                $set[] = [ $id, $blob ];
+            }
         }
+
+        $db->merge( $set );
+        return $ids;
     }
 
     private function get_txid( $txid, $one = false )
@@ -954,72 +1048,481 @@ class w8io_blockchain_transactions
             w8io_error( "set_tx() failed" );
     }
 
-    public function update( $upcontext, $balances )
+    private function setUid()
     {
-        $blockchain = $upcontext['blockchain'];
-        $from = $upcontext['from'];
-        $to = $upcontext['to'];
-        $local_height = $this->get_height();
+        if( false === ( $this->uid = $this->pts->getHigh( 0 ) ) )
+            $this->uid = 0;
+    }
 
-        if( $local_height !== $from )
+    private function getNewUid()
+    {
+        return ++$this->uid;
+    }
+
+    private function getSenderId( $address )
+    {
+        $id = $this->kvAddresses->getKeyByValue( $address );
+        if( $id === false )
+            w8io_error( 'getExistingAddressId' );
+        
+        return $id;
+    }
+
+    private function getRecipientId( $addressOrAlias )
+    {
+        if( $addressOrAlias[0] === '3' && strlen( $addressOrAlias ) === 35 )
+            return $this->kvAddresses->getForcedKeyByValue( $addressOrAlias );
+
+        if( substr( $addressOrAlias, 0, 6 ) !== 'alias:')
+            w8io_error( 'unexpected $addressOrAlias = ' . $addressOrAlias );
+        
+        $id = $this->kvAliases->getValueByKey( substr( $addressOrAlias, 8 ) );
+        if( $id === false )
+            w8io_error( 'getValueByKey' );
+        
+        return $id;
+    }
+
+    private function processGeneratorTransaction( $txkey, $header )
+    {
+        $this->recs[] = [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_GENERATOR,
+            A =>        $this->getSenderId( 'GENERATOR' ),
+            B =>        $this->getRecipientId( $header['generator'] ),
+            ASSET =>    WAVES_ASSET,
+            AMOUNT =>   $header['fee'],
+            FEEASSET => WAVES_ASSET,
+            FEE =>      0,
+            ADDON =>    0,
+            GROUP =>    0,
+        ];
+    }
+
+    private function processGenesisTransaction( $txkey, $tx )
+    {
+        $this->recs[] = [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_GENESIS,
+            A =>        $this->getSenderId( 'GENESIS' ),
+            B =>        $this->getRecipientId( $tx['recipient'] ),
+            ASSET =>    WAVES_ASSET,
+            AMOUNT =>   $tx['amount'],
+            FEEASSET => WAVES_ASSET,
+            FEE =>      0,
+            ADDON =>    0,
+            GROUP =>    0,
+        ];
+    }
+
+    private function processPaymentTransaction( $txkey, $tx )
+    {
+        $this->recs[] = [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_PAYMENT,
+            A =>        $this->getSenderId( $tx['sender'] ),
+            B =>        $this->getRecipientId( $tx['recipient'] ),
+            ASSET =>    WAVES_ASSET,
+            AMOUNT =>   $tx['amount'],
+            FEEASSET => WAVES_ASSET,
+            FEE =>      $tx['fee'],
+            ADDON =>    0,
+            GROUP =>    0,
+        ];
+    }
+
+    private function processTransaction( $txkey, $tx )
+    {
+        switch( $tx['type'] )
         {
-            $from = min( $local_height, $from );
+            case TX_GENESIS:
+                return $this->processGenesisTransaction( $txkey, $tx );
+            case TX_PAYMENT:
+                return $this->processPaymentTransaction( $txkey, $tx );
+            default:
+                w8io_error( 'unknown' );
+        }
+        
 
-            if( $local_height > $from )
-            // ROLLBACK
-            {
-                $balances->rollback( $this, $from );
-                w8io_warning( "transactions (rollback to $from)" );
+        $wtx[TXKEY] = $this->get_pair_txid( wk()->base58Decode( $tx['id'] ), true );
+        $wtx[TYPE] = $type;
+        $wtx[AMOUNT] = isset( $tx['amount'] ) ? $tx['amount'] : 0;
+        $wtx['asset'] = 0;
+        $wtx[FEE] = isset( $tx['fee'] ) ? $tx['fee'] : 0;
+        $wtx['afee'] = 0;
+        $wtx['data'] = false;
 
-                for( $i = $local_height;; )
+        switch( $type )
+        {
+            
+            case 2: // payment
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = $tx['recipient'];
+                break;
+            case 3: // issue
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                $wtx['amount'] = $tx['quantity'];
                 {
-                    $i -= W8IO_MAX_UPDATE_BATCH;
-                    $i = max( $from, $i );
-                    w8io_info( "transactions (rollback to $i)" );
+                    $asset = $this->get_assetid( $tx['assetId'], true );
 
-                    if( !$this->transactions->beginTransaction() )
-                        w8io_error( 'unexpected begin() error' );
-                    if( !$this->clear_transactions( $i ) )
-                        w8io_error( 'unexpected clear_transactions() error' );
-                    if( false === $this->checkpoint->setKeyValue( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, $i ) )
-                        w8io_error( 'set checkpoint_transactions failed' );
-                    if( !$this->transactions->commit() )
-                        w8io_error( 'unexpected commit() error' );
+                    $tx['name'] = htmlentities( trim( preg_replace( '/\s+/', ' ', $tx['name'] ) ) );
+                    if( $this->pairs_asset_info->setKeyValue( $asset, $tx, 'j' ) === false )
+                        w8io_error();
 
-                    if( $i === $from )
-                        break;
+                    $wtx['asset'] = $asset;
                 }
-                unset( $this->sponsors );
-                w8io_trace( 's', "transactions (rollback to $from) (done)" );
+                break;
+
+            case W8IO_TYPE_INVOKE_TRANSFER:
+            case 4: // transfer
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = $tx['recipient'];
+                {
+                    $attachment = $tx['attachment'];
+                    if( is_string( $attachment ) && strlen( $attachment ) > 0 )
+                        $wtx['data'] = [ 'd' => $this->get_dataid( $attachment, true ) ];
+                }
+                {
+                    if( null !== ( $asset = $tx['assetId'] ) )
+                        $wtx['asset'] = $this->get_assetid( $asset );
+
+                    if( null !== ( $asset = $tx['feeAssetId'] ) )
+                        $wtx['afee'] = $this->get_assetid( $asset );
+                }
+                break;
+            case 5: // reissue
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                $wtx['amount'] = $tx['quantity'];
+                $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
+                break;
+            case 6: // burn
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
+                break;
+            case 7: // exchange
+                {
+                    $buyer = $tx['order1'];
+                    $seller = $tx['order2'];
+                    $ba = $this->get_aid( $buyer['sender'] );
+                    $sa = $this->get_aid( $seller['sender'] );
+
+                    $basset = $buyer['assetPair']['amountAsset'];
+                    $basset = $basset !== null ? $this->get_assetid( $basset ) : 0;
+
+                    $sasset = $buyer['assetPair']['priceAsset'];
+                    $sasset = $sasset !== null ? $this->get_assetid( $sasset ) : 0;
+                }
+                {
+                    $bfee = $tx['buyMatcherFee'];
+                    $sfee = $tx['sellMatcherFee'];
+                    $fee = $tx['fee'];
+                    $amount = $tx['amount'];
+                }
+                // MATCHER;
+                {
+                    $wtx['a'] = 'MATCHER';
+                    $wtx['b'] = $tx['sender'];
+                    $wtx['amount'] = $bfee + $sfee - $fee;
+
+                    if( !$this->set_tx( $wtx ) )
+                        w8io_error();
+                }
+                // SELLER -> BUYER
+                {
+                    $wtx['a'] = $sa;
+                    $wtx['b'] = $ba;
+                    $wtx['amount'] = $amount;
+                    $wtx['asset'] = $basset;
+                    $wtx['fee'] = $sfee;
+
+                    if( !$this->set_tx( $wtx ) )
+                        w8io_error();
+                }
+                // BUYER -> SELLER
+                {
+                    $wtx['a'] = $ba;
+                    $wtx['b'] = $sa;
+                    $wtx['amount'] = gmp_intval( gmp_div( gmp_mul( $tx['price'], $amount ), 100000000 ) );
+                    $wtx['asset'] = $sasset;
+                    $wtx['fee'] = $bfee;
+
+                    if( !$this->set_tx( $wtx ) )
+                        w8io_error();
+                }
+                return;
+
+            case 8: // start lease
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = $tx['recipient'];
+                break;
+            case 9: // cancel lease
+                $wtx['a'] = $tx['sender'];
+                {
+                    $wtxs = $this->get_txid( $this->get_pair_txid( wk()->base58Decode( $tx['leaseId'] ) ) );
+                    if( $wtxs === false )
+                        w8io_error();
+
+                    $wtx_lease = $wtxs[0];
+                    $wtx['b'] = $wtx_lease['b'];
+
+                    if( count( $wtxs ) === 1 )
+                    {
+                        $wtx['txid'] = $wtx_lease['txid'];
+                        $wtx['amount'] = $wtx_lease['amount'];
+                    }
+                    else
+                    {
+                        $wtx['amount'] = 0; // already cancelled
+                    }
+                }
+                break;
+            case 10: // alias
+                $wtx['b'] = 'NULL';
+                {
+                    $aid = $this->get_aid( $tx['sender'], $wtx['fee'] === 0 ? true : false );
+
+                    $wtx['a'] = $aid;
+
+                    $alias = $tx['alias'];
+
+                    if( false === $this->pairs_aliases->setKeyValue( $alias, $aid ) )
+                        w8io_error();
+
+                    $wtx['data'] = [ 'd' => $this->get_dataid( $alias, true ) ];
+                }
+                break;
+            case 11: // mass transfer
+                // SENDER
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'MASS';
+                $wtx['amount'] = $tx['totalAmount'];
+                {
+                    if( null !== ( $asset = $tx['assetId'] ) )
+                        $wtx['asset'] = $this->get_assetid( $asset );
+
+                    if( !$this->set_tx( $wtx ) )
+                        w8io_error();
+                }
+                // RECIPIENTS
+                $wtx['fee'] = 0;
+                $mtxs = $tx['transfers'];
+                foreach( $mtxs as $mtx )
+                {
+                    $wtx['b'] = $mtx['recipient'];
+                    $wtx['amount'] = $mtx['amount'];
+
+                    if( !$this->set_tx( $wtx ) )
+                        w8io_error();
+                }
+                return;
+            
+            case W8IO_TYPE_INVOKE_DATA:
+            case 12: // data
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                $wtx['data'] = [ 'd' => $this->get_dataid( json_encode( $tx['data'] ), true ) ];
+                break;
+
+            case 13: // smart account
+            case 15: // smart asset
+                $wtx['a'] = $tx['sender'];
+                $wtx['b'] = 'NULL';
+                $wtx['data'] = [ 's' => $this->get_dataid( json_encode( $tx['script'] ), true ) ];
+                if( $type === 15 )
+                    $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
+                break;
+
+            case 14: // sponsorship
+                $wtx['a'] = $this->get_aid( $tx['sender'] );
+                $wtx['b'] = 'NULL';
+                $wtx['asset'] = $this->get_assetid( $tx['assetId'] );
+                $wtx['amount'] = $tx['minSponsoredAssetFee'];
+                $this->set_sponsor( $wtx['asset'], $wtx['a'], $wtx['amount'] );
+                break;
+
+            case 16: // invoke
+            {
+                if( false === ( $stateChanges = wk()->getStateChanges( $tx['id'] ) ) )
+                    w8io_error( "getStateChanges( {$tx['id']} ) failed" );
+                if( $tx['id'] !== $stateChanges['id'] )
+                    w8io_error( "tx vs. ftx diff found ({$tx['id']})" );
+
+                $wtx['a'] = $tx['sender'];
+
+                if( strlen( $tx['dApp'] ) === 35 )
+                {
+                    $dAppAddress = $tx['dApp'];
+                    $wtx['b'] = $dAppAddress;
+                }
+                else
+                {
+                    $alias = $tx['dApp'];
+                    if( substr( $alias, 0, 6 ) !== 'alias:' )
+                        $alias = substr( wk()->base58Decode( $alias ), 4 );
+                    else
+                        $alias = substr( $alias, 8 );
+
+                    $wtx['b'] = 'alias:#:' . $alias;
+
+                    $alias = $this->pairs_aliases->getValue( $alias, 'i' );
+                    if( $alias === false )
+                        w8io_error();
+
+                    $dAppAddress = $this->pairs_addresses->getValue( $alias );
+                    if( $dAppAddress === false )
+                        w8io_error();
+                }
+
+                if( isset( $tx['payment'][0] ) )
+                {
+                    $payment = $tx['payment'][0];
+                    if( null !== ( $asset = $payment['assetId'] ) )
+                        $wtx['asset'] = $this->get_assetid( $asset );
+                    $wtx['amount'] = $payment['amount'];
+                }
+
+                if( null !== ( $asset = $tx['feeAssetId'] ) )
+                    $wtx['afee'] = $this->get_assetid( $asset );
+
+                if( isset( $tx['call'] ) )
+                {
+                    $call = [ $tx['call']['function'] => $tx['call']['args'] ];
+                    $wtx['data'] = [ 'c' => $this->get_dataid( json_encode( $call ), true ) ];
+                }
+
+                if( !$this->set_tx( $wtx ) )
+                    w8io_error();
+
+                $stateChanges = $stateChanges['stateChanges'];
+                $data = $stateChanges['data'];
+                $transfers = $stateChanges['transfers'];
+
+                if( count( $data ) || count( $transfers ) )
+                {
+                    $tx['sender'] = $dAppAddress;
+                    $tx['fee'] = 0;
+                    $tx['feeAssetId'] = null;
+
+                    if( count( $data ) )
+                    {
+                        $tx['type'] = W8IO_TYPE_INVOKE_DATA;
+                        $tx['data'] = $data;
+                        $this->set_transaction( $tx, $at );
+                    }
+
+                    if( count( $transfers ) )
+                    {
+                        $tx['type'] = W8IO_TYPE_INVOKE_TRANSFER;
+                        $tx['attachment'] = null;
+                        foreach( $transfers as $transfer )
+                        {
+                            $tx['recipient'] = $transfer['address'];
+                            $tx['assetId'] = $transfer['asset'];
+                            $tx['amount'] = $transfer['amount'];
+                            $this->set_transaction( $tx, $at );
+                        }
+                    }
+                }
+
+                return;
             }
+
+            default:
+                w8io_error( json_encode( $wtx ) );
         }
 
-        $to = min( $to, $from + W8IO_MAX_UPDATE_BATCH );
+        if( $this->set_tx( $wtx ) === false )
+            w8io_error( "set_tx() failed" );
+    }
 
-        if( !isset( $this->sponsors ) )
-            $this->fill_sponsors();
-
-        if( !$this->transactions->beginTransaction() )
-            w8io_error( 'unexpected begin() error' );
-
-        for( $i = $from + 1; $i <= $to; $i++ )
+    private function commit()
+    {
+        $tt = microtime( true );
+        $this->db->begin();
         {
-            w8io_trace( 'i', "$i (transactions)" );
+            if( count( $this->recs ) )
+            {
+                $this->pts->merge( $this->recs );
+                $this->recs = [];
+            }            
 
-            $block = $blockchain->get_block( $i );
-            if( $block === false )
-                w8io_error( 'unexpected blockchain->get_block() error' );
+            foreach( $this->kvs as $kv )
+                $kv->merge();
 
-            if( !$this->set_transactions( $block ) )
-                w8io_error( 'unexpected set_transactions() corruption' );
+            $beforeHeight  = intdiv( $this->txheight, W8IO_TXSHIFT );
+            $beforeTxHeight = $this->txheight % W8IO_TXSHIFT;
+            $this->setTxHeight();
+            $afterHeight  = intdiv( $this->txheight, W8IO_TXSHIFT );
+            $afterTxHeight = $this->txheight % W8IO_TXSHIFT;
+
+            $this->markers->setMarkers( null, $this->txheight );
+        }
+        $this->db->commit();
+
+        wk()->log( 'i', $beforeHeight . ':' . $beforeTxHeight . ' >> ' . $afterHeight . ':' . $afterTxHeight . ' (commit) (' . (int)( 1000 * ( microtime( true ) - $tt ) ) . ' ms)' );        
+
+        // $this->blockchain->markers->setMarkers( $this->txheight + 1, null, true );
+    }
+
+    public function rollback( $txfrom )
+    {
+        $tt = microtime( true );
+        $this->db->begin();
+        {
+            $this->pts->query( 'DELETE FROM pts WHERE r1 >= '. $txfrom );
+            $this->markers->setMarkers( $txfrom, $txfrom );
+            foreach( $this->kvs as $kv )
+                $kv->reset();
+
+            $beforeHeight  = intdiv( $this->txheight, W8IO_TXSHIFT );
+            $beforeTxHeight = $this->txheight % W8IO_TXSHIFT;
+            $this->setTxHeight();
+            $afterHeight  = intdiv( $this->txheight, W8IO_TXSHIFT );
+            $afterTxHeight = $this->txheight % W8IO_TXSHIFT;
+
+            $this->markers->setMarkers( $this->txheight, $this->txheight );
+        }                    
+        $this->db->commit();
+
+        wk()->log( 'i', $beforeHeight . ':' . $beforeTxHeight . ' >> ' . $afterHeight . ':' . $afterTxHeight . ' (rollback) (' . (int)( 1000 * ( microtime( true ) - $tt ) ) . ' ms)' );        
+    }
+
+    public function update()
+    {
+        $lo = $this->blockchain->markers->getLoMarker();
+        $hi = $this->blockchain->markers->getHiMarker();
+
+        if( $this->txheight > $lo )
+            $this->rollback( $lo );
+
+        $from = $lo;
+        $to = $from - ( $from % W8IO_TXSHIFT ) + W8IO_TXSHIFT - 1;
+        $n = 0;
+        $t = 0;
+        for( $i = 0; $i < W8IO_MAX_UPDATE_BATCH; ++$i )
+        {
+            $txs = $this->blockchain->getTransactionsFromTo( $from, $to );
+                
+            foreach( $txs as $txkey => $tx )
+                $this->processTransaction( $txkey, $tx );
+
+            $this->processGeneratorTransaction( $to, $this->blockchain->getHeaderAt( intdiv( $from, W8IO_TXSHIFT ) ) );
+
+            $from = $to + 1;
+            $to += W8IO_TXSHIFT;
         }
 
-        if( false === $this->checkpoint->setKeyValue( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, $to ) )
-            w8io_error( 'set checkpoint_transactions failed' );
+        $this->commit();            
 
-        if( !$this->transactions->commit() )
-            w8io_error( 'unexpected commit() error' );
-
-        return [ 'transactions' => $this, 'from' => $from, 'to' => $to ];
+        return $this->txheight !== $hi; 
     }
 }
+
+if( !isset( $lock ) )
+    require_once '../w8io_updater.php';

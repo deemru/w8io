@@ -1,6 +1,6 @@
 <?php
 
-function w8io_err( $errno , $errstr, $errfile )
+function w8io_error_handler( $errno, $errstr, $errfile )
 {
     switch( $errno )
     {

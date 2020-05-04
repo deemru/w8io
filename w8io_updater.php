@@ -1,38 +1,38 @@
 <?php
 
-require_once __DIR__ . '/include/error_handler.php';
-require_once __DIR__ . '/vendor/autoload.php';
-
-use deemru\WavesKit;
-use deemru\Pairs;
-
-require_once 'w8io_config.php';
-require_once './include/w8io_base.php';
-require_once './include/w8io_blockchain.php';
-require_once './include/w8io_blockchain_transactions.php';
-require_once './include/w8io_blockchain_balances.php';
-require_once './include/w8io_blockchain_aggregate.php';
+if( file_exists( __DIR__ . '/config.php' ) )
+    require_once __DIR__ . '/config.php';
+else
+    require_once __DIR__ . '/config.sample.php';
 
 require_once __DIR__ . '/include/secqru_flock.php';
 $lock = new \secqru_flock( W8IO_DB_DIR . 'w8io.lock' );
 if( false === $lock->open() )
     exit( wk()->log( 'e', 'flock failed, already running?' ) );
 
-w8io_trace( 'i', 'w8io_updater started' );
+wk()->log( 'w8io_updater started' );
+
+require_once __DIR__ . '/include/w8io_blockchain.php';
+$blockchain = new w8io\Blockchain( W8IO_DB_BLOCKCHAIN );
+require_once __DIR__ . '/include/w8io_blockchain_transactions.php';
+$parser = new w8io\BlockchainParser( W8IO_DB_BLOCKCHAIN );
+$parser->setBlockchain( $blockchain );
 
 function update_proc( $blockchain, $transactions, $balances, $aggregate )
 {
     $timer = 0;
-    w8io_timer( $timer );
+    //w8io_timer( $timer );
 
     for( ;; )
     {
-        $blockchain_from_to = $blockchain->update();
-        if( is_array( $blockchain_from_to ) )
+        $result = $blockchain->update();
+        if( $result === W8IO_STATUS_UPDATED && 0 )
         {
             for( ;; )
             {
-                $transactions_from_to = $transactions->update( $blockchain_from_to, $balances );
+                if( $transactions->update() )
+                    continue;
+
                 if( !is_array( $transactions_from_to ) )
                     w8io_error( 'unexpected update transactions error' );
 
@@ -79,7 +79,7 @@ function update_proc( $blockchain, $transactions, $balances, $aggregate )
             }
         }
 
-        if( $blockchain_from_to['height'] <= $blockchain_from_to['to'] )
+        if( !is_array( $result ) )
             break;
     }
 
@@ -211,10 +211,76 @@ function update_scam( $transactions )
     file_put_contents( $scam_file, $fresh_scam );
 }
 
-$blockchain = new w8io_blockchain();
-$transactions = new w8io_blockchain_transactions();
-$balances = new w8io_blockchain_balances();
-$aggregate = new w8io_blockchain_aggregate();
+if( 0 )
+{
+    $newblockchain = new w8io\Blockchain( 'C:/w8io-refresh/blockchain.sqlite3' );
+
+    for( ;; )
+    {
+        $from = $newblockchain->height;
+        $q = $blockchain->headers->query( "SELECT * FROM headers WHERE key > $from ORDER BY key ASC LIMIT 1000" );
+        $newblockchain->headers->begin();
+        {
+            foreach( $q as $rec )
+                $newblockchain->headers->setKeyValueCache( $rec['key'], $rec['value'], 's' );
+
+            $newblockchain->headers->mergeCache();
+        }    
+        $newblockchain->headers->commit();
+        $newblockchain->setHeight();
+        if( $from === $newblockchain->height )
+            break;
+        wk()->log( $newblockchain->height );
+    }
+
+    for( ;; )
+    {
+        $from = $newblockchain->txheight;
+        $q = $blockchain->txids->query( "SELECT * FROM txids WHERE key > $from ORDER BY key ASC LIMIT 100000" );
+        $newblockchain->txids->begin();
+        {
+            foreach( $q as $rec )
+                $newblockchain->txids->setKeyValueCache( $rec['key'], $rec['value'], 's' );
+
+            $newblockchain->txids->mergeCache();
+        }    
+        $newblockchain->txids->commit();
+        $newblockchain->setTxHeight();
+        if( $from === $newblockchain->txheight )
+            break;
+        wk()->log( $newblockchain->txheight );
+    }
+
+    for( ;; )
+    {
+        $newblockchain->setTxHeightTxs();
+        $from = $newblockchain->txheight;
+        $q = $blockchain->txs->query( "SELECT * FROM txs WHERE key > $from ORDER BY key ASC LIMIT 100000" );
+        $newblockchain->txs->begin();
+        {
+            foreach( $q as $rec )
+            {
+                $value = wk()->json_decode( gzinflate( $rec['value'] ) );
+                unset( $value['id'] );
+                $newblockchain->txs->setKeyValueCache( $rec['key'], $value, 'jz' );
+            }
+
+            $newblockchain->txs->mergeCache();
+        }    
+        $newblockchain->txs->commit();
+        $newblockchain->setTxHeightTxs();
+        if( $from === $newblockchain->txheight )
+            break;
+        wk()->log( $newblockchain->txheight );
+    }
+    exit;
+}
+//require_once __DIR__ . '/include/w8io_blockchain_transactions.php';
+//$transactions = new w8io_blockchain_transactions();
+//require_once __DIR__ . '/include/w8io_blockchain_balances.php';
+//$balances = new w8io_blockchain_balances();
+//require_once __DIR__ . '/include/w8io_blockchain_aggregate.php';
+//$aggregate = new w8io_blockchain_aggregate();
 
 wk()->setBestNode();
 wk()->log( 'i', "setBestNode = " . wk()->getNodeAddress() );
@@ -224,9 +290,9 @@ $sleep = defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17;
 
 for( ;; )
 {
-    update_proc( $blockchain, $transactions, $balances, $aggregate );
+    update_proc( $blockchain, $parser, null, null );
 
-    if( $update_addon )
+    if( 0 && $update_addon )
     {
         update_tickers( $transactions );
         update_scam( $transactions );
