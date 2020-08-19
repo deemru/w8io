@@ -2,141 +2,215 @@
 
 namespace w8io;
 
-require_once 'Markers.php';
-require_once "KV2.php";
-
-use deemru\WavesKit;
 use deemru\ABCode;
-use deemru\Pairs;
 use deemru\Triples;
 use deemru\KV;
-use w8io\Markers;
 
-define( 'W8IO_TXSHIFT', 100000000 );
 define( 'W8IO_STATUS_WARNING', -2 );
 define( 'W8IO_STATUS_OFFLINE', -1 );
 define( 'W8IO_STATUS_NORMAL', 0 );
 define( 'W8IO_STATUS_UPDATED', 1 );
+
+function w8_k2i( $key )
+{
+    return $key & 0xFFFFFFFF;
+}
+
+function w8_k2h( $key )
+{
+    return $key >> 32;
+}
+
+function w8_hi2k( $height, $i = 0 )
+{
+    return ( $height << 32 ) | $i;
+}
 
 function d58( $data )
 {
     return ABCode::base58()->decode( $data );
 }
 
-function ddata( $data )
+function e58( $data )
+{
+    return ABCode::base58()->encode( $data );
+}
+
+function json_unpack( $data )
 {
     return json_decode( gzinflate( $data ), true, 512, JSON_BIGINT_AS_STRING );
 }
 
-function edata( $data )
+function json_pack( $data )
 {
     return gzdeflate( json_encode( $data ), 9 );
 }
 
-function bucket( $data )
-{
-    if( $data === '5jpwaJnERa8Gr1ChgrNYnmxm2EtZ4KHC5bW1ZLL7LCY1bUV9gFWFAGjpJaPDCawmFzguqGBgYDyeocpEsKWeYDM1' )
-    {
-        $data = d58( $data );
-        
-        return unpack( 'J1', $data )[1];
-    }
-    return unpack( 'J1', d58( $data ) )[1];
-}
-
 class Blockchain
 {
-    public Markers $markers;
+    public Triples $ts;
+    public Triples $hs;
+    public BlockchainParser $parser;
+    public KV $generators;
+    public KV $rewards;
 
-    public function __construct( $path )
+    public function __construct( $db )
     {
-        $s = 'S:/w8io-refresh/raw.sqlite3';
-        $this->markers = new Markers( $s );
-        $this->db = $this->markers->db();
-        $this->ts = new Triples( $this->db , 'ts', 1, ['INTEGER PRIMARY KEY', 'INTEGER', 'BLOB'], [0, 1] );
-        $this->hs = new Triples( $this->db, 'hs', 1, ['INTEGER PRIMARY KEY', 'BLOB'] );
+        $this->ts = new Triples( $db, 'ts', 1, ['INTEGER PRIMARY KEY', 'INTEGER', 'TEXT'], [0, 1] );
+        $this->db = $this->ts;
+        $this->hs = new Triples( $this->db, 'hs', 1, ['INTEGER PRIMARY KEY', 'TEXT'] );
+        $this->generators = new KV;
+        $this->rewards = new KV;
 
         $this->setHeight();
         $this->setTxHeight();
         $this->lastUp = 0;
     }
 
-    public function getTransactionByTxHeight( $r0 )
+    private function setRewardAt( $height, $reward )
     {
-        $tx = $this->ts->getUno( 0, $r0 );
-        if( $tx === false )
-            return false;
-
-        return ddata( $tx[2] );
+        $this->rewards->setKeyValue( $height, $reward );
     }
 
-    public function getTransactionsById( $id, $uno = false )
+    private function getRewardAt( $height )
     {
-        $q = $this->ts->get( 1, bucket( $id ) );
-        $max = 0;
-        $txs = [];
-        foreach( $q as $r )
+        $reward = $this->rewards->getValueByKey( $height );
+        if( $reward === false )
         {
-            $tx = ddata( $r[2] );
-            if( $id !== $tx['id'] )
-                continue;
-
-            if( $uno )
-            {
-                $key = (int)$r[0];
-                if( $max < $key )
-                {
-                    $max = $key;
-                    $txUno = $tx;
-                }
-            }
-
-            $txs[] = $tx;
+            $header = wk()->getBlockAt( $this->height, true );
+            if( $header === false || $this->getMyUniqueAt( $height ) !== $this->blockUnique( $header ) )
+                w8io_error( 'getRewardAt' );
+            $reward = isset( $header['reward'] ) ? $header['reward'] : 0;
+            $this->setRewardAt( $height, $reward );
         }
 
-        if( $uno )
-            return isset( $txUno ) ? $txUno : false;
-
-        return isset( $txs[0] ) ? $txs : false;
+        return $reward;
     }
 
-    public function setHeight()
+    private function setGeneratorAt( $height, $generator )
     {
-        $height = $this->hs->getHigh( 0 );
-        $this->height = $height === false ? 0 : $height;
+        $this->generators->setKeyValue( $height, $generator );
     }
 
-    private function setTxHeight()
+    private function getGeneratorAt( $height )
     {
-        $txheight = $this->ts->getHigh( 0 );
-        $this->txheight = $txheight === false ? 0 : $txheight;
+        $generator = $this->generators->getValueByKey( $height );
+        if( $generator === false )
+        {
+            $header = wk()->getBlockAt( $this->height, true );
+            if( $header === false || $this->getMyUniqueAt( $height ) !== $this->blockUnique( $header ) )
+                w8io_error( 'getGeneratorAt' );
+            $generator = $header['generator'];
+            $this->setGeneratorAt( $height, $generator );
+        }
+
+        return $generator;
     }
 
-    public function getHeaderAt( $at )
+    public function setParser( $parser )
+    {
+        $this->parser = $parser;
+        $parser->setBlockchain( $this );
+    }
+
+    public function setBalances( $balances )
+    {
+        $this->balances = $balances;
+        $balances->setBlockchain( $this );
+    }
+
+    private function tsr( $key, $tx )
+    {
+        $txid = d58( $tx['id'] );
+        $bucket = unpack( 'J1', $txid )[1];
+        return [ $key, $bucket, substr( $txid, 8 ) ];
+    }
+
+    public function getTransactionId( $key )
+    {
+        $r = $this->ts->getUno( 0, $key );
+        if( $r === false )
+            return false;
+
+        return e58( pack( 'J', (int)$r[1] ) . $r[2] );
+    }
+
+    public function getTransactionKey( $txid )
+    {
+        $txid = d58( $txid );
+        $bucket = unpack( 'J1', $txid )[1];
+        $txpart = substr( $txid, 8 );
+
+        static $q;
+        if( !isset( $q ) )
+        {
+            $q = $this->ts->query( 'SELECT r0 FROM ts WHERE r1 == ? AND r2 == ? ORDER BY r0 DESC LIMIT 1' );
+            if( $q === false )
+                w8_err();
+        }
+
+        if( false === $q->execute( [ $bucket, $txpart ] ) )
+            w8_err();
+
+        $r = $q->fetchAll();
+        if( isset( $r[0] ) )
+            return (int)$r[0][0];
+
+        return false;
+    }
+
+    private function setHeight( $height = null )
+    {
+        if( !isset( $height ) )
+        {
+            $height = $this->hs->getHigh( 0 );
+            if( $height === false )
+                $height = 0;
+        }
+
+        $this->height = $height;
+    }
+
+    private function setTxHeight( $txheight = null )
+    {
+        if( !isset( $txheight ) )
+        {
+            $txheight = $this->ts->getHigh( 0 );
+            if( $txheight === false )
+                $txheight = 0;
+        }
+
+        $hi = w8_hi2k( $this->height ) - 1;
+        if( $txheight < $hi )
+            $txheight = $hi;
+
+        $this->txheight = $txheight;
+    }
+
+    public function getMyUniqueAt( $at )
     {
         $q = $this->hs->get( 0, $at )->fetchAll();
         if( !isset( $q[0][1]) )
             return false;
 
-        return ddata( $q[0][1] );
+        return e58( $q[0][1] );
     }
 
     public function selfcheck()
     {
-        return;
+        //return;
         $to = $this->height;
         //$from = $to - 100;
-        $from = 2006100;
+        $from = 402000;
         //$from = 1;
 
         for( $i = $from; $i <= $to; $i++ )
         {
-            $my = $this->getHeaderAt( $i );
+            $myUnique = $this->getMyUniqueAt( $i );
             $their = wk()->getBlockAt( $i, true );
-            if( $my['signature'] !== $their['signature'] ||
-                $my['reference'] !== $their['reference'] ||
-                $my['transactionCount'] !== $their['transactionCount'] ||
-                $my['transactionCount'] !== ( $realCount = count( $txids = $this->getTransactionsAtHeight( $i ) ) ) )
+            if( $myUnique !== $this->blockUnique( $their ) ||
+                //$my['reference'] !== $their['reference'] ||
+                $their['transactionCount'] !== ( $realCount = count( $txids = $this->getTxIdsAtHeight( $i ) ) ) )
             {
                 wk()->log( 'e', 'fail @ ' . $i );
                 exit;
@@ -146,69 +220,55 @@ class Blockchain
         exit;
     }
 
-    public function dups()
+    public function getTxIdsAtHeight( $height )
     {
-        $data = d58( '5jpwaJnERa8Gr1ChgrNYnmxm2EtZ4KHC5bW1ZLL7LCY1bUV9gFWFAGjpJaPDCawmFzguqGBgYDyeocpEsKWeYDM1' );
-        //$q = $this->ts->query( 'SELECT r0, COUNT(r2) FROM ts GROUP BY r1 HAVING COUNT(*) > 1' );
-        //$q = $this->ts->query( 'SELECT r0, COUNT(r2) FROM ts GROUP BY r1 HAVING COUNT(*) > 1' );
-        $q = $this->ts->query( 'SELECT r0 FROM ts GROUP BY r1 HAVING COUNT(*) > 1' );
-        foreach( $q as $r )
-        {
-            $tx = $this->tx( $r[0] );
-            wk()->log( $r[0] );
-            $txs = $this->getTransactionsById( $tx['id'] );
-            if( count( $txs ) > 1 && $txs[0]['type'] !== 10 )
-            {
-                foreach( $txs as $tx )
-                wk()->log( $tx['id'] );
-            }
-        }
+        $from = w8_hi2k( $height );
+        $to = w8_hi2k( $height + 1 ) - 1;
+        return $this->getTxIdsFromTo( $from, $to );
     }
 
-    public function getTransactionsAtHeight( $height )
-    {
-        $from = $height * W8IO_TXSHIFT;
-        $to = $from + W8IO_TXSHIFT - 1;
-        return $this->getTransactionsFromTo( $from, $to );
-    }
-
-    public function getTransactionsFromTo( $from, $to )
+    public function getTxIdsFromTo( $from, $to )
     {
         $query = $this->ts->query( 'SELECT * FROM ts WHERE r0 >= ' . $from . ' AND r0 <= ' . $to . ' ORDER BY r0 ASC' );
-        $txs = [];
+        $txids = [];
         foreach( $query as $r )
-            $txs[(int)$r[0]] = ddata( $r[2] );
-        return $txs;
+            $txids[(int)$r[0]] = e58( pack( 'J', (int)$r[1] ) . $r[2] );
+        return $txids;
     }
 
     public function rollback( $from )
     {
-        $txfrom = $from * W8IO_TXSHIFT;
+        $txfrom = w8_hi2k( $from );
         $tt = microtime( true );
         $this->db->begin();
         {
             $this->hs->query( 'DELETE FROM hs WHERE r0 >= ' . $from );
             $this->ts->query( 'DELETE FROM ts WHERE r0 >= ' . $txfrom );
-            $this->markers->setMarkers( $txfrom, $txfrom );
         }                    
         $this->db->commit();
         wk()->log( 'i', $this->height . ' >> ' . ( $from - 1 ) . ' (rollback) (' . (int)( 1000 * ( microtime( true ) - $tt ) ) . ' ms)' );
 
-        $this->height = $from - 1;
+        $this->setHeight( $from - 1 );
         $this->setTxHeight();
     }
 
     private function fixate( $fixate )
     {
         $this->ts->query( 'DELETE FROM ts WHERE r0 >= ' . $fixate );
-        $this->markers->setMarkers( $fixate, $fixate );
-                    
-        $height = intdiv( $fixate, W8IO_TXSHIFT );
-        $txfrom = ( $this->txheight % W8IO_TXSHIFT ) + 1;
-        $fixate = $fixate % W8IO_TXSHIFT;
+
+        $height = w8_k2h( $fixate );
+        $txfrom = w8_k2i( $this->txheight ) + 1;
+        $fixate = w8_k2i( $fixate );
         wk()->log( 'i', $height . ' (' . $txfrom . ' >> ' . $fixate . ') (fixate)' );
 
         $this->setTxHeight();
+    }
+
+    private function blockUnique( $header )
+    {
+        if( isset( $header['id'] ) )
+            return $header['id'];
+        return $header['signature'];
     }
 
     public function update( $block = null )
@@ -217,6 +277,12 @@ class Blockchain
         //exit;
         $entrance = microtime( true );
         $this->selfcheck();
+
+        if( 0 ) // CUSTOM ROLLBACK
+        {
+            $this->rollback( 350000 );
+            return W8IO_STATUS_UPDATED; 
+        }
 
         if( isset( $block ) )
         {
@@ -232,14 +298,14 @@ class Blockchain
 
         if( 0 === ( $from = $this->height ) )
         {
-            $i = $from = 1;
+            $this->height = $i = $from = 1;
             $reference = '67rpwLCuS5DGA8KGZXKsVQ7dnPb9goRLoKfgGbLfQg9WoLUgNY77E2jT11fem3coV9nAkguBACzrU1iyZM4B8roQ';
             wk()->log( 'w', 'starting from GENESIS' );
         }
         else
         for( $i = $from;; )
         {
-            if( 10 ) // per block update
+            if( 0 ) // per block update
             {
                 if( $i === $height )
                     return W8IO_STATUS_NORMAL;
@@ -255,23 +321,22 @@ class Blockchain
                 }
             }
             
-            $my = $this->getHeaderAt( $i );
-            $signature = $my['signature'];
+            $blockUnique = $this->getMyUniqueAt( $i );
 
             // STABLE BLOCK
-            if( $signature === $header['signature'] )
+            if( $blockUnique === $this->blockUnique( $header ) )
             {
                 wk()->log( 'd', 'stable @ ' . $i );
                 if( $i == $height )
                     return W8IO_STATUS_NORMAL;
 
-                $reference = $signature;
+                $reference = $blockUnique;
                 $from = ++$i;
 
                 if( $this->height >= $from )
                 {
                     $rollback = true;
-                    $fixate = $from * W8IO_TXSHIFT;
+                    $fixate = w8_hi2k( $from );
                 }
                 
                 break;
@@ -280,7 +345,7 @@ class Blockchain
             // BLOCK UPDATE
             if( $i === $from )
             {
-                $reference = $my['reference'];
+                $reference = $this->getMyUniqueAt( $i - 1 );
                 if( $reference === $header['reference'] )
                 {
                     wk()->log( 'd', 'update @ ' . $i );
@@ -293,16 +358,11 @@ class Blockchain
             $i--;
         }
 
-        if( 0 ) // CUSTOM ROLLBACK
-        {
-            $this->rollback( 1880000 );
-            return W8IO_STATUS_UPDATED; 
-        }
-
         $newHdrs = [];
         $newTxs = [];
 
         $to = min( $height, $from + W8IO_MAX_UPDATE_BATCH - 1 );
+        //$to = min( $height, $from + 1 - 1 );
         for( ; $i <= $to; $i++ )
         {
             if( !isset( $block ) || $block['height'] !== $i )
@@ -335,7 +395,7 @@ class Blockchain
             if( $n )
             {
                 $txs = $block['transactions'];
-                $key = $i * W8IO_TXSHIFT;
+                $key = w8_hi2k( $i );
                 for( $j = 0; $j < $n; ++$j, ++$key )
                 {
                     $tx = $txs[$j];
@@ -344,13 +404,20 @@ class Blockchain
                     if( isset( $update ) )
                     {
                         if( !isset( $txids ) )
-                            $txids = $this->getTransactionsAtHeight( $i );
-                        if( isset( $txids[$key] ) && $txid === $txids[$key]['id'] )
+                            $txids = $this->getTxIdsAtHeight( $i );
+                        if( isset( $txids[$key] ) && $txids[$key] === $txid )
                             continue;
                         $fixate = $key;
                         unset( $update );
                     }
 
+                    if( $i >= StatusHeight() )
+                    {
+                        $tx = wk()->getTransactionById( $txid );
+                        if( !isset( $tx['applicationStatus'] ) )
+                            w8_err();
+                    }
+                    
                     $type = $tx['type'];
                     if( $type === 16 )
                     {
@@ -362,20 +429,20 @@ class Blockchain
                         }
                     }
 
-                    $newTxs[] = [ $key, bucket( $txid ), edata( $tx ) ];
+                    $newTxs[$key] = $tx;
                     $txheight = $key;
                 }
             }
 
             if( !isset( $fixate ) )
             {
-                $fixate = $i * W8IO_TXSHIFT + $n;
+                $fixate = w8_hi2k( $i, $n );
                 unset( $update );
             }
 
             unset( $block['transactions'] );
-            $reference = $block['signature'];
-            $newHdrs[] = [ $i, edata( $block ) ];
+            $reference = $this->blockUnique( $block );
+            $newHdrs[$i] = $block;
 
             if( $from < $i )
                 wk()->log( ( $i - 1 ) . ' (' . $lastCount . ')' );
@@ -392,35 +459,62 @@ class Blockchain
                 $this->rollback( $from );
             else if( $this->txheight >= $fixate )
                 $this->fixate( $fixate );
-            
-            $this->hs->merge( $newHdrs );
-            $this->height = $to;
+
+            $hs = [];
+            foreach( $newHdrs as $height => $block )
+            {
+                $this->setGeneratorAt( $height, $block['generator'] );
+                $this->setRewardAt( $height, isset( $block['reward'] ) ? $block['reward'] : 0 );
+                $hs[] = [ $height, d58( $this->blockUnique( $block ) ) ];
+            }
+            $this->hs->merge( $hs );
 
             if( count( $newTxs ) )
             {
-                $this->ts->merge( $newTxs );
-                $this->txheight = $txheight;
-                $hi = $txheight;
-                if( $this->txheight >= $to * W8IO_TXSHIFT )
-                    $txs = ( $this->txheight % W8IO_TXSHIFT ) + 1;
-                else
-                    $txs = 0;
-            }
-            else
-            {
-                $hi = ( $to * W8IO_TXSHIFT ) - 1;
-                if( $this->txheight > $hi )
-                    $hi = $this->txheight;
-                else
-                    $this->txheight = $hi;
-                $txs = 0;
+                $ts = [];
+                foreach( $newTxs as $key => $tx )
+                    $ts[] = $this->tsr( $key, $tx );
+                $this->ts->merge( $ts );
             }
 
-            $this->markers->setMarkers( null, $hi );
+            $parserTxs = $newTxs;
+            for( $height = $this->height; $height < $to; ++$height )
+            {
+                $generator = $this->getGeneratorAt( $height, true );
+                $reward = $this->getRewardAt( $height, true );
+                $parserTxs[w8_hi2k( $height + 1 ) - 1] = [ 'type' => TX_GENERATOR, 'generator' => $generator, 'reward' => $reward ];
+            }
+
+            if( count( $parserTxs ) )
+            {
+                ksort( $parserTxs );
+                $this->parser->update( $parserTxs );
+
+                // SELFTEST
+                if( 0 && count( $newTxs ) === 0 )
+                {
+                    $waves = $this->balances->getAllWaves();
+                    $ngfees = $this->parser->getNGFeesAt( $to - 1 );
+                    if( isset( $ngfees[0] ) )
+                        $waves += $ngfees[0];
+                    $cmp = 10000000000000000;
+                    if( $to > 97100 )
+                        $cmp += 600000000 * ( $to - 97100 );
+                    if( $waves !== $cmp )
+                        w8_err();
+                }
+            }
+
+            $this->setHeight( $height );
+            if( count( $newTxs ) )
+                $this->setTxHeight( $txheight );
+            else
+                $this->setTxHeight( $this->txheight );
         }            
         $this->db->commit();
 
         $this->lastUp = microtime( true );
+        $txs = w8_k2h( $this->txheight ) == $this->height ? ( w8_k2i( $this->txheight ) + 1 ) : '0';
         $newTxs = $from === $to ? ( ' +' . count( $newTxs ) ) : '';  
         wk()->log( 's', $to . ' (' . $txs . ')' . $newTxs . ' (' . (int)( ( $this->lastUp - $entrance ) * 1000 ) . ' ms)' );
         return W8IO_STATUS_UPDATED;

@@ -13,10 +13,28 @@ if( false === $lock->open() )
 wk()->log( 'w8io_updater started' );
 
 require_once __DIR__ . '/include/w8io_blockchain.php';
-$blockchain = new w8io\Blockchain( W8IO_DB_BLOCKCHAIN );
+$blockchain = new w8io\Blockchain( 'sqlite:' . W8IO_DB_BLOCKCHAIN );
 require_once __DIR__ . '/include/w8io_blockchain_transactions.php';
-$parser = new w8io\BlockchainParser( W8IO_DB_BLOCKCHAIN );
-$parser->setBlockchain( $blockchain );
+$parser = new w8io\BlockchainParser( $blockchain->db );
+require_once __DIR__ . '/include/w8io_blockchain_balances.php';
+$balances = new w8io\BlockchainBalances( $blockchain->db );
+$blockchain->setParser( $parser );
+$blockchain->setBalances( $balances );
+
+function blockchain()
+{
+    global $blockchain;
+    return $blockchain;
+}
+
+if( 0 )
+{
+    $wk = new deemru\WavesKit;
+    $wk->setNodeAddress( 'https://api.telegram.org' );
+    define( 'WK_CURL_OPTIONS', [ CURLOPT_PROXY => '10.173.6.1:8080' ] );
+    $data = $wk->fetch( '/' );
+    exit;
+}
 
 function update_proc( $blockchain, $transactions, $balances, $aggregate )
 {
@@ -32,6 +50,7 @@ function update_proc( $blockchain, $transactions, $balances, $aggregate )
             {
                 if( $transactions->update() )
                     continue;
+                break;
 
                 if( !is_array( $transactions_from_to ) )
                     w8io_error( 'unexpected update transactions error' );
@@ -79,7 +98,7 @@ function update_proc( $blockchain, $transactions, $balances, $aggregate )
             }
         }
 
-        if( !is_array( $result ) )
+        if( $result !== W8IO_STATUS_UPDATED )
             break;
     }
 
@@ -283,7 +302,7 @@ if( 0 )
 //$aggregate = new w8io_blockchain_aggregate();
 
 wk()->setBestNode();
-wk()->log( 'i', "setBestNode = " . wk()->getNodeAddress() );
+wk()->log( 'i', 'setBestNode = ' . wk()->getNodeAddress() );
 
 $update_addon = defined( 'W8IO_UPDATE_ADDON' ) && W8IO_UPDATE_ADDON && W8IO_NETWORK === 'W';
 $sleep = defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17;

@@ -1,34 +1,48 @@
 <?php
 
-use deemru\Pairs;
+namespace w8io;
 
-class w8io_blockchain_balances
+use deemru\Triples;
+use deemru\KV;
+
+class BlockchainBalances
 {
-    public function __construct( $writable = true )
-    {
-        $this->checkpoint = new Pairs( W8IO_DB_BLOCKCHAIN_BALANCES, 'checkpoint', $writable, 'INTEGER PRIMARY KEY|TEXT|0|0' );
-        $this->balances = $this->checkpoint->db();
+    public KV $uids;
 
-        if( $writable )
-        {
-            $this->balances->exec( "CREATE TABLE IF NOT EXISTS balances (
-                uid INTEGER PRIMARY KEY AUTOINCREMENT,
-                address INTEGER,
-                asset INTEGER,
-                amount INTEGER )" );
-            $this->balances->exec( "CREATE INDEX IF NOT EXISTS balances_index_address ON balances( address )" );
-            $this->balances->exec( "CREATE INDEX IF NOT EXISTS balances_index_asset   ON balances( asset )" );
-            $this->balances->exec( "CREATE INDEX IF NOT EXISTS balances_index_aa      ON balances( address, asset )" );
-        }
+    public function __construct( $db )
+    {
+        $this->db = $db;
+        $this->balances = new Triples( $this->db, 'balances', 1,
+            // uid                 | address  | asset    | balance    
+            // r0                  | r1       | r2       | r3
+            [ 'INTEGER PRIMARY KEY', 'INTEGER', 'INTEGER', 'INTEGER' ],
+            [ 0,                     1,         1,         0 ] );
+
+        $this->balances->db->exec( 'CREATE INDEX IF NOT EXISTS balances_r1_r2_index ON balances( r1, r2 )' );
+        $this->setUid();
+
+        $this->uids = new KV;
     }
 
-    public function get_height()
+    private function setUid()
     {
-        $height = $this->checkpoint->getValue( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES, 'i' );
-        if( !$height )
-            return 0;
+        if( false === ( $this->uid = $this->balances->getHigh( 0 ) ) )
+            $this->uid = 0;
+    }
 
-        return $height;
+    private function getNewUid()
+    {
+        return ++$this->uid;
+    }
+
+    public function setBlockchain( $blockchain )
+    {
+        $this->blockchain = $blockchain;
+    }
+
+    public function setParser( $parser )
+    {
+        $this->parser = $parser;
     }
 
     public function get_balance( $aid )
@@ -76,13 +90,13 @@ class w8io_blockchain_balances
         return $this->query_get_distribution;
     }
 
-    private function update_procs( $aid, $temp_procs, &$procs )
+    private function finalizeChanges( $aid, $temp_procs, &$procs )
     {
         foreach( $temp_procs as $asset => $amount )
         {
             if( $amount === 0 )
                 continue;
-                
+
             if( isset( $procs[$aid][$asset] ) )
                 $procs[$aid][$asset] += $amount;
             else
@@ -90,53 +104,82 @@ class w8io_blockchain_balances
         }
     }
 
-    private function commit_procs( $procs, $rollback = false )
+    private function getUid( $address, $asset )
+    {
+        $key = $address . '_' . $asset;
+        $uid = $this->uids->getValueByKey( $key );
+        if( $uid !== false )
+            return [ $uid, true ];
+
+        static $q;
+        if( !isset( $q ) )
+        {
+            $q = $this->balances->db->prepare( 'SELECT r0 FROM balances WHERE r1 = ? AND r2 = ?' );
+            if( $q === false )
+                w8io_error( 'getUid' );
+        }
+
+        if( false === $q->execute( [ $address, $asset ] ) )
+            w8io_error( 'getUid' );
+
+        $uid = $q->fetchAll();
+        if( isset( $uid[0] ) )
+        {
+            $uid = (int)$uid[0][0];
+            $update = true;
+        }
+        else
+        {
+            $uid = $this->getNewUid();
+            $update = false;
+        }
+
+        $this->uids->setKeyValue( $key, $uid );
+        return [ $uid, $update ];
+    }
+
+    private function insertBalance( $uid, $address, $asset, $amount )
+    {
+        static $q;
+        if( !isset( $q ) )
+        {
+            $q = $this->balances->db->prepare( 'INSERT INTO balances( r0, r1, r2, r3 ) VALUES( ?, ?, ?, ? )' );
+            if( $q === false )
+                w8io_error( 'insertBalance' );
+        }
+
+        if( false === $q->execute( [ $uid, $address, $asset, $amount ] ) )
+            w8io_error( 'insertBalance' );
+    }
+
+    private function updateBalance( $uid, $amount )
+    {
+        static $q;
+        if( !isset( $q ) )
+        {
+            $q = $this->balances->db->prepare( 'UPDATE balances SET r3 = r3 + ? WHERE r0 = ?' );
+            if( $q === false )
+                w8io_error( 'updateBalance' );
+        }
+
+        if( false === $q->execute( [ $amount, $uid ] ) )
+            w8io_error( 'updateBalance' );
+    }
+
+    private function commitChanges( $procs, $isRollback = false )
     {
         foreach( $procs as $address => $aprocs )
         foreach( $aprocs as $asset => $amount )
         {
-            if( $rollback )
+            if( $isRollback )
                 $amount = -$amount;
 
-            if( !isset( $this->queryBalanceId ) )
-            {
-                $this->queryBalanceId = $this->balances->prepare( "SELECT uid FROM balances WHERE address = :address AND asset = :asset" );
-                if( $this->queryBalanceId === false )
-                    return false;
-            }
+            list( $uid, $update ) = $this->getUid( $address, $asset );
 
-            if( false === $this->queryBalanceId->execute( [ 'address' => $address, 'asset' => $asset ] ) )
-                return false;
-
-            $uid = $this->queryBalanceId->fetchAll( \PDO::FETCH_ASSOC );
-            $uid = isset( $uid[0]['uid'] ) ? (int)$uid[0]['uid'] : false;
-
-            if( $uid === false )
-            // INSERT
-            {
-                if( !isset( $this->queryBalanceInsert ) )
-                {
-                    $this->queryBalanceInsert = $this->balances->prepare( "INSERT INTO balances( address, asset, amount ) VALUES( :address, :asset, :amount )" );
-                    if( $this->queryBalanceInsert === false )
-                        return false;
-                }
-
-                if( false === $this->queryBalanceInsert->execute( [ 'address' => $address, 'asset' => $asset, 'amount' => $amount ] ) )
-                    return false;
-            }
+            if( $update === false )
+                $this->insertBalance( $uid, $address, $asset, $amount );
             else
-            // UPDATE
-            {
-                if( !isset( $this->queryBalanceUpdate ) )
-                {
-                    $this->queryBalanceUpdate = $this->balances->prepare( "UPDATE balances SET amount = amount + :amount WHERE uid = :uid" );
-                    if( $this->queryBalanceUpdate === false )
-                        return false;
-                }
-
-                if( false === $this->queryBalanceUpdate->execute( [ 'amount' => $amount, 'uid' => $uid ] ) )
-                    return false;
-            }
+                $this->updateBalance( $uid, $amount );
         }
     }
 
@@ -161,166 +204,112 @@ class w8io_blockchain_balances
         }        
     }
 
-    public function update_balances( $wtx, &$procs )
+    public function processChanges( $ts, &$procs )
     {
-        $procs_a = [];
-        $procs_b = [];
+        $type = $ts[TYPE];
+        $amount = $ts[AMOUNT];
+        $asset = $ts[ASSET];
+        $fee = $ts[FEE];
+        $afee = $ts[FEEASSET];
 
-        $type = $wtx['type'];
-
-        if( $type === W8IO_TYPE_INVOKE_DATA )
-            return;
-
-        $amount = $wtx['amount'];
-        $asset = $wtx['asset'];
-        $fee = $wtx['fee'];
-        $afee = $wtx['afee'];
+        //$procs_a = [];
+        //$procs_b = [];
 
         switch( $type )
         {
-            case W8IO_TYPE_SPONSOR: // sponsor
-                if( $asset )
-                {
-                    $is_a = false;
-                    $procs_b[$asset] = +$amount;
-                    $is_b = true;
-                }
-                else
-                {
-                    $procs_a[0] = -$amount;
-                    $is_a = true;
-                    $procs_b[0] = +$amount;
-                    $is_b = true;
-                }
+            case TX_SPONSOR:
+                $procs_a = [ $asset => -$amount ];
+                $procs_b = [ $asset => +$amount, $afee => -$fee ];
                 break;
 
-            case W8IO_TYPE_FEES: // fees
-            case 1: // genesis
-            case 101: // genesis role
-            case 102: // role
-            case 110: // genesis unknown
-            case 105: // data unknown
-            case 106: // invoke 1 unknown
-            case 107: // invoke 2 unknown
-            case 2: // payment
-            case W8IO_TYPE_INVOKE_TRANSFER:
-            case 4: // transfer
-            case 7: // exchange
-            case 16: // invoke
+            case TX_GENERATOR:
                 if( $asset === $afee )
+                    $procs_a = [ $asset => -$amount -$fee ];
+                else
+                    $procs_a = [ $asset => -$amount, $afee => -$fee ];
+                $procs_b = [ $asset => +$amount ];
+                break;
+            case TX_GENESIS:
+            case TX_PAYMENT:
+            case TX_TRANSFER:
+            case TX_EXCHANGE:
+            case TX_MATCHER:
+            case TX_INVOKE:
+                if( $asset === $afee )
+                    $procs_a = [ $asset => -$amount -$fee ];
+                else
+                    $procs_a = [ $asset => -$amount, $afee => -$fee ];
+                $procs_b = [ $asset => +$amount ];
+                break;
+
+            case TX_ISSUE:
+            case TX_REISSUE:
+                $procs_a = [ $asset => +$amount, $afee => -$fee ];
+                break;
+            case TX_BURN:
+                $procs_a = [ $asset => -$amount, $afee => -$fee ];
+                break;
+
+            case TX_LEASE:
+                if( w8_k2h( $ts[TXKEY] ) > NormalLeasesHeight() )
                 {
-                    $procs_a[$asset] = -$amount -$fee;
+                    $procs_a = [ WAVES_LEASE_ASSET => -$amount, $afee => -$fee ];
+                    $procs_b = [ WAVES_LEASE_ASSET => +$amount ];
                 }
                 else
                 {
-                    $procs_a[$asset] = -$amount;
-                    $procs_a[$afee] = -$fee;
+                    $procs_a = [ $afee => -$fee ];
                 }
-                $is_a = true;
-                $procs_b[$asset] = +$amount;
-                $is_b = true;
                 break;
-
-            case 3: // issue
-            case 5: // reissue
-                $procs_a[$asset] = +$amount;
-                $procs_a[$afee] = -$fee;
-                $is_a = true;
-                $is_b = false;
-                break;
-            case 6: // burn
-                $procs_a[$asset] = -$amount;
-                $procs_a[$afee] = -$fee;
-                $is_a = true;
-                $is_b = false;
-                break;
-
-            case 8: // start lease
-                if( $wtx['block'] > W8IO_RESET_LEASES )
+            case TX_LEASE_CANCEL:
+                if( w8_k2h( $ts[TXKEY] ) > NormalLeasesHeight() )
                 {
-                    $procs_a[W8IO_ASSET_WAVES_LEASED] = -$amount;
-                    $procs_a[$afee] = -$fee;
-                    $is_a = true;
-                    $procs_b[W8IO_ASSET_WAVES_LEASED] = +$amount;
-                    $is_b = true;
+                    $procs_a = [ WAVES_LEASE_ASSET => +$amount, $afee => -$fee ];
+                    $procs_b = [ WAVES_LEASE_ASSET => -$amount ];
                 }
                 else
                 {
-                    $procs_a[$afee] = -$fee;
-                    $is_a = true;
-                    $is_b = false;
-                }
-                break;
-            case 9: // cancel lease
-                if( $wtx['block'] > W8IO_RESET_LEASES )
-                {
-                    $procs_a[W8IO_ASSET_WAVES_LEASED] = +$amount;
-                    $procs_a[$afee] = -$fee;
-                    $is_a = true;
-                    $procs_b[W8IO_ASSET_WAVES_LEASED] = -$amount;
-                    $is_b = true;
-                }
-                else
-                {
-                    $procs_a[$afee] = -$fee;
-                    $is_a = true;
-                    $is_b = false;
+                    $procs_a = [ $afee => -$fee ];
                 }
                 break;
 
-            case 10: // alias
-            case 12: // data
-            case 13: // smart account
-            case 14: // sponsorship
-            case 15: // smart asset
-                $procs_a[$afee] = -$fee;
-                $is_a = true;
-                $is_b = false;
+            case TX_ALIAS:
+            case TX_DATA:
+            case TX_SMART_ACCOUNT:
+            case TX_SPONSORSHIP:
+            case TX_SMART_ASSET:
+            case TX_UPDATE_ASSET_INFO:
+                $procs_a = [ $afee => -$fee ];
                 break;
 
-            case 11: // mass transfer
-                if( $wtx['b'] < 0 )
+            case TX_MASS_TRANSFER:
+                if( $ts[B] === MASS )
                 {
                     if( $asset === $afee )
-                    {
-                        $procs_a[$asset] = -$amount -$fee;
-                    }
+                        $procs_a = [ $asset => -$amount -$fee ];
                     else
-                    {
-                        $procs_a[$asset] = -$amount;
-                        $procs_a[$afee] = -$fee;
-                    }
-                    $is_a = true;
-                    $procs_b[$afee] = +$fee;
-                    $is_b = true;
+                        $procs_a = [ $asset => -$amount, $afee => -$fee ];
                 }
                 else
                 {
-                    $is_a = false;
-                    $procs_b[$asset] = +$amount;
-                    $is_b = true;
+                    $procs_b = [ $asset => +$amount ];
                 }
                 break;
 
             default:
-                w8io_error( 'unknown tx type' );
+                w8io_error( 'unknown tx type = ' . $type );
         }
 
-        if( $is_a )
-            $this->update_procs( $wtx['a'], $procs_a, $procs );
-
-        if( $is_b ) 
-            $this->update_procs( $wtx['b'], $procs_b, $procs );
+        if( isset( $procs_a ) )
+            $this->finalizeChanges( $ts[A], $procs_a, $procs );
+        if( isset( $procs_b ) )
+            $this->finalizeChanges( $ts[B], $procs_b, $procs );
     }
 
-    public function get_all_waves( $ret = false )
+    public function getAllWaves()
     {
-        $balances = $this->checkpoint->db()->prepare( "SELECT amount FROM balances WHERE address > 0 AND asset = 0" );
+        $balances = $this->balances->db->prepare( 'SELECT r3 FROM balances WHERE r1 > 0 AND r2 = 0' );
         $balances->execute();
-
-        if( $ret )
-            return $balances;
-
         $waves = 0;
 
         foreach( $balances as $balance )
@@ -329,51 +318,13 @@ class w8io_blockchain_balances
         return $waves;
     }
 
-    private function apply_transactions( $wtxs, $rollback = false )
+    public function update( $pts, $rollback = false )
     {
-        $procs = [];
-        $i = 0;
-        foreach( $wtxs as $wtx )
-        {
-            if( $i !== $wtx['block'] )
-            {
-                $i = $wtx['block'];
-                w8io_info( "$i (balances)" );
-            }
+        $changes = [];
+        foreach( $pts as $ts )
+            $this->processChanges( $ts, $changes );
 
-            $this->update_balances( $wtx, $procs );
-        }
-
-        if( false === $this->commit_procs( $procs, $rollback ) )
+        if( false === $this->commitChanges( $changes, $isRollback ) )
             w8io_error( 'set commit_procs failed' );
-    }
-
-    public function update( $upcontext )
-    {
-        $transactions = $upcontext['transactions'];
-        $from = $upcontext['from'];
-        $to = $upcontext['to'];
-        $local_height = $this->get_height();
-
-        if( $local_height !== $from )
-        {
-            $from = min( $local_height, $from );
-
-            if( $local_height > $from )
-                w8io_error( 'unexpected balances rollback' );
-        }
-
-        $to = min( $to, $from + W8IO_MAX_UPDATE_BATCH );
-        if( false === ( $wtxs = $transactions->get_from_to( $from, $to ) ) )
-            w8io_error( 'unexpected get_from_to() error' );
-        if( !$this->checkpoint->begin() )
-            w8io_error( 'unexpected begin() error' );
-        $this->apply_transactions( $wtxs );
-        if( false === $this->checkpoint->setKeyValue( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES, $to ) )
-            w8io_error( 'set checkpoint_transactions failed' );
-        if( !$this->checkpoint->commit() )
-            w8io_error( 'unexpected commit() error' );
-
-        return [ 'from' => $from, 'to' => $to ];
     }
 }
