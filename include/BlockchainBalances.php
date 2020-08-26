@@ -7,6 +7,7 @@ use deemru\KV;
 
 class BlockchainBalances
 {
+    public Triples $balances;
     public KV $uids;
 
     public function __construct( $db )
@@ -19,9 +20,20 @@ class BlockchainBalances
             [ 0,                     1,         1,         0 ] );
 
         $this->balances->db->exec( 'CREATE INDEX IF NOT EXISTS balances_r1_r2_index ON balances( r1, r2 )' );
-        $this->setUid();
 
         $this->uids = new KV;
+        $this->setUid();
+    }
+
+    public function cacheHalving()
+    {
+        $this->uids->cacheHalving();
+    }
+
+    public function rollback( $pts )
+    {
+        if( is_array( $pts ) && count( $pts ) > 0 )
+            $this->update( $pts, true );
     }
 
     private function setUid()
@@ -35,16 +47,12 @@ class BlockchainBalances
         return ++$this->uid;
     }
 
-    public function setBlockchain( $blockchain )
-    {
-        $this->blockchain = $blockchain;
-    }
-
     public function setParser( $parser )
     {
         $this->parser = $parser;
     }
 
+    /*
     public function get_balance( $aid )
     {
         if( !isset( $this->query_get_balance ) )
@@ -72,7 +80,7 @@ class BlockchainBalances
         }
 
         return [ 'height' => $data[0]['k'], 'balance' => $balance ];
-    }
+    }*/
 
     public function get_distribution( $aid )
     {
@@ -111,18 +119,17 @@ class BlockchainBalances
         if( $uid !== false )
             return [ $uid, true ];
 
-        static $q;
-        if( !isset( $q ) )
+        if( !isset( $this->q_getUid ) )
         {
-            $q = $this->balances->db->prepare( 'SELECT r0 FROM balances WHERE r1 = ? AND r2 = ?' );
-            if( $q === false )
+            $this->q_getUid = $this->balances->db->prepare( 'SELECT r0 FROM balances WHERE r1 = ? AND r2 = ?' );
+            if( $this->q_getUid === false )
                 w8io_error( 'getUid' );
         }
 
-        if( false === $q->execute( [ $address, $asset ] ) )
+        if( false === $this->q_getUid->execute( [ $address, $asset ] ) )
             w8io_error( 'getUid' );
 
-        $uid = $q->fetchAll();
+        $uid = $this->q_getUid->fetchAll();
         if( isset( $uid[0] ) )
         {
             $uid = (int)$uid[0][0];
@@ -140,29 +147,27 @@ class BlockchainBalances
 
     private function insertBalance( $uid, $address, $asset, $amount )
     {
-        static $q;
-        if( !isset( $q ) )
+        if( !isset( $this->q_insertBalance ) )
         {
-            $q = $this->balances->db->prepare( 'INSERT INTO balances( r0, r1, r2, r3 ) VALUES( ?, ?, ?, ? )' );
-            if( $q === false )
+            $this->q_insertBalance = $this->balances->db->prepare( 'INSERT INTO balances( r0, r1, r2, r3 ) VALUES( ?, ?, ?, ? )' );
+            if( $this->q_insertBalance === false )
                 w8io_error( 'insertBalance' );
         }
 
-        if( false === $q->execute( [ $uid, $address, $asset, $amount ] ) )
+        if( false === $this->q_insertBalance->execute( [ $uid, $address, $asset, $amount ] ) )
             w8io_error( 'insertBalance' );
     }
 
     private function updateBalance( $uid, $amount )
     {
-        static $q;
-        if( !isset( $q ) )
+        if( !isset( $this->q_updateBalance ) )
         {
-            $q = $this->balances->db->prepare( 'UPDATE balances SET r3 = r3 + ? WHERE r0 = ?' );
-            if( $q === false )
+            $this->q_updateBalance = $this->balances->db->prepare( 'UPDATE balances SET r3 = r3 + ? WHERE r0 = ?' );
+            if( $this->q_updateBalance === false )
                 w8io_error( 'updateBalance' );
         }
 
-        if( false === $q->execute( [ $amount, $uid ] ) )
+        if( false === $this->q_updateBalance->execute( [ $amount, $uid ] ) )
             w8io_error( 'updateBalance' );
     }
 
@@ -181,27 +186,6 @@ class BlockchainBalances
             else
                 $this->updateBalance( $uid, $amount );
         }
-    }
-
-    public function rollback( $transactions, $from )
-    {
-        $local_height = $this->get_height();
-
-        if( $local_height > $from )
-        // ROLLBACK
-        {
-            w8io_warning( "balances (rollback to $from)" );
-
-            if( false === ( $wtxs = $transactions->get_from_to( $from, $local_height ) ) )
-            w8io_error( 'unexpected get_from_to() error' );
-            if( !$this->checkpoint->begin() )
-                w8io_error( 'unexpected begin() error' );
-            $this->apply_transactions( $wtxs, true );
-            if( false === $this->checkpoint->setKeyValue( W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES, $from ) )
-                w8io_error( 'set checkpoint_transactions failed' );
-            if( !$this->checkpoint->commit() )
-                w8io_error( 'unexpected commit() error' );
-        }        
     }
 
     public function processChanges( $ts, &$procs )
@@ -251,7 +235,7 @@ class BlockchainBalances
                 break;
 
             case TX_LEASE:
-                if( w8_k2h( $ts[TXKEY] ) > NormalLeasesHeight() )
+                if( w8k2h( $ts[TXKEY] ) > GetHeight_LeaseReset() )
                 {
                     $procs_a = [ WAVES_LEASE_ASSET => -$amount, $afee => -$fee ];
                     $procs_b = [ WAVES_LEASE_ASSET => +$amount ];
@@ -262,7 +246,7 @@ class BlockchainBalances
                 }
                 break;
             case TX_LEASE_CANCEL:
-                if( w8_k2h( $ts[TXKEY] ) > NormalLeasesHeight() )
+                if( w8k2h( $ts[TXKEY] ) > GetHeight_LeaseReset() )
                 {
                     $procs_a = [ WAVES_LEASE_ASSET => +$amount, $afee => -$fee ];
                     $procs_b = [ WAVES_LEASE_ASSET => -$amount ];
@@ -318,13 +302,11 @@ class BlockchainBalances
         return $waves;
     }
 
-    public function update( $pts, $rollback = false )
+    public function update( $pts, $isRollback = false )
     {
         $changes = [];
         foreach( $pts as $ts )
             $this->processChanges( $ts, $changes );
-
-        if( false === $this->commitChanges( $changes, $isRollback ) )
-            w8io_error( 'set commit_procs failed' );
+        $this->commitChanges( $changes, $isRollback );
     }
 }

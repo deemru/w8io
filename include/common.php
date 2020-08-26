@@ -2,6 +2,8 @@
 
 namespace w8io;
 
+use deemru\ABCode;
+
 define( 'UID', 0 );
 define( 'TXKEY', 1 );
 define( 'TYPE', 2 );
@@ -49,3 +51,11 @@ define( 'INVOKE_ASSET', -1 );
 define( 'WAVES_ASSET', 0 );
 
 define( 'FAILED_GROUP', -1 );
+
+function w8k2i( $key ){ return $key & 0xFFFFFFFF; }
+function w8k2h( $key ){ return $key >> 32; }
+function w8h2k( $height, $i = 0 ){ return ( $height << 32 ) | $i; }
+function d58( $data ){ return ABCode::base58()->decode( $data ); }
+function e58( $data ){ return ABCode::base58()->encode( $data ); }
+function json_unpack( $data ){ return json_decode( gzinflate( $data ), true, 512, JSON_BIGINT_AS_STRING ); }
+function json_pack( $data ){ return gzdeflate( json_encode( $data ), 9 ); }

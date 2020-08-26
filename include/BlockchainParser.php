@@ -3,6 +3,7 @@
 namespace w8io;
 
 require_once 'common.php';
+require_once 'RO.php';
 
 use deemru\Pairs;
 use deemru\Triples;
@@ -18,8 +19,9 @@ class BlockchainParser
     public KV $kvAssets;
     public KV $kvAssetNames;
     public KV $kvAssetDecimals;
-    public KV $kvSponsors;
+    public KV $sponsorships;
     public Blockchain $blockchain;
+    public BlockchainParser $parser;
 
     public function __construct( $db )
     {
@@ -30,6 +32,9 @@ class BlockchainParser
             [ 'INTEGER PRIMARY KEY', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER' ],
             [ 0,                     1,         1,         1,         1,         1,         0,         1,         0,         0,         1 ] );
 
+        $this->RO = new RO( $this->db );
+        $this->balances = new BlockchainBalances( $this->db );
+
         $this->kvAddresses =     ( new KV( true )  )->setStorage( $this->db, 'addresses', true );
         $this->kvAliases =       ( new KV( false ) )->setStorage( $this->db, 'aliases', true, 'TEXT UNIQUE', 'INTEGER' );
         $this->kvAddons =        ( new KV( true )  )->setStorage( $this->db, 'addons', true );
@@ -38,8 +43,7 @@ class BlockchainParser
         $this->kvAssetDecimals = ( new KV( false ) )->setStorage( $this->db, 'assetDecimals', true, 'INTEGER PRIMARY KEY', 'INTEGER' );
         
         $this->sponsorships = new KV;
-
-        $this->decimals = [];
+        $this->leases = new KV;
 
         $this->kvs = [
             $this->kvAddresses,
@@ -48,41 +52,33 @@ class BlockchainParser
             $this->kvAssets,
             $this->kvAssetNames,
             $this->kvAssetDecimals,
+            $this->sponsorships,
         ];
-        
-        $predefinedAddresses = [
-            GENESIS => 'GENESIS',
-            GENERATOR => 'GENERATOR',
-            MATCHER => 'MATCHER',
-            UNDEFINED => 'UNDEFINED',
-            SPONSOR => 'SPONSOR',
-            MASS => 'MASS',
-        ];
-
-        foreach( $predefinedAddresses as $k => $v )
-            if( $v !== $this->kvAddresses->getValueByKey( $k ) )
-                $this->kvAddresses->setKeyValue( $k, $v );
-        $this->kvAddresses->merge();
-        $this->kvAddresses->setHigh();
-
-        $predefinedAssets = [
-            WAVES_ASSET => 'Waves',
-        ];
-
-        foreach( $predefinedAssets as $k => $v )
-            if( $v !== $this->kvAssets->getValueByKey( $k ) )
-                $this->kvAssets->setKeyValue( $k, $v );
-        $this->kvAssets->merge();
-        $this->kvAssets->setHigh();
-
-        $blobs = [ 'GENESIS', 'GENERATOR', 'MATCHER', 'NULL', 'SPONSOR', 'MASS', 'HUYAS', '123', '12938' ];
-
-        //$ids = $this->getIdsByBlobs( $this->dbAddresses, $blobs );
-        //$ids = $this->setIdsByBlobs( $this->dbAddresses, $blobs );
-        //$ids = $this->setIdsByBlobs( $this->dbAddresses, $blobs );
 
         $this->setHighs();
         $this->recs = [];
+        $this->workpts = [];
+        $this->workheight = -1;
+        $this->resetMTS();
+    }
+
+    public function resetMTS()
+    {
+        $this->mts = [];
+        for( $i = TX_SPONSOR; $i <= TX_UPDATE_ASSET_INFO; ++$i )
+            $this->mts[$i] = 0;
+    }
+
+    public function printMTS()
+    {
+        for( $i = TX_SPONSOR; $i <= TX_UPDATE_ASSET_INFO; ++$i )
+            wk()->log( sprintf( "%d) %.2f ms", $i, $this->mts[$i] * 1000 ) );
+    }
+
+    public function cacheHalving()
+    {
+        foreach( $this->kvs as $kv )
+            $kv->cacheHalving();
     }
 
     private function setSponsorship( $asset, $sponsorship )
@@ -93,603 +89,62 @@ class BlockchainParser
     private function getSponsorship( $asset )
     {
         $sponsorship = $this->sponsorships->getValueByKey( $asset );
-        if( $sponsorship === false )
-        {
-            $sponsorship = 0;
-            $ts = $this->pts->query( 'SELECT * FROM pts WHERE r'. TYPE . ' = ' . TX_SPONSORSHIP . ' AND r' . ASSET . ' = ' . $asset . ' ORDER BY r0 ASC LIMIT 1' )->fetchAll();
-            if( isset( $ts[0] ) && $ts[0][AMOUNT] !== '0' )
-                $sponsorship = $ts[0];
+        if( $sponsorship !== false )
+            return $sponsorship;
 
-            $this->setSponsorship( $asset, $sponsorship );
+        if( !isset( $this->q_getSponsorship ) )
+        {
+            $this->q_getSponsorship = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r2 = 14 GROUP BY r5 HAVING r5 = ? ORDER BY r0 DESC LIMIT 1' );
+            if( $this->q_getSponsorship === false )
+                w8_err( __FUNCTION__ );
         }
 
-        return $sponsorship === 0 ? false : $sponsorship;
+        if( $this->q_getSponsorship->execute( [ $asset ] ) === false )
+            w8_err( __FUNCTION__ );
+
+        $ts = $this->q_getSponsorship->fetchAll();
+        if( $ts === false )
+            w8_err( __FUNCTION__ );
+         
+        if( isset( $ts[0] ) && $ts[0][AMOUNT] !== '0' )
+            $sponsorship = $ts[0];
+        else
+            $sponsorship = 0;
+
+        $this->setSponsorship( $asset, $sponsorship );
+        return $sponsorship;
     }
 
     private function getLeaseInfoById( $id )
     {
-        $txkey = $this->blockchain->getTransactionKey( $id );
+        $txkey = $this->RO->getTxKeyById( $id );
         if( $txkey === false )
-            w8_err( 'getLeaseInfoById > getTransactionKey' );
+            w8_err( "getLeaseInfoById: getTxKeyById( $id )" );
 
         foreach( $this->recs as $ts )
             if( $ts[TXKEY] === $txkey && $ts[TYPE] === TX_LEASE )
                 return $ts;
 
-        static $q;
-        if( !isset( $q ) )
+        if( !isset( $this->q_getLeaseInfoById ) )
         {
-            $q = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r1 == ? AND r2 == ' . TX_LEASE );
-            if( $q === false )
+            $this->q_getLeaseInfoById = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r1 = ? GROUP BY r2 HAVING r2 = ' . TX_LEASE );
+            if( $this->q_getLeaseInfoById === false )
                 w8io_error( "getLeaseInfoById" );
         }
 
-        if( $q->execute( [ $txkey ] ) === false )
+        if( $this->q_getLeaseInfoById->execute( [ $txkey ] ) === false )
             w8io_error( "getLeaseInfoById( $id )" );
 
-        $ts = $q->fetchAll();
+        $ts = $this->q_getLeaseInfoById->fetchAll();
         if( $ts === false )
             w8io_error( "getLeaseInfoById( $id )" );
 
         return $ts[0];
     }
 
-    private function getTS( $key )
-    {
-        return $this->pts->getUno( 1, $key );
-    }
-
-    private function setHighs()
+    public function setHighs()
     {
         $this->setUid();
-    }
-
-    public function setBlockchain( $blockchain )
-    {
-        $this->blockchain = $blockchain;
-    }
-
-    public function getIdsByBlobs( Triples $db, $blobs )
-    {
-        $n = count( $blobs );
-
-        $query = 'SELECT * FROM ' . $db->name() . ' WHERE r2 IN ( ' . ( $n > 1 ? str_repeat( '?,', $n - 1 ) : '' ) . '? )';
-        if( false === ( $query = $db->query( $query, $blobs ) ) )
-            return false;
-
-        $ids = [];
-        foreach( $query as $r )
-            $ids[$r[1]] = (int)$r[0];
-
-        return $ids;
-    }
-
-    public function getBlobsByIds( $db, $ids )
-    {
-        $n = count( $ids );
-
-        $query = 'SELECT * FROM ' . $db->name() . ' WHERE r1 IN ( ' . ( $n > 1 ? str_repeat( '?,', $n - 1 ) : '' ) . '? )';
-        if( false === ( $query = $db->query( $query, $ids ) ) )
-            return false;
-
-        $blobs = [];
-        foreach( $query as $r )
-            $blobs[$r[0]] = $r[1];
-
-        return $blobs;
-    }
-
-    public function setIdsByBlobs( $db, $blobs )
-    {
-        $ids = $this->getIdsByBlobs( $db, $blobs );
-
-        $n = count( $blobs );
-        if( $n === count( $ids ) )
-            return $ids;
-
-        $hi = $db->getHi( 1 );
-
-        $set = [];
-        for( $i = 0; $i < $n; $i++ )
-        {
-            $blob = $blobs[$i];
-            if( !isset( $ids[$blob] ) )
-            {
-                $id = ++$hi;                
-                $ids[$blob] = $id;
-                $set[] = [ $id, $blob ];
-            }
-        }
-
-        $db->merge( $set );
-        return $ids;
-    }
-
-    private function get_txid( $txid, $one = false )
-    {
-        if( !isset( $this->query_get_txid ) )
-        {
-            $this->query_get_txid = $this->transactions->prepare( 'SELECT * FROM transactions WHERE txid = :txid ORDER BY uid ASC' );
-            if( !is_object( $this->query_get_txid ) )
-                return false;
-        }
-
-        if( $this->query_get_txid->execute( [ 'txid' => $txid ] ) === false )
-            return false;
-
-        $data = $this->query_get_txid->fetchAll( PDO::FETCH_ASSOC );
-
-        if( !isset( $data[0] ) )
-            return false;
-
-        if( $one )
-        {
-            if( count( $data ) !== 1 )
-                return false;
-
-            return w8io_filter_wtx( $data[0] );
-        }
-
-        return array_map( 'w8io_filter_wtx', $data );
-    }
-
-    private function get_wtxs_at( $at )
-    {
-        if( !isset( $this->query_wtxs_at ) )
-        {
-            $this->query_wtxs_at = $this->transactions->prepare( "SELECT * FROM transactions WHERE block = :at" );
-            if( !is_object( $this->query_wtxs_at ) )
-                return false;
-        }
-
-        if( $this->query_wtxs_at->execute( [ 'at' => $at ] ) === false )
-            return false;
-
-        return array_map( 'w8io_filter_wtx', $this->query_wtxs_at->fetchAll( PDO::FETCH_ASSOC ) );
-    }
-
-    public function get_height()
-    {
-        $height = $this->checkpoint->getValue( W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS, 'i' );
-        if( !$height )
-            return 0;
-
-        return $height;
-    }
-
-    private function clear_transactions( $height )
-    {
-        if( !isset( $this->query_clear ) )
-        {
-            $this->query_clear = $this->transactions->prepare( 'DELETE FROM transactions WHERE block > :height' );
-            if( !is_object( $this->query_clear ) )
-                return false;
-        }
-
-        if( $this->query_clear->execute( [ 'height' => $height ] ) === false )
-            return false;
-
-        return true;
-    }
-
-    private function timestamp( $timestamp )
-    {
-        return intdiv( $timestamp, 1000 );
-    }
-
-    private function get_pair_txid( $id, $new = false )
-    {
-        if( false === ( $id = $this->pairs_txids->getKey( $id, $new ) ) )
-            w8io_error();
-        return $id;
-    }
-
-    public function get_txid_by_id( $id )
-    {
-        if( !isset( $this->pairs_txids ) )
-            $this->pairs_txids = new Pairs( $this->transactions, 'txids' );
-
-        if( false === ( $id = $this->pairs_txids->getValue( $id, 's' ) ) )
-            w8io_error();
-
-        return $id;
-    }
-
-    private function get_assetid( $id, $new = false )
-    {
-        if( false === ( $id = $this->pairs_assets->getKey( $id, $new ) ) )
-            w8io_error( $id );
-        return $id;
-    }
-
-    private function get_dataid( $id, $new = false )
-    {
-        if( false === ( $id = $this->pairs_addons->getKey( $id, $new ) ) )
-            w8io_error();
-        return $id;
-    }
-
-    private function get_aid( $id, $new = false )
-    {
-        if( false === ( $id = $this->pairs_addresses->getKey( $id, $new ) ) )
-            w8io_error();
-        return $id;
-    }
-
-    public function get_txs_all( $limit = 100 )
-    {
-        if( !isset( $this->query_get_txs_all ) )
-        {
-            $this->query_get_txs_all = $this->transactions->prepare(
-                "SELECT * FROM transactions ORDER BY uid DESC LIMIT :limit" );
-            if( !is_object( $this->query_get_txs_all ) )
-                return false;
-        }
-
-        if( $this->query_get_txs_all->execute( [ 'limit' => $limit ] ) === false )
-            return false;
-
-        return $this->query_get_txs_all;
-    }
-
-    public function query( $query )
-    {
-        $query = $this->transactions->prepare( $query );
-        if( !is_object( $query ) )
-            return false;
-
-        if( $query->execute() === false )
-            return false;
-
-        return $query;
-    }
-
-    public function get_txs_where( $aid, $where, $uid = false, $limit = 100 )
-    {
-        if( $aid !== false )
-        {
-            $where = $where ? ' AND ' . $where : '';
-            if( $uid )
-                $where .= ' AND uid <= ' . $uid;
-            $where =
-                "SELECT * FROM ( SELECT * FROM transactions WHERE a = $aid$where ORDER BY uid DESC LIMIT $limit ) UNION
-                 SELECT * FROM ( SELECT * FROM transactions WHERE b = $aid$where ORDER BY uid DESC LIMIT $limit ) ORDER BY uid DESC LIMIT $limit";
-        }
-        else
-        {
-            $where = $where ? ' WHERE ' . $where : '';
-            if( $uid )
-                $where .= ( strlen( $where ) ? ' AND ' : ' WHERE ' ) . 'uid <= ' . $uid;
-            $where =
-                "SELECT * FROM transactions$where ORDER BY uid DESC LIMIT $limit";
-        }
-
-        $query_where = $this->transactions->prepare( $where );
-        if( !is_object( $query_where ) )
-            return false;
-
-        if( $query_where->execute() === false )
-            return false;
-
-        return $query_where;
-    }
-
-    public function get_txs( $aid, $height, $limit = 100 )
-    {
-        if( !isset( $this->query_get_txs ) )
-        {
-            $this->query_get_txs = $this->transactions->prepare(
-                "SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid ORDER BY uid DESC LIMIT :limit )
-                 UNION
-                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND b = :aid ORDER BY uid DESC LIMIT :limit ) ORDER BY uid DESC LIMIT :limit" );
-            if( !is_object( $this->query_get_txs ) )
-                return false;
-        }
-
-        if( $this->query_get_txs->execute( [ 'aid' => $aid, 'height' => $height, 'limit' => $limit ] ) === false )
-            return false;
-
-        return $this->query_get_txs;
-    }
-
-    public function get_txs_asset( $aid, $height, $asset, $limit = 100 )
-    {
-        if( !isset( $this->query_get_txs_asset ) )
-        {
-            $this->query_get_txs_asset = $this->transactions->prepare(
-                "SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND a = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit )
-                 UNION
-                 SELECT * FROM ( SELECT * FROM transactions WHERE block <= :height AND b = :aid AND asset = :asset ORDER BY uid DESC LIMIT :limit ) ORDER BY uid DESC LIMIT :limit" );
-            if( !is_object( $this->query_get_txs_asset ) )
-                return false;
-        }
-
-        if( $this->query_get_txs_asset->execute( [ 'aid' => $aid, 'height' => $height, 'asset' => $asset, 'limit' => $limit ] ) === false )
-            return false;
-
-        return $this->query_get_txs_asset;
-    }
-
-    public function get_from_to( $from, $to )
-    {
-        if( !isset( $this->query_from_to ) )
-        {
-            $this->query_from_to = $this->transactions->prepare( "SELECT * FROM transactions WHERE block > :from AND block <= :to ORDER BY uid ASC" );
-            if( !is_object( $this->query_from_to ) )
-                return false;
-        }
-
-        if( $this->query_from_to->execute( [ 'from' => $from, 'to' => $to ] ) === false )
-            return false;
-
-        return array_map( 'w8io_filter_wtx', $this->query_from_to->fetchAll( PDO::FETCH_ASSOC ) );
-    }
-
-    public function mark_scam( $scam, $mark )
-    {
-        $id = $this->pairs_assets->getKey( $scam );
-        if( $id === false )
-            return;
-
-        $info = $this->pairs_asset_info->getValue( $id, 'j' );
-        if( $info === false )
-            return;
-
-        if( $mark )
-        {
-            if( isset( $info['scam'] ) )
-                return;
-
-            $info['scam'] = 1;
-        }
-        else
-        {
-            if( !isset( $info['scam'] ) )
-                return;
-
-            unset( $info['scam'] );
-        }
-
-        $this->pairs_asset_info->setKeyValue( $id, $info, 'j' );
-    }
-
-    public function mark_tickers( $ticker, $mark )
-    {
-        $id = $this->pairs_assets->getKey( $ticker );
-        if( $id === false )
-            return;
-
-        $info = $this->pairs_asset_info->getValue( $id, 'j' );
-        if( $info === false )
-            return;
-
-        if( $mark )
-        {
-            if( isset( $info['ticker'] ) )
-                return;
-
-            $info['ticker'] = 1;
-        }
-        else
-        {
-            if( !isset( $info['ticker'] ) )
-                return;
-
-            unset( $info['ticker'] );
-        }
-
-        $this->pairs_asset_info->setKeyValue( $id, $info, 'j' );
-    }
-
-    private function sponsor_swap( $wtx, $sponsor, $wfee )
-    {
-        // A > SPONSOR
-        $wtx['b'] = $sponsor;
-        $wtx['amount'] = $wtx['fee'];
-        $wtx['asset'] = $wtx['afee'];
-
-        $wtx['type'] = W8IO_TYPE_SPONSOR;
-        $wtx['fee'] = 0;
-        $wtx['data'] = false;
-
-        if( !$this->set_tx( $wtx ) )
-            w8io_error( json_encode( $wtx ) );
-
-        // SPONSOR > METASPONSOR
-        $wtx['a'] = $sponsor;
-        $wtx['b'] = 'SPONSOR';
-        $wtx['amount'] = $wfee;
-        $wtx['asset'] = 0;
-
-        if( !$this->set_tx( $wtx ) )
-            w8io_error( json_encode( $wtx ) );
-    }
-
-    private function fill_sponsors()
-    {
-        $query_sponsorships = $this->transactions->prepare( "SELECT * FROM transactions WHERE type = 14 ORDER BY uid DESC" );
-        if( !is_object( $query_sponsorships ) )
-            w8io_error( 'query_sponsorships->prepare()' );
-
-        if( $query_sponsorships->execute() === false )
-            w8io_error( 'query_sponsorships->execute()' );
-
-        $this->sponsors = [];
-
-        foreach( $query_sponsorships as $wtx )
-            if( !isset( $this->sponsors[$wtx['asset']] ) )
-                $this->set_sponsor( (int)$wtx['asset'], (int)$wtx['a'], (int)$wtx['amount'] );
-    }
-
-    private function set_sponsor( $asset, $a, $sfee )
-    {
-        if( !isset( $this->sponsors ) )
-            $this->sponsors = [];
-
-        $this->sponsors[$asset] = [ 'a' => $a, 'f' => $sfee ];
-    }
-
-    private function get_sponsor( $asset )
-    {
-        if( !isset( $this->sponsors[$asset] ) )
-            return false;
-
-        return $this->sponsors[$asset];
-    }
-
-    private function set_tx( $wtx )
-    {
-        $a = $wtx['a'];
-        if( is_int( $a ) === false )
-        {
-            if( $a[0] === 'a' )
-            {
-                w8io_error( json_encode( $wtx ) );
-            }
-            else if( $a[0] === '3' )
-            {
-                $a = $this->pairs_addresses->getKey( $wtx['a'], true );
-                if( $a === false )
-                    return false;
-            }
-            else if( $a === 'GENESIS' )
-            {
-                $a = 0;
-            }
-            else if( $a === 'GENERATOR' )
-            {
-                $a = -1;
-            }
-            else if( $a === 'MATCHER' )
-            {
-                $a = -2;
-            }
-            else
-                w8io_error( json_encode( $wtx ) );
-        }
-
-        $b = $wtx['b'];
-        if( is_int( $b ) === false )
-        {
-            if( $b === false )
-            {
-                $b = 0;
-            }
-            else if( $b[0] === 'a' )
-            {
-                $alias = substr( $b, 8 );
-
-                $b = $this->pairs_aliases->getValue( $alias, 'i' );
-                if( $b === false )
-                    return false;
-
-                if( $wtx['data'] !== false )
-                    $wtx['data']['b'] = $this->get_dataid( $alias );
-                else
-                    $wtx['data'] = [ 'b' => $this->get_dataid( $alias ) ];
-            }
-            else if( $b[0] === '3' )
-            {
-                $b = $this->pairs_addresses->getKey( $wtx['b'], true );
-                if( $b === false )
-                    return false;
-            }
-            else if( $b === 'NULL' )
-            {
-                $b = -3;
-            }
-            else if( $b === 'SPONSOR' )
-            {
-                $b = -4;
-            }
-            else if( $b === 'MASS' )
-            {
-                $b = -5;
-            }
-            else
-                w8io_error( json_encode( $wtx ) );
-        }
-
-        if( !isset( $this->query_set_tx ) )
-        {
-            $this->query_set_tx = $this->transactions->prepare( "INSERT INTO transactions
-                (  txid,  block,  type,  timestamp,  a,  b,  amount,  asset,  fee,  afee,  data ) VALUES
-                ( :txid, :block, :type, :timestamp, :a, :b, :amount, :asset, :fee, :afee, :data )" );
-            if( !is_object( $this->query_set_tx ) )
-                return false;
-        }
-
-        $wtx['a'] = $a;
-        $wtx['b'] = $b;
-
-        if( $wtx['fee'] === 0 )
-            $wtx['afee'] = W8IO_ASSET_EMPTY;
-        else if( $wtx['afee'] > 0 && $wtx['block'] >= W8IO_SPONSOR_ACTIVE && ( $sponsor = $this->get_sponsor( $wtx['afee'] ) ) )
-        {
-            $this->sponsor_swap( $wtx, $sponsor['a'], gmp_intval( gmp_div( gmp_mul( $wtx['fee'], 100000 ), $sponsor['f'] ) ) );
-
-            if( $wtx['data'] !== false )
-                $wtx['data']['f'] = $sponsor['f'];
-            else
-                $wtx['data'] = [ 'f' => $sponsor['f'] ];
-        }
-
-        if( $wtx['data'] !== false )
-            $wtx['data'] = json_encode( $wtx['data'] );
-
-        if( $this->query_set_tx->execute( $wtx ) === false )
-            return false;
-
-        $this->wtxs[] = $wtx;
-        return true;
-    }
-
-    private function block_fees( $at, $wtxs, $prev_wtxs )
-    {
-        $fees = [ 0 => 0 ];
-        $prev = false;
-
-        for( ;; )
-        {
-            foreach( $wtxs as $wtx )
-            {
-                $fee = $wtx['fee'];
-                if( $fee === 0 )
-                    continue;
-
-                // only MATCHER pays fee to GENERATOR
-                if( $wtx['type'] === 7 && $wtx['a'] !== -2 )
-                    continue;
-
-                $asset = $wtx['afee'];
-
-                if( $at >= W8IO_NG_ACTIVE )
-                {
-                    if( $asset > 0 && $at >= W8IO_SPONSOR_ACTIVE && $wtx['data'] !== false )
-                    {
-                        $data = json_decode( $wtx['data'], true );
-                        if( isset( $data['f'] ) )
-                        {
-                            $asset = 0;
-                            $fee = gmp_intval( gmp_div( gmp_mul( $fee, 100000 ), $data['f'] ) );
-                        }
-                    }
-
-                    $ngfee = intdiv( $fee, 5 ) * 2;
-                    $fee = $prev ? $fee - $ngfee : $ngfee;
-                    if( $fee === 0 )
-                        continue;
-                }
-
-                $fees[$asset] = isset( $fees[$asset] ) ? $fees[$asset] + $fee : $fee;
-            }
-
-            if( $prev || $at <= W8IO_NG_ACTIVE )
-                return $fees;
-
-            $wtxs = $prev_wtxs;
-            $prev = true;
-        }
     }
 
     private function setUid()
@@ -703,11 +158,21 @@ class BlockchainParser
         return ++$this->uid;
     }
 
-    private function getSenderId( $address )
+    private function getSenderId( $address, $tx = null )
     {
         $id = $this->kvAddresses->getKeyByValue( $address );
         if( $id === false )
-            w8io_error( 'getSenderId' );
+        {
+            if( !isset( $tx ) )
+                w8_err( __FUNCTION__ );
+
+            if( !isset( $tx['stateChanges']['transfers'][0]['address'] ) ||
+                $address !== $tx['stateChanges']['transfers'][0]['address'] )
+                w8_err( __FUNCTION__ );
+
+            $this->getRecipientId( $address );
+            return $this->getSenderId( $address );
+        }
         
         return $id;
     }
@@ -730,11 +195,11 @@ class BlockchainParser
     private function getAliasId( $alias )
     {
         if( substr( $alias, 0, 6 ) !== 'alias:')
-            w8io_error( 'unexpected $alias = ' . $alias );
+            w8_err( 'unexpected $alias = ' . $alias );
         
         $id = $this->kvAliases->getValueByKey( substr( $alias, 8 ) );
         if( $id === false )
-            w8io_error( 'getAliasId' );
+            w8_err( __FUNCTION__ );
         
         return $id;
     }
@@ -752,7 +217,7 @@ class BlockchainParser
     {
         $id = $this->kvAssets->getKeyByValue( $tx['assetId'] );
         if( $id === false )
-            w8io_error( 'getUpdatedAssetId' );
+            w8_err( __FUNCTION__ );
         $name = htmlentities( trim( preg_replace( '/\s+/', ' ', $tx['name'] ) ) );
         $this->kvAssetNames->setKeyValue( $id, $name );
         return $id;
@@ -762,7 +227,7 @@ class BlockchainParser
     {
         $id = $this->kvAssets->getKeyByValue( $asset );
         if( $id === false )
-            w8io_error( 'getAssetId' );
+            w8_err( __FUNCTION__ );
         
         return $id;
     }
@@ -778,9 +243,9 @@ class BlockchainParser
 
         $afee = $this->getAssetId( $tx['feeAssetId'] );
         $sponsorship = $this->getSponsorship( $afee );
-        if( $sponsorship !== false )
+        if( $sponsorship !== 0 && w8k2h( $txkey ) >= GetHeight_Sponsorship() )
         {
-            $this->recs[] = [
+            $this->appendTS( [
                 UID =>      $this->getNewUid(),
                 TXKEY =>    $txkey,
                 TYPE =>     TX_SPONSOR,
@@ -792,7 +257,7 @@ class BlockchainParser
                 FEE =>      gmp_intval( gmp_div( gmp_mul( $tx['fee'], 100000 ), (int)$sponsorship[AMOUNT] ) ),
                 ADDON =>    0,
                 GROUP =>    0,
-            ];
+            ] );
 
             $tx[FEEASSET] = SPONSOR_ASSET;
             $tx[FEE] = 0;
@@ -803,58 +268,40 @@ class BlockchainParser
         $tx[FEE] = $tx['fee'];
     }
 
-    private function getAssetInfo( $assetInt )
+    private function getPTS( $from, $to )
     {
-        $info = $this->kvAssetInfo->getValueByKey( $assetInt );
-        if( $info === false )
-            w8io_error( 'getAssetDecimals' );
-
-        return $info;
-    }
-
-    private function getAssetDecimals( $assetInt )
-    {
-        if( !isset( $this->decimals[$assetInt] ) )
-            $this->decimals[$assetInt] = wk()->json_decode( $this->getAssetInfo( $assetInt ) )['decimals'];
-
-        return $this->decimals[$assetInt];        
-    }
-
-    private function getPTS( $height )
-    {
-        static $q;
-
-        if( !isset( $q ) )
+        if( !isset( $this->q_getPTS ) )
         {
-            $q = $this->pts->db->prepare( "SELECT * FROM pts WHERE r1 >= ? AND r1 < ?" );
-            if( $q === false )
-                w8io_error( 'getPTS' );
+            $this->q_getPTS = $this->pts->db->prepare( "SELECT * FROM pts WHERE r1 >= ? AND r1 < ?" );
+            if( $this->q_getPTS === false )
+                w8_err( __FUNCTION__ );
         }
 
-        if( $q->execute( [ w8_hi2k( $height ), w8_hi2k( $height + 1 ) - 1 ] ) === false )
-            w8io_error( 'getPTS' );
+        if( $this->q_getPTS->execute( [ $from, $to ] ) === false )
+            w8_err( __FUNCTION__ );
 
-        return $q->fetchAll();
+        return $this->q_getPTS->fetchAll();
     }
-/*
-    define( 'UID', 0 );
-define( 'TXKEY', 1 );
-define( 'TYPE', 2 );
-define( 'A', 3 );
-define( 'B', 4 );
-define( 'ASSET', 5 );
-define( 'AMOUNT', 6 );
-define( 'FEEASSET', 7 );
-define( 'FEE', 8 );
-define( 'ADDON', 9 );
-define( 'GROUP', 10 );
-*/
+
+    private function getPTSat( $height )
+    {
+        return $this->getPTS( w8h2k( $height ), w8h2k( $height + 1 ) - 1 );
+    }
+
     private function getFeesAt( $height, $reward )
     {
         $fees = [ WAVES_ASSET => $reward ];
         $ngfees = [];
 
-        foreach( $this->getPTS( $height ) as $ts )
+        if( $this->workheight === $height )
+            $pts = $this->workpts;
+        else
+        {
+            $this->flush();
+            $pts = $this->getPTSat( $height );
+        }
+
+        foreach( $pts as $ts )
         {
             $fee = (int)$ts[FEE];
             if( $fee <= 0 )
@@ -865,7 +312,7 @@ define( 'GROUP', 10 );
 
             $feeasset = (int)$ts[FEEASSET];
 
-            if( $height >= NGHeight() )
+            if( $height >= GetHeight_NG() )
             {
                 $ngfee = intdiv( $fee, 5 ) * 2;
                 $fees[$feeasset] = $ngfee + ( isset( $fees[$feeasset] ) ? $fees[$feeasset] : 0 );
@@ -877,7 +324,7 @@ define( 'GROUP', 10 );
             }
         }
 
-        if( $height > NGHeight() )
+        if( $height > GetHeight_NG() )
             foreach( $this->getNGFeesAt( $height - 1 ) as $feeasset => $fee )
                 if( $fee > 0 )
                     $fees[$feeasset] = $fee + ( isset( $fees[$feeasset] ) ? $fees[$feeasset] : 0 );
@@ -891,19 +338,17 @@ define( 'GROUP', 10 );
         if( isset( $this->lastfees ) && $this->lastfees[0] === $height )
             return $this->lastfees[1];
 
-        static $q;
-
-        if( !isset( $q ) )
+        if( !isset( $this->q_getNGFeesAt ) )
         {
-            $q = $this->pts->db->prepare( "SELECT * FROM pts WHERE r1 == ?" );
-            if( $q === false )
+            $this->q_getNGFeesAt = $this->pts->db->prepare( "SELECT * FROM pts WHERE r1 == ?" );
+            if( $this->q_getNGFeesAt === false )
                 w8io_error( 'getNGFeesAt' );
         }
 
-        if( $q->execute( [ w8_hi2k( $height + 1 ) - 1 ] ) === false )
+        if( $this->q_getNGFeesAt->execute( [ w8h2k( $height + 1 ) - 1 ] ) === false )
             w8io_error( 'getNGFeesAt' );
 
-        $pts = $q->fetchAll();
+        $pts = $this->q_getNGFeesAt->fetchAll();
         if( count( $pts ) < 1 )
             w8_err( "unexpected getNGFeesAt( $height )" );
 
@@ -914,11 +359,15 @@ define( 'GROUP', 10 );
         return $ngfees;
     }
 
+    private function appendTS( $ts )
+    {
+        $this->recs[] = $ts;
+        $this->workpts[] = $ts;
+    }
+
     private function processGeneratorTransaction( $txkey, $tx )
     {
-        $this->flush();
-
-        list( $fees, $ngfees ) = $this->getFeesAt( w8_k2h( $txkey ), $tx['reward'] );
+        list( $fees, $ngfees ) = $this->getFeesAt( w8k2h( $txkey ), $tx['reward'] );
 
         foreach( $fees as $feeasset => $fee )
         {
@@ -936,6 +385,9 @@ define( 'GROUP', 10 );
                 GROUP =>    0,
             ];
         }
+
+        $this->workheight = w8k2h( $txkey ) + 1;
+        $this->workpts = [];
     }
 
     private function processFailedTransaction( $txkey, $tx )
@@ -943,7 +395,7 @@ define( 'GROUP', 10 );
         switch( $tx['type'] )
         {
             case TX_INVOKE:
-                $this->recs[] = [
+                $this->appendTS( [
                     UID =>      $this->getNewUid(),
                     TXKEY =>    $txkey,
                     TYPE =>     TX_INVOKE,
@@ -955,7 +407,7 @@ define( 'GROUP', 10 );
                     FEE =>      $tx[FEE],
                     ADDON =>    0,
                     GROUP =>    FAILED_GROUP,
-                ];
+                ] );
                 break;
             default:
                 w8_err( 'unknown failed transaction ' . $tx['type'] );
@@ -964,7 +416,7 @@ define( 'GROUP', 10 );
 
     private function processGenesisTransaction( $txkey, $tx )
     {
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_GENESIS,
@@ -976,12 +428,12 @@ define( 'GROUP', 10 );
             FEE =>      0,
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processPaymentTransaction( $txkey, $tx )
     {
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_PAYMENT,
@@ -993,12 +445,12 @@ define( 'GROUP', 10 );
             FEE =>      $tx['fee'],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processIssueTransaction( $txkey, $tx, $dApp = null )
     {
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_ISSUE,
@@ -1010,12 +462,12 @@ define( 'GROUP', 10 );
             FEE =>      isset( $dApp ) ? 0 : $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processReissueTransaction( $txkey, $tx, $dApp = null )
     {
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_REISSUE,
@@ -1027,12 +479,12 @@ define( 'GROUP', 10 );
             FEE =>      isset( $dApp ) ? 0 : $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processBurnTransaction( $txkey, $tx, $dApp = null )
     {
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_BURN,
@@ -1044,7 +496,7 @@ define( 'GROUP', 10 );
             FEE =>      isset( $dApp ) ? 0 : $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processExchangeTransaction( $txkey, $tx )
@@ -1074,6 +526,7 @@ define( 'GROUP', 10 );
         $sasset = $buyer['assetPair']['priceAsset'];
         $sasset = isset( $sasset ) ? $this->getAssetId( $sasset ) : WAVES_ASSET;
 
+        /*
         if( 0 )
         {
             $bname = $info['name'];
@@ -1081,6 +534,7 @@ define( 'GROUP', 10 );
             $sname = $info['name'];
             $sdecimals = $info['decimals'];
         }
+        */
 
         $bfee = $tx['buyMatcherFee'];
         $sfee = $tx['sellMatcherFee'];
@@ -1088,11 +542,6 @@ define( 'GROUP', 10 );
         $bafee = isset( $buyer['matcherFeeAssetId'] ) ? $this->getAssetId( $buyer['matcherFeeAssetId'] ) : WAVES_ASSET;
         $safee = isset( $seller['matcherFeeAssetId'] ) ? $this->getAssetId( $seller['matcherFeeAssetId'] ) : WAVES_ASSET;
         $afee = isset( $tx['feeAssetId'] ) ? $this->getAssetId( $tx['feeAssetId'] ) : 0;
-
-        if( $bafee && false !== $this->getSponsorship( $bafee ) )
-            w8io_error();
-        if( $safee && false !== $this->getSponsorship( $safee ) )
-            w8io_error();
         
         if( $buyer['version'] >= 4 )
             w8io_error();
@@ -1108,7 +557,7 @@ define( 'GROUP', 10 );
         {
             if( $masset === $afee )
             {
-                $this->recs[] = [
+                $this->appendTS( [
                     UID =>      $this->getNewUid(),
                     TXKEY =>    $txkey,
                     TYPE =>     TX_MATCHER,
@@ -1120,11 +569,11 @@ define( 'GROUP', 10 );
                     FEE =>      $fee,
                     ADDON =>    0,
                     GROUP =>    0,
-                ];
+                ] );
             }
             else if( $mamount )
             {
-                $this->recs[] = [
+                $this->appendTS( [
                     UID =>      $this->getNewUid(),
                     TXKEY =>    $txkey,
                     TYPE =>     TX_MATCHER,
@@ -1136,11 +585,12 @@ define( 'GROUP', 10 );
                     FEE =>      0,
                     ADDON =>    0,
                     GROUP =>    0,
-                ];
+                ] );
             }
         }
 
         // price
+        /*
         if( 0 )
         {
             $price = (string)$tx['price'];
@@ -1156,13 +606,13 @@ define( 'GROUP', 10 );
 
             $price = $price . ' ' . $bname . '/' . $sname;
             $wtx['data'] = [ 'p' => $this->get_dataid( $price, true ) ];
-        }
+        }*/
 
         $amount = $tx['amount'];
 
         // SELLER -> BUYER
         {
-            $this->recs[] = [
+            $this->appendTS( [
                 UID =>      $this->getNewUid(),
                 TXKEY =>    $txkey,
                 TYPE =>     TX_EXCHANGE,
@@ -1174,11 +624,11 @@ define( 'GROUP', 10 );
                 FEE =>      $sfee,
                 ADDON =>    0,
                 GROUP =>    0,
-            ];
+            ] );
         }
         // BUYER -> SELLER
         {
-            $this->recs[] = [
+            $this->appendTS( [
                 UID =>      $this->getNewUid(),
                 TXKEY =>    $txkey,
                 TYPE =>     TX_EXCHANGE,
@@ -1190,14 +640,14 @@ define( 'GROUP', 10 );
                 FEE =>      $bfee,
                 ADDON =>    0,
                 GROUP =>    0,
-            ];
+            ] );
         }
     }
 
     private function processTransferTransaction( $txkey, $tx, $dApp = null )
     {
         if( isset( $dApp ) )
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_TRANSFER,
@@ -1209,9 +659,9 @@ define( 'GROUP', 10 );
             FEE =>      0,
             ADDON =>    $tx['address'][0] === 'a' ? $this->getAliasId( $tx['address'] ) : 0,
             GROUP =>    0,
-        ];
+        ] );
         else
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_TRANSFER,
@@ -1223,12 +673,12 @@ define( 'GROUP', 10 );
             FEE =>      $tx[FEE],
             ADDON =>    $tx['recipient'][0] === 'a' ? $this->getAliasId( $tx['recipient'] ) : 0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processLeaseTransaction( $txkey, $tx )
     {
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_LEASE,
@@ -1240,17 +690,16 @@ define( 'GROUP', 10 );
             FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processLeaseCancelTransaction( $txkey, $tx )
     {
-        //$this->flush();
         $ts = $this->getLeaseInfoById( $tx['leaseId'] );
         if( $ts === false )
             w8io_error();
 
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_LEASE_CANCEL,
@@ -1262,7 +711,7 @@ define( 'GROUP', 10 );
             FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processAliasTransaction( $txkey, $tx )
@@ -1270,7 +719,7 @@ define( 'GROUP', 10 );
         $a = $this->getSenderId( $tx['sender'] );
         $this->kvAliases->setKeyValue( $tx['alias'], $a );
 
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_LEASE,
@@ -1282,7 +731,7 @@ define( 'GROUP', 10 );
             FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processMassTransferTransaction( $txkey, $tx )
@@ -1290,7 +739,7 @@ define( 'GROUP', 10 );
         $a = $this->getSenderId( $tx['sender'] );
         $asset = isset( $tx['assetId'] ) ? $this->getAssetId( $tx['assetId'] ) : WAVES_ASSET;
 
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_MASS_TRANSFER,
@@ -1302,10 +751,10 @@ define( 'GROUP', 10 );
             FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
 
         foreach( $tx['transfers'] as $mtx )
-            $this->recs[] = [
+            $this->appendTS( [
                 UID =>      $this->getNewUid(),
                 TXKEY =>    $txkey,
                 TYPE =>     TX_MASS_TRANSFER,
@@ -1317,12 +766,12 @@ define( 'GROUP', 10 );
                 FEE =>      0,
                 ADDON =>    0,
                 GROUP =>    0,
-            ];
+            ] );
     }
 
     private function processDataTransaction( $txkey, $tx )
     {
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_DATA,
@@ -1334,12 +783,12 @@ define( 'GROUP', 10 );
             FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processSmartAccountTransaction( $txkey, $tx )
     {
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_SMART_ACCOUNT,
@@ -1351,12 +800,12 @@ define( 'GROUP', 10 );
             FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processSmartAssetTransaction( $txkey, $tx )
     {
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_SMART_ASSET,
@@ -1368,7 +817,7 @@ define( 'GROUP', 10 );
             FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     private function processSponsorshipTransaction( $txkey, $tx, $dApp = null )
@@ -1388,7 +837,7 @@ define( 'GROUP', 10 );
         ];
 
         $this->setSponsorship( $ts[ASSET], $ts );
-        $this->recs[] = $ts;
+        $this->appendTS( $ts );
     }
 
     private function processInvokeTransaction( $txkey, $tx )
@@ -1408,10 +857,10 @@ define( 'GROUP', 10 );
             $amount = 0;
         }
 
-        $sender = $this->getSenderId( $tx['sender'] );
+        $sender = $this->getSenderId( $tx['sender'], $tx );
         $dApp = $this->getRecipientId( $tx['dApp'] );
 
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_INVOKE,
@@ -1423,7 +872,7 @@ define( 'GROUP', 10 );
             FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
 
         if( isset( $tx['payment'][1] ) )
         {
@@ -1431,7 +880,7 @@ define( 'GROUP', 10 );
             $asset = isset( $payment['assetId'] ) ? $this->getAssetId( $payment['assetId'] ) : WAVES_ASSET;
             $amount = $payment['amount'];
 
-            $this->recs[] = [
+            $this->appendTS( [
                 UID =>      $this->getNewUid(),
                 TXKEY =>    $txkey,
                 TYPE =>     TX_INVOKE,
@@ -1443,7 +892,7 @@ define( 'GROUP', 10 );
                 FEE =>      0,
                 ADDON =>    0,
                 GROUP =>    0,
-            ];
+            ] );
         }
 
         if( isset( $tx['payment'][2] ) )
@@ -1451,23 +900,29 @@ define( 'GROUP', 10 );
 
         $stateChanges = $tx['stateChanges'];
 
-        //foreach( $stateChanges['data'] as $itx )
-            //$this->processDataTransaction( $txkey, $itx, $dApp );
-        foreach( $stateChanges['issues'] as $itx )
-            $this->processIssueTransaction( $txkey, $itx, $dApp );
-        foreach( $stateChanges['transfers'] as $itx )
-            $this->processTransferTransaction( $txkey, $itx, $dApp );
-        foreach( $stateChanges['reissues'] as $itx )
-            $this->processReissueTransaction( $txkey, $itx, $dApp );
-        foreach( $stateChanges['burns'] as $itx )
-            $this->processBurnTransaction( $txkey, $itx, $dApp );
-        foreach( $stateChanges['sponsorFees'] as $itx )
-            $this->processSponsorshipTransaction( $txkey, $itx, $dApp );
+        if( w8k2h( $txkey ) >= GetHeight_RideV4() )
+        {
+            foreach( $stateChanges['issues'] as $itx )
+                $this->processIssueTransaction( $txkey, $itx, $dApp );
+            foreach( $stateChanges['transfers'] as $itx )
+                $this->processTransferTransaction( $txkey, $itx, $dApp );
+            foreach( $stateChanges['reissues'] as $itx )
+                $this->processReissueTransaction( $txkey, $itx, $dApp );
+            foreach( $stateChanges['burns'] as $itx )
+                $this->processBurnTransaction( $txkey, $itx, $dApp );
+            foreach( $stateChanges['sponsorFees'] as $itx )
+                $this->processSponsorshipTransaction( $txkey, $itx, $dApp );
+        }
+        else
+        {
+            foreach( $stateChanges['transfers'] as $itx )
+                $this->processTransferTransaction( $txkey, $itx, $dApp );
+        }
     }
 
     private function processUpdateAssetInfoTransaction( $txkey, $tx )
     {
-        $this->recs[] = [
+        $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_UPDATE_ASSET_INFO,
@@ -1479,7 +934,7 @@ define( 'GROUP', 10 );
             FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
-        ];
+        ] );
     }
 
     public function processTransaction( $txkey, $tx )
@@ -1503,44 +958,48 @@ define( 'GROUP', 10 );
                     w8io_error();
             }
 
+        //$tt = microtime( true );
+
         switch( $type )
         {
             case TX_PAYMENT:
-                return $this->processPaymentTransaction( $txkey, $tx );
+                $this->processPaymentTransaction( $txkey, $tx ); break;
             case TX_ISSUE:
-                return $this->processIssueTransaction( $txkey, $tx );
+                $this->processIssueTransaction( $txkey, $tx ); break;
             case TX_TRANSFER:
-                return $this->processTransferTransaction( $txkey, $tx );
+                $this->processTransferTransaction( $txkey, $tx ); break;
             case TX_REISSUE:
-                return $this->processReissueTransaction( $txkey, $tx );
+                $this->processReissueTransaction( $txkey, $tx ); break;
             case TX_BURN:
-                return $this->processBurnTransaction( $txkey, $tx );
+                $this->processBurnTransaction( $txkey, $tx ); break;
             case TX_EXCHANGE:
-                return $this->processExchangeTransaction( $txkey, $tx );
+                $this->processExchangeTransaction( $txkey, $tx ); break;
             case TX_LEASE:
-                return $this->processLeaseTransaction( $txkey, $tx );
+                $this->processLeaseTransaction( $txkey, $tx ); break;
             case TX_LEASE_CANCEL:
-                return $this->processLeaseCancelTransaction( $txkey, $tx );
+                $this->processLeaseCancelTransaction( $txkey, $tx ); break;
             case TX_ALIAS:
-                return $this->processAliasTransaction( $txkey, $tx );
+                $this->processAliasTransaction( $txkey, $tx ); break;
             case TX_MASS_TRANSFER:
-                return $this->processMassTransferTransaction( $txkey, $tx );
+                $this->processMassTransferTransaction( $txkey, $tx ); break;
             case TX_DATA:
-                return $this->processDataTransaction( $txkey, $tx );
+                $this->processDataTransaction( $txkey, $tx ); break;
             case TX_SMART_ACCOUNT:
-                return $this->processSmartAccountTransaction( $txkey, $tx );
+                $this->processSmartAccountTransaction( $txkey, $tx ); break;
             case TX_SMART_ASSET:
-                return $this->processSmartAssetTransaction( $txkey, $tx );
+                $this->processSmartAssetTransaction( $txkey, $tx ); break;
             case TX_SPONSORSHIP:
-                return $this->processSponsorshipTransaction( $txkey, $tx );
+                $this->processSponsorshipTransaction( $txkey, $tx ); break;
             case TX_INVOKE:
-                return $this->processInvokeTransaction( $txkey, $tx );
+                $this->processInvokeTransaction( $txkey, $tx ); break;
             case TX_UPDATE_ASSET_INFO:
-                return $this->processUpdateAssetInfoTransaction( $txkey, $tx );
+                $this->processUpdateAssetInfoTransaction( $txkey, $tx ); break;
                 
             default:
                 w8io_error( 'unknown' );
         }
+
+        //$this->mts[$type] += microtime( true ) - $tt;
     }
 
     private function flush()
@@ -1548,7 +1007,7 @@ define( 'GROUP', 10 );
         if( count( $this->recs ) )
         {
             $this->pts->merge( $this->recs );
-            $this->blockchain->balances->update( $this->recs );
+            $this->balances->update( $this->recs );
             $this->recs = [];
 
             foreach( $this->kvs as $kv )
@@ -1558,22 +1017,16 @@ define( 'GROUP', 10 );
 
     public function rollback( $txfrom )
     {
-        $tt = microtime( true );
-        $this->db->begin();
-        {
-            $this->pts->query( 'DELETE FROM pts WHERE r1 >= '. $txfrom );
-            foreach( $this->kvs as $kv )
-                $kv->reset();
+        // BALANCES
+        $pts = $this->getPTS( $txfrom, PHP_INT_MAX );
+        $this->balances->rollback( $pts );
 
-            //$beforeHeight  = intdiv( $this->txheight, W8IO_TXSHIFT );
-            //$beforeTxHeight = $this->txheight % W8IO_TXSHIFT;
-            $this->setHighs();
-            //$afterHeight  = intdiv( $this->txheight, W8IO_TXSHIFT );
-            //$afterTxHeight = $this->txheight % W8IO_TXSHIFT;
-        }                    
-        $this->db->commit();
-
-        wk()->log( 'i', $beforeHeight . ':' . $beforeTxHeight . ' >> ' . $afterHeight . ':' . $afterTxHeight . ' (rollback) (' . (int)( 1000 * ( microtime( true ) - $tt ) ) . ' ms)' );
+        // PTS
+        $this->pts->query( 'DELETE FROM pts WHERE r1 >= '. $txfrom );
+        $this->sponsorships->reset();
+        $this->setHighs();
+        $this->workpts = [];
+        $this->workheight = -1;
     }
 
     public function update( $txs )
@@ -1583,9 +1036,10 @@ define( 'GROUP', 10 );
         foreach( $txs as $txkey => $tx )
             $this->processTransaction( $txkey, $tx );
 
+        //$this->printMTS();
+        //$this->resetMTS();
+
         $this->flush();
     }
 }
 
-if( !isset( $lock ) )
-    require_once '../w8io_updater.php';
