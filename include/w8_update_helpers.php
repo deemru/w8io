@@ -31,12 +31,16 @@ function GetHeight_NG()
 
 function GetHeight_RideV4()
 {
-    static $height = 2220000;
+    static $height;
 
     if( !isset( $height ) )
+    {
         foreach( wk()->json_decode( wk()->fetch( '/activation/status' ) )['features'] as $feature )
             if( $feature['id'] === 15 && $feature['blockchainStatus'] === 'ACTIVATED' )
                 return ( $height = $feature['activationHeight'] );
+
+        $height = 2220000; // MAINNET
+    }
 
     return $height;
 }

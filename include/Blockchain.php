@@ -151,7 +151,6 @@ class Blockchain
 
     private function fixate( $fixate )
     {
-        $this->balances->rollback( $fixate );
         $this->parser->rollback( $fixate );
         $this->ts->query( 'DELETE FROM ts WHERE r0 >= ' . $fixate );
 
@@ -409,7 +408,7 @@ class Blockchain
         // SELFTEST
         if( 0 && 0 === count( $newTxs ) )
         {
-            $waves = $this->balances->getAllWaves();
+            $waves = $this->parser->balances->getAllWaves();
             $ngfees = $this->parser->getNGFeesAt( $to - 1 );
             if( isset( $ngfees[0] ) )
                 $waves += $ngfees[0];

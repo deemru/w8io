@@ -1,15 +1,5 @@
 <?php
 
-define( 'W8IO_NG_ACTIVE', W8IO_NETWORK == 'W' ? 805001 : 171001 );
-define( 'W8IO_SPONSOR_ACTIVE', W8IO_NETWORK == 'W' ? 1080000 + 10000 : 339000 + 3000 );
-define( 'W8IO_RESET_LEASES', W8IO_NETWORK == 'W' ? 462000 : 51500 );
-define( 'W8IO_ASSET_EMPTY', -1 ); // to skip select with empty fee
-define( 'W8IO_ASSET_WAVES_LEASED', -2 ); // to monitor waves leased
-define( 'W8IO_TYPE_FEES', 0 ); // internal tx type for fees
-define( 'W8IO_TYPE_SPONSOR', -1 ); // internal tx type for sponsor
-define( 'W8IO_TYPE_INVOKE_DATA', -2 ); // internal tx type for invoke data
-define( 'W8IO_TYPE_INVOKE_TRANSFER', -3 ); // internal tx type for invoke transfer
-
 use deemru\ABCode;
 function base58Encode( $data ){ return ABCode::base58()->encode( $data ); }
 function base58Decode( $data ){ return ABCode::base58()->decode( $data ); }

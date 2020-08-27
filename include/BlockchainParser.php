@@ -15,10 +15,9 @@ class BlockchainParser
     public Triples $pts;
     public KV $kvAddresses;
     public KV $kvAliases;
-    public KV $kvAddons;
     public KV $kvAssets;
-    public KV $kvAssetNames;
-    public KV $kvAssetDecimals;
+    public KV $kvAssetInfo;
+    public KV $kvGroups;
     public KV $sponsorships;
     public Blockchain $blockchain;
     public BlockchainParser $parser;
@@ -37,22 +36,18 @@ class BlockchainParser
 
         $this->kvAddresses =     ( new KV( true )  )->setStorage( $this->db, 'addresses', true );
         $this->kvAliases =       ( new KV( false ) )->setStorage( $this->db, 'aliases', true, 'TEXT UNIQUE', 'INTEGER' );
-        $this->kvAddons =        ( new KV( true )  )->setStorage( $this->db, 'addons', true );
         $this->kvAssets =        ( new KV( true )  )->setStorage( $this->db, 'assets', true );
-        $this->kvAssetNames =    ( new KV( false ) )->setStorage( $this->db, 'assetNames', true, 'INTEGER PRIMARY KEY', 'TEXT' );
-        $this->kvAssetDecimals = ( new KV( false ) )->setStorage( $this->db, 'assetDecimals', true, 'INTEGER PRIMARY KEY', 'INTEGER' );
+        $this->kvAssetInfo =     ( new KV( false ) )->setStorage( $this->db, 'assetInfo', true, 'INTEGER PRIMARY KEY', 'TEXT' );
+        $this->kvGroups =        ( new KV( true ) )->setStorage( $this->db, 'groups', true );
         
         $this->sponsorships = new KV;
-        $this->leases = new KV;
 
         $this->kvs = [
             $this->kvAddresses,
             $this->kvAliases,
-            $this->kvAddons,
             $this->kvAssets,
-            $this->kvAssetNames,
-            $this->kvAssetDecimals,
-            $this->sponsorships,
+            $this->kvAssetInfo,
+            $this->kvGroups,
         ];
 
         $this->setHighs();
@@ -94,12 +89,12 @@ class BlockchainParser
 
         if( !isset( $this->q_getSponsorship ) )
         {
-            $this->q_getSponsorship = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r2 = 14 GROUP BY r5 HAVING r5 = ? ORDER BY r0 DESC LIMIT 1' );
+            $this->q_getSponsorship = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r10 = ? ORDER BY r0 DESC LIMIT 1' );
             if( $this->q_getSponsorship === false )
                 w8_err( __FUNCTION__ );
         }
 
-        if( $this->q_getSponsorship->execute( [ $asset ] ) === false )
+        if( $this->q_getSponsorship->execute( [ $this->getGroupSponsorship( $asset ) ] ) === false )
             w8_err( __FUNCTION__ );
 
         $ts = $this->q_getSponsorship->fetchAll();
@@ -208,8 +203,7 @@ class BlockchainParser
     {
         $id = $this->kvAssets->getForcedKeyByValue( $tx['assetId'] );
         $name = htmlentities( trim( preg_replace( '/\s+/', ' ', $tx['name'] ) ) );
-        $this->kvAssetNames->setKeyValue( $id, $name );
-        $this->kvAssetDecimals->setKeyValue( $id, $tx['decimals'] );
+        $this->kvAssetInfo->setKeyValue( $id, $tx['decimals'] . '_' . $name );
         return $id;
     }
 
@@ -219,7 +213,8 @@ class BlockchainParser
         if( $id === false )
             w8_err( __FUNCTION__ );
         $name = htmlentities( trim( preg_replace( '/\s+/', ' ', $tx['name'] ) ) );
-        $this->kvAssetNames->setKeyValue( $id, $name );
+        $info = $this->kvAssetInfo->getValueByKey( $id );
+        $this->kvAssetInfo->setKeyValue( $id, substr( $info, 0, 2 ) . $name );
         return $id;
     }
 
@@ -484,6 +479,8 @@ class BlockchainParser
 
     private function processBurnTransaction( $txkey, $tx, $dApp = null )
     {
+        $amount = isset( $tx['amount'] ) ? $tx['amount'] : $tx['quantity'];
+
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
@@ -491,7 +488,7 @@ class BlockchainParser
             A =>        isset( $dApp ) ? $dApp : $this->getSenderId( $tx['sender'] ),
             B =>        UNDEFINED,
             ASSET =>    $this->getAssetId( $tx['assetId'] ),
-            AMOUNT =>   isset( $dApp ) ? $tx['quantity'] : $tx['amount'],
+            AMOUNT =>   $amount,
             FEEASSET => isset( $dApp ) ? INVOKE_ASSET : $tx[FEEASSET],
             FEE =>      isset( $dApp ) ? 0 : $tx[FEE],
             ADDON =>    0,
@@ -820,8 +817,17 @@ class BlockchainParser
         ] );
     }
 
+    private function getGroupSponsorship( $asset, $new = false )
+    {
+        $groupName = 's' . $asset;
+        return $new ? $this->kvGroups->getForcedKeyByValue( $groupName ) : $this->kvGroups->getKeyByValue( $groupName );
+    }
+
     private function processSponsorshipTransaction( $txkey, $tx, $dApp = null )
     {
+        $asset = $this->getAssetId( $tx['assetId'] );
+        $group = $this->getGroupSponsorship( $asset, true );
+
         $ts = [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
@@ -833,7 +839,7 @@ class BlockchainParser
             FEEASSET => isset( $dApp ) ? INVOKE_ASSET : $tx[FEEASSET],
             FEE =>      isset( $dApp ) ? 0 : $tx[FEE],
             ADDON =>    0,
-            GROUP =>    0,
+            GROUP =>    $group,
         ];
 
         $this->setSponsorship( $ts[ASSET], $ts );
