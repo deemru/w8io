@@ -168,9 +168,9 @@ class RO
             //SELECT * FROM ( SELECT * FROM transactions WHERE a = $aid$where ORDER BY uid DESC LIMIT $limit ) UNION
                  //SELECT * FROM ( SELECT * FROM transactions WHERE b = $aid$where ORDER BY uid DESC LIMIT $limit ) ORDER BY uid DESC LIMIT $limit
 
-            $this->getPTSByAddressId = $this->db->db->prepare( 'SELECT * FROM ( SELECT * FROM pts WHERE r3 = ? ORDER BY r0 DESC LIMIT 1000 )
+            $this->getPTSByAddressId = $this->db->db->prepare( 'SELECT * FROM ( SELECT * FROM pts WHERE r3 = ? ORDER BY r0 DESC LIMIT 100 )
                                                                 UNION
-                                                                SELECT * FROM pts WHERE r4 = ? ORDER BY r0 DESC LIMIT 1000' );
+                                                                SELECT * FROM pts WHERE r4 = ? ORDER BY r0 DESC LIMIT 100' );
             if( $this->getPTSByAddressId === false )
                 w8_err();
         }

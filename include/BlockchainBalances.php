@@ -52,36 +52,6 @@ class BlockchainBalances
         $this->parser = $parser;
     }
 
-    /*
-    public function get_balance( $aid )
-    {
-        if( !isset( $this->query_get_balance ) )
-        {
-            $id = W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES;
-            $this->query_get_balance = $this->checkpoint->db()->prepare( "SELECT value AS k, NULL AS v FROM checkpoint WHERE key = $id UNION ALL SELECT asset, amount FROM balances WHERE address = :aid" );
-            if( !is_object( $this->query_get_balance ) )
-                return false;
-        }
-
-        if( false === $this->query_get_balance->execute( [ 'aid' => $aid ] ) )
-            return false;
-
-        $data = $this->query_get_balance->fetchAll( PDO::FETCH_ASSOC );
-
-        if( !isset( $data[1] ) )
-            return false;
-
-        $balance = [];
-        $n = count( $data );
-        for( $i = 1; $i < $n; $i++ )
-        {
-            $kv = $data[$i];
-            $balance[(int)$kv['k']] = (int)$kv['v'];
-        }
-
-        return [ 'height' => $data[0]['k'], 'balance' => $balance ];
-    }*/
-
     public function get_distribution( $aid )
     {
         if( !isset( $this->query_get_distribution ) )

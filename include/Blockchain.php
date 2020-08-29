@@ -258,6 +258,7 @@ class Blockchain
 
         $newHdrs = [];
         $newTxs = [];
+        $txCount = 0;
 
         $to = min( $height, $from + W8IO_MAX_UPDATE_BATCH - 1 );
         //$to = min( $height, $from + 1 - 1 );
@@ -341,10 +342,13 @@ class Blockchain
             $reference = $this->blockUnique( $block );
             $newHdrs[$i] = $block;
 
-            if( 0 && isset( $lastCount ) )
-                wk()->log( ( $i - 1 ) . ' (' . $lastCount . ')' );
+            if( 0 && $i > $from )
+            {
+                wk()->log( ( $i - 1 ) . ' (' . $txCount . ')' );
+                $txCount = 0;
+            }
             
-            $lastCount = $n;
+            $txCount += $n;
         }
 
         if( 0 === count( $newHdrs ) )
@@ -420,11 +424,10 @@ class Blockchain
         }
 
         $this->lastUp = microtime( true );
-        $txs = w8k2h( $this->txheight ) == $this->height ? ( w8k2i( $this->txheight ) + 1 ) : '0';
         $newTxs = $from === $to ? ( ' +' . count( $newTxs ) ) : '';
         $ram = memory_get_usage( true ) / 1024 / 1024;
         $ram = sprintf( '%.00f MiB', $ram );
-        wk()->log( 's', $to . ' (' . $txs . ')' . $newTxs . ' (' . (int)( ( $this->lastUp - $entrance ) * 1000 ) . ' ms) (' . $ram . ')' );
+        wk()->log( 's', $to . ' (' . $txCount . ')' . $newTxs . ' (' . (int)( ( $this->lastUp - $entrance ) * 1000 ) . ' ms) (' . $ram . ')' );
         return W8IO_STATUS_UPDATED;
     }
 }

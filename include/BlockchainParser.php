@@ -29,7 +29,12 @@ class BlockchainParser
             // uid                 | txkey    | type     | a        | b        | asset    | amount   | feeasset | fee      | addon    | group
             // r0                  | r1       | r2       | r3       | r4       | r5       | r6       | r7       | r8       | r9       | r10
             [ 'INTEGER PRIMARY KEY', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER' ],
-            [ 0,                     1,         1,         1,         1,         1,         0,         1,         0,         0,         1 ] );
+            [ 0,                     1,         1,         1,         1,         1,         0,         0,         0,         0,         1 ] );
+
+        $this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r3_r2_index ON pts( r3, r2 )' );
+        $this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r4_r2_index ON pts( r4, r2 )' );
+        $this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r3_r5_index ON pts( r3, r5 )' );
+        $this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r4_r5_index ON pts( r4, r5 )' );
 
         $this->RO = new RO( $this->db );
         $this->balances = new BlockchainBalances( $this->db );
@@ -523,16 +528,6 @@ class BlockchainParser
         $sasset = $buyer['assetPair']['priceAsset'];
         $sasset = isset( $sasset ) ? $this->getAssetId( $sasset ) : WAVES_ASSET;
 
-        /*
-        if( 0 )
-        {
-            $bname = $info['name'];
-            $bdecimals = $info['decimals'];
-            $sname = $info['name'];
-            $sdecimals = $info['decimals'];
-        }
-        */
-
         $bfee = $tx['buyMatcherFee'];
         $sfee = $tx['sellMatcherFee'];
         $fee = $tx['fee'];
@@ -586,10 +581,12 @@ class BlockchainParser
             }
         }
 
-        // price
-        /*
-        if( 0 )
+        // price + group
         {
+            /*
+            $bdecimals = (int)$this->kvAssetInfo->getValueByKey( $basset )[0];
+            $sdecimals = (int)$this->kvAssetInfo->getValueByKey( $sasset )[0];
+
             $price = (string)$tx['price'];
             if( $bdecimals !== 8 )
                 $price = substr( $price, 0, -8 + $bdecimals );
@@ -600,12 +597,14 @@ class BlockchainParser
                     $price = str_pad( $price, $sdecimals + 1, '0', STR_PAD_LEFT );
                 $price = substr_replace( $price, '.', -$sdecimals, 0 );
             }
-
             $price = $price . ' ' . $bname . '/' . $sname;
             $wtx['data'] = [ 'p' => $this->get_dataid( $price, true ) ];
-        }*/
+            */
+        }
 
         $amount = $tx['amount'];
+        $price = $tx['price'];
+        $group = $this->getGroupExchange( $basset, $sasset, true );
 
         // SELLER -> BUYER
         {
@@ -619,8 +618,8 @@ class BlockchainParser
                 AMOUNT =>   $amount,
                 FEEASSET => $safee,
                 FEE =>      $sfee,
-                ADDON =>    0,
-                GROUP =>    0,
+                ADDON =>    $price,
+                GROUP =>    $group,
             ] );
         }
         // BUYER -> SELLER
@@ -632,11 +631,11 @@ class BlockchainParser
                 A =>        $ba,
                 B =>        $sa,
                 ASSET =>    $sasset,
-                AMOUNT =>   gmp_intval( gmp_div( gmp_mul( $tx['price'], $amount ), 100000000 ) ),
+                AMOUNT =>   gmp_intval( gmp_div( gmp_mul( $price, $amount ), 100000000 ) ),
                 FEEASSET => $bafee,
                 FEE =>      $bfee,
-                ADDON =>    0,
-                GROUP =>    0,
+                ADDON =>    $price,
+                GROUP =>    $group,
             ] );
         }
     }
@@ -820,6 +819,12 @@ class BlockchainParser
     private function getGroupSponsorship( $asset, $new = false )
     {
         $groupName = 's' . $asset;
+        return $new ? $this->kvGroups->getForcedKeyByValue( $groupName ) : $this->kvGroups->getKeyByValue( $groupName );
+    }
+
+    private function getGroupExchange( $basset, $sasset, $new = false )
+    {
+        $groupName = 'x' . $basset . '/' . $sasset;
         return $new ? $this->kvGroups->getForcedKeyByValue( $groupName ) : $this->kvGroups->getKeyByValue( $groupName );
     }
 
