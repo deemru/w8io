@@ -36,10 +36,8 @@ function GetHeight_RideV4()
     if( !isset( $height ) )
     {
         foreach( wk()->json_decode( wk()->fetch( '/activation/status' ) )['features'] as $feature )
-            if( $feature['id'] === 15 && $feature['blockchainStatus'] === 'ACTIVATED' )
+            if( $feature['id'] === 15 && ( $feature['blockchainStatus'] === 'ACTIVATED' || $feature['blockchainStatus'] === 'APPROVED' ) )
                 return ( $height = $feature['activationHeight'] );
-
-        $height = 2220000; // MAINNET
     }
 
     return $height;

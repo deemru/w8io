@@ -15,9 +15,11 @@ class BlockchainParser
     public Triples $pts;
     public KV $kvAddresses;
     public KV $kvAliases;
+    public KV $kvAliasInfo;
     public KV $kvAssets;
     public KV $kvAssetInfo;
     public KV $kvGroups;
+    public KV $kvFunctions;
     public KV $sponsorships;
     public Blockchain $blockchain;
     public BlockchainParser $parser;
@@ -40,19 +42,23 @@ class BlockchainParser
         $this->balances = new BlockchainBalances( $this->db );
 
         $this->kvAddresses =     ( new KV( true )  )->setStorage( $this->db, 'addresses', true );
-        $this->kvAliases =       ( new KV( false ) )->setStorage( $this->db, 'aliases', true, 'TEXT UNIQUE', 'INTEGER' );
+        $this->kvAliases =       ( new KV( true ) )->setStorage( $this->db, 'aliases', true );
+        $this->kvAliasInfo =     ( new KV( false ) )->setStorage( $this->db, 'aliasInfo', true, 'INTEGER PRIMARY KEY', 'INTEGER' );
         $this->kvAssets =        ( new KV( true )  )->setStorage( $this->db, 'assets', true );
         $this->kvAssetInfo =     ( new KV( false ) )->setStorage( $this->db, 'assetInfo', true, 'INTEGER PRIMARY KEY', 'TEXT' );
         $this->kvGroups =        ( new KV( true ) )->setStorage( $this->db, 'groups', true );
-        
+        $this->kvFunctions =     ( new KV( true ) )->setStorage( $this->db, 'functions', true );
+
         $this->sponsorships = new KV;
 
         $this->kvs = [
             $this->kvAddresses,
             $this->kvAliases,
+            $this->kvAliasInfo,
             $this->kvAssets,
             $this->kvAssetInfo,
             $this->kvGroups,
+            $this->kvFunctions,
         ];
 
         $this->setHighs();
@@ -185,19 +191,28 @@ class BlockchainParser
         if( substr( $addressOrAlias, 0, 6 ) !== 'alias:')
             w8io_error( 'unexpected $addressOrAlias = ' . $addressOrAlias );
         
-        $id = $this->kvAliases->getValueByKey( substr( $addressOrAlias, 8 ) );
+        $id = $this->kvAliases->getKeyByValue( substr( $addressOrAlias, 8 ) );
+        if( $id === false )
+            w8io_error( 'getRecipientId' );
+
+        $id = $this->kvAliasInfo->getValueByKey( $id );
         if( $id === false )
             w8io_error( 'getRecipientId' );
         
         return $id;
     }
 
+    private function getFunctionId( $function )
+    {       
+        return $this->kvFunctions->getForcedKeyByValue( $function );
+    }
+
     private function getAliasId( $alias )
     {
-        if( substr( $alias, 0, 6 ) !== 'alias:')
-            w8_err( 'unexpected $alias = ' . $alias );
+        if( $alias[0] !== 'a' )
+            return 0;
         
-        $id = $this->kvAliases->getValueByKey( substr( $alias, 8 ) );
+        $id = $this->kvAliases->getKeyByValue( substr( $alias, 8 ) );
         if( $id === false )
             w8_err( __FUNCTION__ );
         
@@ -653,7 +668,7 @@ class BlockchainParser
             AMOUNT =>   $tx['amount'],
             FEEASSET => INVOKE_ASSET,
             FEE =>      0,
-            ADDON =>    $tx['address'][0] === 'a' ? $this->getAliasId( $tx['address'] ) : 0,
+            ADDON =>    $this->getAliasId( $tx['address'] ),
             GROUP =>    0,
         ] );
         else
@@ -667,7 +682,7 @@ class BlockchainParser
             AMOUNT =>   $tx['amount'],
             FEEASSET => $tx[FEEASSET],
             FEE =>      $tx[FEE],
-            ADDON =>    $tx['recipient'][0] === 'a' ? $this->getAliasId( $tx['recipient'] ) : 0,
+            ADDON =>    $this->getAliasId( $tx['recipient'] ),
             GROUP =>    0,
         ] );
     }
@@ -684,7 +699,7 @@ class BlockchainParser
             AMOUNT =>   $tx['amount'],
             FEEASSET => $tx[FEEASSET],
             FEE =>      $tx[FEE],
-            ADDON =>    0,
+            ADDON =>    $this->getAliasId( $tx['recipient'] ),
             GROUP =>    0,
         ] );
     }
@@ -705,7 +720,7 @@ class BlockchainParser
             AMOUNT =>   (int)$ts[AMOUNT],
             FEEASSET => $tx[FEEASSET],
             FEE =>      $tx[FEE],
-            ADDON =>    0,
+            ADDON =>    (int)$ts[ADDON],
             GROUP =>    0,
         ] );
     }
@@ -713,19 +728,20 @@ class BlockchainParser
     private function processAliasTransaction( $txkey, $tx )
     {
         $a = $this->getSenderId( $tx['sender'] );
-        $this->kvAliases->setKeyValue( $tx['alias'], $a );
+        $id = $this->kvAliases->getForcedKeyByValue( $tx['alias'] );
+        $this->kvAliasInfo->setKeyValue( $id, $a );
 
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
-            TYPE =>     TX_LEASE,
+            TYPE =>     TX_ALIAS,
             A =>        $a,
             B =>        UNDEFINED,
             ASSET =>    0,
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
             FEE =>      $tx[FEE],
-            ADDON =>    0,
+            ADDON =>    $id,
             GROUP =>    0,
         ] );
     }
@@ -760,7 +776,7 @@ class BlockchainParser
                 AMOUNT =>   $mtx['amount'],
                 FEEASSET => 0,
                 FEE =>      0,
-                ADDON =>    0,
+                ADDON =>    $this->getAliasId( $mtx['recipient'] ),
                 GROUP =>    0,
             ] );
     }
@@ -828,6 +844,12 @@ class BlockchainParser
         return $new ? $this->kvGroups->getForcedKeyByValue( $groupName ) : $this->kvGroups->getKeyByValue( $groupName );
     }
 
+    private function getGroupInvoke( $aid, $function, $new = false )
+    {
+        $groupName = 'i' . $aid . '/' . $function;
+        return $new ? $this->kvGroups->getForcedKeyByValue( $groupName ) : $this->kvGroups->getKeyByValue( $groupName );
+    }
+
     private function processSponsorshipTransaction( $txkey, $tx, $dApp = null )
     {
         $asset = $this->getAssetId( $tx['assetId'] );
@@ -870,6 +892,9 @@ class BlockchainParser
 
         $sender = $this->getSenderId( $tx['sender'], $tx );
         $dApp = $this->getRecipientId( $tx['dApp'] );
+        $addon = $this->getAliasId( $tx['dApp'] );
+        $function = $this->getFunctionId( $tx['call']['function'] );
+        $group = $this->getGroupInvoke( $dApp, $function );
 
         $this->appendTS( [
             UID =>      $this->getNewUid(),
@@ -881,8 +906,8 @@ class BlockchainParser
             AMOUNT =>   $amount,
             FEEASSET => $tx[FEEASSET],
             FEE =>      $tx[FEE],
-            ADDON =>    0,
-            GROUP =>    0,
+            ADDON =>    $addon,
+            GROUP =>    $group,
         ] );
 
         if( isset( $tx['payment'][1] ) )
@@ -901,8 +926,8 @@ class BlockchainParser
                 AMOUNT =>   $amount,
                 FEEASSET => 0,
                 FEE =>      0,
-                ADDON =>    0,
-                GROUP =>    0,
+                ADDON =>    $addon,
+                GROUP =>    $group,
             ] );
         }
 

@@ -20,7 +20,7 @@ class Blockchain
     {
         $this->ts = new Triples( $db, 'ts', 1, ['INTEGER PRIMARY KEY', 'INTEGER', 'TEXT'], [0, 1] );
         $this->db = $this->ts;
-        $this->hs = new Triples( $this->db, 'hs', 1, ['INTEGER PRIMARY KEY', 'TEXT'] );
+        $this->hs = new Triples( $this->db, 'hs', 1, ['INTEGER PRIMARY KEY', 'TEXT', 'INTEGER'] );
 
         $this->parser = new BlockchainParser( $this->db );
 
@@ -84,6 +84,18 @@ class Blockchain
 
     public function selfcheck()
     {
+        return;
+        $height = 2210000;
+        $hs = [];
+        for( $i = 1; $i <= $height; ++$i )
+        {
+            $block = wk()->getBlockAt( $i, true );
+            $hs[] = [ $i, d58( $this->blockUnique( $block ) ), intdiv( $block['timestamp'], 1000 ) ];
+            if( $i % 10000 === 0 )
+                $this->hs->merge( $hs );
+        }
+        $this->hs->merge( $hs );
+        exit( 'ok');
         //return;
         $to = $this->height;
         //$from = $to - 100;
@@ -174,11 +186,11 @@ class Blockchain
         //$this->dups();
         //exit;
         $entrance = microtime( true );
-        //$this->selfcheck();
+        $this->selfcheck();
 
         if( 0 ) // CUSTOM ROLLBACK
         {
-            $this->rollback( 350000 );
+            $this->rollback( 2210000 );
             return W8IO_STATUS_UPDATED; 
         }
 
@@ -363,7 +375,7 @@ class Blockchain
 
             $hs = [];
             foreach( $newHdrs as $height => $block )
-                $hs[] = [ $height, d58( $this->blockUnique( $block ) ) ];
+                $hs[] = [ $height, d58( $this->blockUnique( $block ) ), intdiv( $block['timestamp'], 1000 ) ];
             $this->hs->merge( $hs );
 
             if( count( $newTxs ) )

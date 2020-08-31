@@ -59,3 +59,25 @@ function d58( $data ){ return ABCode::base58()->decode( $data ); }
 function e58( $data ){ return ABCode::base58()->encode( $data ); }
 function json_unpack( $data ){ return json_decode( gzinflate( $data ), true, 512, JSON_BIGINT_AS_STRING ); }
 function json_pack( $data ){ return gzdeflate( json_encode( $data ), 9 ); }
+
+function w8io_amount( $amount, $decimals, $pad = 20, $setSign = true )
+{
+    if( $amount < 0 )
+    {
+        $sign = $setSign ? '-' : '';
+        $amount = -$amount;
+    }
+    else
+        $sign = '';
+
+    $amount = (string)$amount;
+    if( $decimals )
+    {
+        if( strlen( $amount ) <= $decimals )
+            $amount = str_pad( $amount, $decimals + 1, '0', STR_PAD_LEFT );
+        $amount = substr_replace( $amount, '.', -$decimals, 0 );
+    }
+
+    $amount = $sign . $amount;
+    return $pad ? str_pad( $amount, $pad, ' ', STR_PAD_LEFT ) : $amount;
+}

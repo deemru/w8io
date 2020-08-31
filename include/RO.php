@@ -38,7 +38,7 @@ class RO
         return false;
     }
 
-    public function getAddressId( $string )
+    public function getAddressIdByString( $string )
     {
         switch( $string )
         {
@@ -61,6 +61,47 @@ class RO
                 return false;
             }
         }
+    }
+
+    public function getGenerators( $blocks, $start = null )
+    {
+        $start = isset( $start ) ? "AND block <= $start" : ''; // AND asset = 0
+
+        $pts = $this->db->query( 'SELECT * FROM pts WHERE r2 = 0 ORDER BY r0 DESC LIMIT ' . $blocks );
+
+        $generators = [];
+        foreach( $pts as $ts )
+            $generators[(int)$ts[B]][w8k2h((int)$ts[TXKEY])] = $ts;
+
+        return $generators;
+    }
+
+    public function getTimestampByHeight( $height )
+    {
+        if( !isset( $this->getTimestampByHeight ) )
+        {
+            $this->getTimestampByHeight = $this->db->db->prepare( 'SELECT r2 FROM hs WHERE r0 = ?' );
+            if( $this->getTimestampByHeight === false )
+                w8_err();
+        }
+
+        if( false === $this->getTimestampByHeight->execute( [ $height ] ) )
+            w8_err();
+
+        $r = $this->getTimestampByHeight->fetchAll();
+        if( isset( $r[0] ) )
+            return (int)$r[0][0];
+
+        return false;
+    }
+
+    public function getLastHeightTimestamp()
+    {
+        $r = $this->db->db->query( 'SELECT * FROM hs ORDER BY r0 DESC LIMIT 1' )->fetchAll();
+        if( isset( $r[0] ) )
+            return [ (int)$r[0][0], (int)$r[0][2] ];
+
+        return false;
     }
 
     public function getAddressIdByAddress( $address )
@@ -114,6 +155,25 @@ class RO
             w8_err();
 
         $r = $this->q_getAddressById->fetchAll();
+        if( isset( $r[0] ) )
+            return $r[0][0];
+
+        return false;
+    }
+
+    public function getFirstAliasById( $id )
+    {
+        if( !isset( $this->getFirstAliasById ) )
+        {
+            $this->getFirstAliasById = $this->db->db->prepare( 'SELECT r1 FROM aliases WHERE r0 = ( SELECT r9 FROM pts WHERE r3 = ? AND r2 = 10 ORDER BY r0 ASC LIMIT 1 ) LIMIT 1' );
+            if( $this->getFirstAliasById === false )
+                w8_err();
+        }
+
+        if( false === $this->getFirstAliasById->execute( [ $id ] ) )
+            w8_err();
+
+        $r = $this->getFirstAliasById->fetchAll();
         if( isset( $r[0] ) )
             return $r[0][0];
 
