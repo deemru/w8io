@@ -36,7 +36,7 @@ function updater()
     require_once __DIR__ . '/include/BlockchainParser.php';
     require_once __DIR__ . '/include/BlockchainBalances.php';
 
-    $blockchain = new w8io\Blockchain( 'sqlite:' . W8IO_DB_BLOCKCHAIN );
+    $blockchain = new w8io\Blockchain( W8DB );
 
     $update_addon = defined( 'W8IO_UPDATE_ADDON' ) && W8IO_UPDATE_ADDON && W8IO_NETWORK === 'W';
     $sleep = defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17;

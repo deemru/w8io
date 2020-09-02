@@ -190,7 +190,8 @@ class Blockchain
 
         if( 0 ) // CUSTOM ROLLBACK
         {
-            $this->rollback( 2210000 );
+            $this->rollback( 2102208 );
+            exit( 'ok' );
             return W8IO_STATUS_UPDATED; 
         }
 

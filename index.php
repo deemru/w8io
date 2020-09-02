@@ -7,7 +7,7 @@ require_once 'config.php';
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'GENERATORS';
+    $uri = '3PMj3yGPBEa1Sx9X4TSBFeJCMMaE3wvKR4N';
 
 $uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $uri . chr( 0 ) ) );
 
@@ -367,10 +367,10 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
         */        
 
         $type = $ts[TYPE];
-        $asset = $wtx['asset'];
-        $amount = $wtx['amount'];
-        $a = $wtx['a'];
-        $b = $wtx['b'];
+        $asset = $ts[ASSET];
+        $amount = $ts[AMOUNT];
+        $a = $ts[A];
+        $b = $ts[B];
         $isa = $a === $aid;
         $isb = $b === $aid;
 
@@ -378,14 +378,14 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
 
         if( $asset )
         {
-            $info = $api->get_asset_info( $asset );
-            if( $spam && isset( $info['scam'] ) )
+            $info = $RO->getAssetInfoById( $asset );
+            if( $spam && $info[1] === 's' )
                 continue;
 
-            $name = $info['name'];
-            $amount = w8io_amount( $amount, $info['decimals'], 0, false );
+            $name = substr( $info, 2 );
+            $amount = w8io_amount( $amount, $info[0], 0, false );
             $amount = ' ' . w8io_sign( $sign ) . $amount;
-            $asset = ' <a href="' . W8IO_ROOT . $address . '/f/' . $info['id'] . '">' . $name . '</a>';
+            $asset = ' <a href="' . W8IO_ROOT . $address . '/f/' . $asset . '">' . $name . '</a>';
             $reclen = strlen( $amount ) + mb_strlen( html_entity_decode( $name ), 'UTF-8' );
         }
         else if( $b !== - 3 )
@@ -401,19 +401,19 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             $reclen = -1;
         }
 
-        $a = $isa ? $address : $api->get_address( $a );
-        $b = $isb ? $address : $api->get_address( $b );
+        $a = $isa ? $address : $RO->getAddressById( $a );
+        $b = $isb ? $address : $RO->getAddressById( $b );
 
-        $fee = $wtx['fee'];
+        $fee = $ts[FEE];
 
         if( $a === $address && $fee )
         {
-            $afee = $wtx['afee'];
+            $afee = $ts[FEEASSET];
 
             if( $afee )
             {
-                $info = $api->get_asset_info( $afee );
-                $fee = ' <small>(' . w8io_amount( $fee, $info['decimals'], 0 ) . ' <a href="' . W8IO_ROOT . $address . '/f/' . $info['id'] . '">' . $info['name'] . '</a> fee)</small>';
+                $info = $RO->getAssetInfoById( $afee );
+                $fee = ' <small>(' . w8io_amount( $fee, $info[0], 0 ) . ' <a href="' . W8IO_ROOT . $address . '/f/' . $afee . '">' . substr( $info, 2 ) . '</a> fee)</small>';
             }
             else
             {
@@ -423,10 +423,10 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
         else
             $fee = '';
 
-        $data = $wtx['data'];
+        $data = $ts[ADDON];
         $price = null;
 
-        if( $data )
+        if( 0 && $data !== '0' )
         {
             $data = json_decode( $data, true );
 
@@ -441,10 +441,10 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                 $b = $api->get_data( $data['b'] );
         }
 
-        $wtype = w8io_tx_type( $type );
+        $wtype = ( $ts[FEEASSET] === '-1' ? 'invoke ' : '' ) . w8io_tx_type( $type );
         $reclen += strlen( $wtype );
         $maxlen1 = max( $maxlen1, $reclen );
-        $block = $wtx['block'];
+        $block = w8k2h( $ts[TXKEY] );
 
         if( $aid )
         {
@@ -463,7 +463,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
 
             $outs[] = [
                 $act,
-                ( $isa ? '<b>' : '' ) . '<small><a href="' . W8IO_ROOT . 'tx/' . $wtx['txid'] . '">' . date( 'Y.m.d H:i', $wtx['timestamp'] ) . '</a>' .
+                ( $isa ? '<b>' : '' ) . '<small><a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . date( 'Y.m.d H:i', $RO->getTimestampByHeight( w8k2h( $ts[TXKEY] ) ) ) . '</a>' .
                 ' (<a href="' . W8IO_ROOT . 'blocks/' . $block . '">' . $block . '</a>)</small>' . ' ' . $act .
                 ' <a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>' . $amount . $asset . ( $isa ? '</b>' :  '' ),
                 $reclen,
@@ -476,7 +476,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             if( isset( $price ) )
                 $price = ' (' . $price . ')';
             echo
-                '<small><a href="' . W8IO_ROOT . 'tx/' . $wtx['txid'] . '">' . date( 'Y.m.d H:i', $wtx['timestamp'] ) . '</a>' .
+                '<small><a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . date( 'Y.m.d H:i', $RO->getTimestampByHeight( w8k2h( $ts[TXKEY] ) ) ) . '</a>' .
                 ' (<a href="' . W8IO_ROOT . 'blocks/' . $block . '">' . $block . '</a>)</small>' .
                 ' (<a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>) ' . w8io_a( $a ) . ' -> ' . w8io_a( $b ) .
                 $amount . $asset . $price . PHP_EOL;

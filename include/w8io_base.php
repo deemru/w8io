@@ -69,40 +69,6 @@ function mb_str_pad( $input, $pad_length, $pad_string, $pad_style )
     return str_pad( $input, strlen( $input ) - mb_strlen( $input,'UTF-8' ) + $pad_length, $pad_string, $pad_style );
 }
 
-function w8io_tx_type( $type )
-{
-    switch( $type )
-    {
-        case W8IO_TYPE_INVOKE_TRANSFER: return 'invoke transfer';
-        case W8IO_TYPE_INVOKE_DATA: return 'invoke data';
-        case W8IO_TYPE_FEES: return 'fees';
-        case W8IO_TYPE_SPONSOR: return 'sponsor';
-        case 1: return 'genesis';
-        case 101: return 'genesis role';
-        case 102: return 'role';
-        case 110: return 'genesis unknown';
-        case 105: return 'data unknown';
-        case 106: return 'invoke 1 unknown';
-        case 107: return 'invoke 2 unknown';
-        case 2: return 'payment';
-        case 3: return 'issue';
-        case 4: return 'transfer';
-        case 5: return 'reissue';
-        case 6: return 'burn';
-        case 7: return 'exchange';
-        case 8: return 'lease';
-        case 9: return 'unlease';
-        case 10: return 'alias';
-        case 11: return 'mass';
-        case 12: return 'data';
-        case 13: return 'smart account';
-        case 14: return 'sponsorship';
-        case 15: return 'smart asset';
-        case 16: return 'invoke';
-        default: return 'unknown';
-    }
-}
-
 function w8io_aggregate_jsons( $db, $from, $to, $q, $sum = [] )
 {       
     for( $i = $from; $i <= $to; $i += $q )

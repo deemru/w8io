@@ -253,9 +253,9 @@ class RO
         if( false === $this->getPTSAtHeight->execute( [ w8h2k( $height ), w8h2k( $height + 1 ) ] ) )
             w8_err();
 
-        $rs = $this->getPTSAtHeight->fetchAll();
-        if( isset( $rs[0] ) )
-            return $rs;
+        $pts = $this->getPTSAtHeight->fetchAll();
+        if( isset( $pts[0] ) )
+            return ptsFilter( $pts );
 
         return false;
     }

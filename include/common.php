@@ -81,3 +81,55 @@ function w8io_amount( $amount, $decimals, $pad = 20, $setSign = true )
     $amount = $sign . $amount;
     return $pad ? str_pad( $amount, $pad, ' ', STR_PAD_LEFT ) : $amount;
 }
+
+function w8io_tx_type( $type )
+{
+    switch( $type )
+    {
+        case TX_GENERATOR: return 'fees';
+        case TX_SPONSOR: return 'sponsor';
+        case 1: return 'genesis';
+        case 101: return 'genesis role';
+        case 102: return 'role';
+        case 110: return 'genesis unknown';
+        case 105: return 'data unknown';
+        case 106: return 'invoke 1 unknown';
+        case 107: return 'invoke 2 unknown';
+        case 2: return 'payment';
+        case 3: return 'issue';
+        case 4: return 'transfer';
+        case 5: return 'reissue';
+        case 6: return 'burn';
+        case 7: return 'exchange';
+        case 8: return 'lease';
+        case 9: return 'unlease';
+        case 10: return 'alias';
+        case 11: return 'mass';
+        case 12: return 'data';
+        case 13: return 'smart account';
+        case 14: return 'sponsorship';
+        case 15: return 'smart asset';
+        case 16: return 'invoke';
+        default: return 'unknown';
+    }
+}
+
+function ptsFilter( $pts )
+{
+    $ptsInts = [];
+    foreach( $pts as $ts )
+        $ptsInts[] = [
+            UID => (int)$ts[UID],
+            TXKEY => (int)$ts[TXKEY],
+            TYPE => (int)$ts[TYPE],
+            A => (int)$ts[A],
+            B => (int)$ts[B],
+            ASSET => (int)$ts[ASSET],
+            AMOUNT => (int)$ts[AMOUNT],
+            FEEASSET => (int)$ts[FEEASSET],
+            FEE => (int)$ts[FEE],
+            ADDON => (int)$ts[ADDON],
+            GROUP => (int)$ts[GROUP],
+        ];
+    return $ptsInts;
+}
