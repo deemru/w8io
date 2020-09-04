@@ -55,6 +55,7 @@ define( 'FAILED_GROUP', -1 );
 function w8k2i( $key ){ return $key & 0xFFFFFFFF; }
 function w8k2h( $key ){ return $key >> 32; }
 function w8h2k( $height, $i = 0 ){ return ( $height << 32 ) | $i; }
+function w8h2kg( $height ){ return w8h2k( $height + 1 ) - 1; }
 function d58( $data ){ return ABCode::base58()->decode( $data ); }
 function e58( $data ){ return ABCode::base58()->encode( $data ); }
 function json_unpack( $data ){ return json_decode( gzinflate( $data ), true, 512, JSON_BIGINT_AS_STRING ); }

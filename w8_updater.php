@@ -14,7 +14,10 @@ wk()->log( 'w8_updater' );
 wk()->setBestNode();
 wk()->log( wk()->getNodeAddress() );
 for( ;; )
+{
     updater();
+    gc_collect_cycles();
+}
 
 function singleton()
 {

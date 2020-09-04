@@ -66,7 +66,7 @@ class Blockchain
                 $txheight = 0;
         }
 
-        $hi = w8h2k( $this->height ) - 1;
+        $hi = w8h2kg( $this->height - 1);
         if( $txheight < $hi )
             $txheight = $hi;
 
@@ -121,7 +121,7 @@ class Blockchain
     public function getTxIdsAtHeight( $height )
     {
         $from = w8h2k( $height );
-        $to = w8h2k( $height + 1 ) - 1;
+        $to = w8h2kg( $height );
         return $this->getTxIdsFromTo( $from, $to );
     }
 
@@ -146,7 +146,7 @@ class Blockchain
 
     public function rollback( $from )
     {
-        $txfrom = w8h2k( $from );
+        $txfrom = w8h2k( $from ) - 1; // all txs + last generator
         $tt = microtime( true );
         $this->db->begin();
         {
@@ -190,7 +190,7 @@ class Blockchain
 
         if( 0 ) // CUSTOM ROLLBACK
         {
-            $this->rollback( 2102208 );
+            $this->rollback( 2219998 );
             exit( 'ok' );
             return W8IO_STATUS_UPDATED; 
         }
@@ -403,7 +403,7 @@ class Blockchain
 
                 $generator = $block['generator'];
                 $reward = isset( $block['reward'] ) ? $block['reward'] : 0;
-                $parserTxs[w8h2k( $height + 1 ) - 1] = [ 'type' => TX_GENERATOR, 'generator' => $generator, 'reward' => $reward ];
+                $parserTxs[w8h2kg( $height )] = [ 'type' => TX_GENERATOR, 'generator' => $generator, 'reward' => $reward ];
             }
 
             if( count( $parserTxs ) )

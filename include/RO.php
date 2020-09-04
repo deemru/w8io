@@ -144,21 +144,33 @@ class RO
 
     public function getAddressById( $id )
     {
-        if( !isset( $this->q_getAddressById ) )
+        switch( $id )
         {
-            $this->q_getAddressById = $this->db->db->prepare( 'SELECT r1 FROM addresses WHERE r0 = ?' );
-            if( $this->q_getAddressById === false )
-                w8_err();
+            case GENESIS: return 'GENESIS';
+            case GENERATOR: return 'GENERATOR';
+            case MATCHER: return 'MATCHER';
+            case UNDEFINED: return 'UNDEFINED';
+            case SPONSOR: return 'SPONSOR';
+            case MASS: return 'MASS';
+            default:
+            {
+                if( !isset( $this->q_getAddressById ) )
+                {
+                    $this->q_getAddressById = $this->db->db->prepare( 'SELECT r1 FROM addresses WHERE r0 = ?' );
+                    if( $this->q_getAddressById === false )
+                        w8_err();
+                }
+
+                if( false === $this->q_getAddressById->execute( [ $id ] ) )
+                    w8_err();
+
+                $r = $this->q_getAddressById->fetchAll();
+                if( isset( $r[0] ) )
+                    return $r[0][0];
+
+                return false;
+            }
         }
-
-        if( false === $this->q_getAddressById->execute( [ $id ] ) )
-            w8_err();
-
-        $r = $this->q_getAddressById->fetchAll();
-        if( isset( $r[0] ) )
-            return $r[0][0];
-
-        return false;
     }
 
     public function getFirstAliasById( $id )
@@ -228,9 +240,9 @@ class RO
             //SELECT * FROM ( SELECT * FROM transactions WHERE a = $aid$where ORDER BY uid DESC LIMIT $limit ) UNION
                  //SELECT * FROM ( SELECT * FROM transactions WHERE b = $aid$where ORDER BY uid DESC LIMIT $limit ) ORDER BY uid DESC LIMIT $limit
 
-            $this->getPTSByAddressId = $this->db->db->prepare( 'SELECT * FROM ( SELECT * FROM pts WHERE r3 = ? ORDER BY r0 DESC LIMIT 100 )
+            $this->getPTSByAddressId = $this->db->db->prepare( 'SELECT * FROM ( SELECT * FROM pts WHERE r3 = ? ORDER BY r0 DESC LIMIT 200 )
                                                                 UNION
-                                                                SELECT * FROM pts WHERE r4 = ? ORDER BY r0 DESC LIMIT 100' );
+                                                                SELECT * FROM pts WHERE r4 = ? ORDER BY r0 DESC LIMIT 200' );
             if( $this->getPTSByAddressId === false )
                 w8_err();
         }
@@ -238,19 +250,19 @@ class RO
         if( false === $this->getPTSByAddressId->execute( [ $id, $id ] ) )
             w8_err();
 
-        return $this->getPTSByAddressId->fetchAll();
+        return ptsFilter( $this->getPTSByAddressId->fetchAll() );
     }
 
     public function getPTSAtHeight( $height )
     {
         if( !isset( $this->getPTSAtHeight ) )
         {
-            $this->getPTSAtHeight = $this->db->db->prepare( 'SELECT * FROM pts WHERE r1 >= ? AND r1 < ? ORDER BY r0 DESC LIMIT 1000' );
+            $this->getPTSAtHeight = $this->db->db->prepare( 'SELECT * FROM pts WHERE r1 >= ? AND r1 <= ? ORDER BY r0 DESC LIMIT 1000' );
             if( $this->getPTSAtHeight === false )
                 w8_err();
         }
 
-        if( false === $this->getPTSAtHeight->execute( [ w8h2k( $height ), w8h2k( $height + 1 ) ] ) )
+        if( false === $this->getPTSAtHeight->execute( [ w8h2k( $height ), w8h2kg( $height ) ] ) )
             w8_err();
 
         $pts = $this->getPTSAtHeight->fetchAll();

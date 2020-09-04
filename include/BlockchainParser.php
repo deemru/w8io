@@ -284,7 +284,7 @@ class BlockchainParser
     {
         if( !isset( $this->q_getPTS ) )
         {
-            $this->q_getPTS = $this->pts->db->prepare( "SELECT * FROM pts WHERE r1 >= ? AND r1 < ?" );
+            $this->q_getPTS = $this->pts->db->prepare( "SELECT * FROM pts WHERE r1 >= ? AND r1 <= ?" );
             if( $this->q_getPTS === false )
                 w8_err( __FUNCTION__ );
         }
@@ -293,11 +293,6 @@ class BlockchainParser
             w8_err( __FUNCTION__ );
 
         return ptsFilter( $this->q_getPTS->fetchAll() );
-    }
-
-    private function getPTSat( $height )
-    {
-        return $this->getPTS( w8h2k( $height ), w8h2k( $height + 1 ) - 1 );
     }
 
     private function getFeesAt( $height, $reward )
@@ -310,7 +305,7 @@ class BlockchainParser
         else
         {
             $this->flush();
-            $pts = $this->getPTSat( $height );
+            $pts = $this->getPTS( w8h2k( $height ), w8h2kg( $height ) - 1 );
         }
 
         foreach( $pts as $ts )
@@ -357,7 +352,7 @@ class BlockchainParser
                 w8io_error( 'getNGFeesAt' );
         }
 
-        if( $this->q_getNGFeesAt->execute( [ w8h2k( $height + 1 ) - 1 ] ) === false )
+        if( $this->q_getNGFeesAt->execute( [ w8h2kg( $height ) ] ) === false )
             w8io_error( 'getNGFeesAt' );
 
         $pts = ptsFilter( $this->q_getNGFeesAt->fetchAll() );

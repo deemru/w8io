@@ -7,7 +7,7 @@ require_once 'config.php';
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = '3PMj3yGPBEa1Sx9X4TSBFeJCMMaE3wvKR4N';
+    $uri = 'GENERATOR';
 
 $uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $uri . chr( 0 ) ) );
 
