@@ -87,6 +87,7 @@ function w8io_tx_type( $type )
 {
     switch( $type )
     {
+        case TX_MATCHER: return 'matcher';
         case TX_GENERATOR: return 'fees';
         case TX_SPONSOR: return 'sponsor';
         case 1: return 'genesis';

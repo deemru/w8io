@@ -1,7 +1,6 @@
 <?php
 
-use function w8io\d58;
-use function w8io\e58;
+namespace w8io;
 
 if( file_exists( __DIR__ . '/config.php' ) )
     require_once __DIR__ . '/config.php';
@@ -39,7 +38,7 @@ function updater()
     require_once __DIR__ . '/include/BlockchainParser.php';
     require_once __DIR__ . '/include/BlockchainBalances.php';
 
-    $blockchain = new w8io\Blockchain( W8DB );
+    $blockchain = new Blockchain( W8DB );
 
     $update_addon = defined( 'W8IO_UPDATE_ADDON' ) && W8IO_UPDATE_ADDON && W8IO_NETWORK === 'W';
     $sleep = defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17;
@@ -57,6 +56,10 @@ function updater()
 
         if( $status === W8IO_STATUS_UPDATED )
             continue;
+
+        procResetInfo( $blockchain->parser );
+        procScam( $blockchain->parser );
+        procWeight( $blockchain, $blockchain->parser );
 
         sleep( $sleep );
     }

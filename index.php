@@ -2,12 +2,14 @@
 
 namespace w8io;
 
+use w8io_api;
+
 require_once 'config.php';
 
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'GENERATOR';
+    $uri = 'api/Dkb2AdqFYTqqT9MmSy3TH7EZBveKSw7YyNjqtCj9pg1NiUvPDYwwgnW6Un6rtSPbU3B8aHybi22wR6c7vgseahbJaqDY9VP7sCev';
 
 $uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $uri . chr( 0 ) ) );
 
@@ -28,18 +30,12 @@ if( $address === 'ld' )
 else
 if( $address === 'tx' && is_numeric( $f ) )
 {
-    require_once './include/w8io_blockchain_transactions.php';
-    require_once './include/w8io_api.php';
-    $api = new w8io_api();
+    require_once 'include/RO.php';
+    $RO = new RO( W8DB );
 
-    $txid = $api->get_transactions_id( $f );
+    $txid = $RO->getTxIdByTxKey( $f );
     if( $txid !== false )
-    {
-        if( strlen( $txid ) >= 32 )
-            exit( header( 'location: ' . W8IO_ROOT . 'tx/' . base58Encode( $txid ) ) );
-        else
-            exit( header( 'location: ' . W8IO_ROOT . 'blocks/' . $txid ) );
-    }
+        exit( header( 'location: ' . W8IO_ROOT . 'tx/' . $txid ) );
 }
 else
 if( $address === 'GENERATORS' )
@@ -78,9 +74,8 @@ if( $address === 'api' )
         {
             case 't':
             {
-                require_once './include/w8io_blockchain_transactions.php';
-                require_once './include/w8io_api.php';
-                $api = new w8io_api();
+                require_once 'include/RO.php';
+                $RO = new RO( W8DB );
                 
                 $aid = $call['i'];
                 $where = $call['w'];
@@ -88,7 +83,7 @@ if( $address === 'api' )
                 $address = $call['a'];
 
                 echo '<pre>';
-                w8io_print_transactions( $aid, $where, $uid, 100, $address, false === strpos( $where, 'asset' ) );
+                w8io_print_transactions( $aid, $where, $uid, 100, $address, false === strpos( $where, 'r5' ) );
                 echo '</pre>';
                 return;
             }
@@ -162,6 +157,37 @@ if( $address === 'api' )
     exit;
 }
 
+if( empty( $address ) )
+    $address = 'GENESIS';
+
+if( $f === 'f' )
+{
+    if( $arg === 'Waves' )
+        $arg = 0;
+    else
+    if( is_numeric( $arg ) )
+    {
+        require_once 'include/RO.php';
+        $RO = new RO( W8DB );
+
+        $arg = $RO->getAssetById( $arg );
+        if( $arg === false )
+            w8io_error( 'unknown asset' );
+        exit( header( 'location: ' . W8IO_ROOT . $address . '/f/' . $arg ) );
+    }
+    else
+    {
+        require_once 'include/RO.php';
+        $RO = new RO( W8DB );
+
+        $arg = $RO->getIdByAsset( $arg );
+        if( $arg === false )
+            w8io_error( 'unknown asset' );
+    }
+}
+elseif( $arg !== false )
+    $arg = (int)$arg;
+
 if( $light )
 {
     $bcolor = 'FFFFFF';
@@ -184,6 +210,7 @@ echo sprintf( '
         <meta name="format-detection" content="email=no">
         <title>w8io%s</title>
         <link rel="shortcut icon" href="%sfavicon.ico" type="image/x-icon">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inconsolata">
         <script type="text/javascript" src="%sjquery.js" charset="UTF-8"></script>
 <script>
 $(document).ready( function()
@@ -233,11 +260,24 @@ function lazyload()
 <style>
     body, table
     {
-        font-size: 12pt; font-size: %s; font-family: monospace, monospace;
+        font-size: 14pt; font-family: Inconsolata, monospace;
         background-color: #%s;
         color: #%s;
         border-collapse: collapse;
         overflow-y: scroll;%s
+    }
+    pre
+    {
+        font-family: Inconsolata, monospace;
+        font-style: normal;
+        font-weight: 400;
+        font-stretch: 100%%;
+        font-size: 14pt;
+        margin: 0;
+    }
+    small
+    {
+        font-size: 11pt;
     }
     a
     {
@@ -248,7 +288,7 @@ function lazyload()
     }
     a:hover
     {
-        border-bottom: 2px solid #%s;
+        border-bottom: 1px solid #%s;
     }
     hr
     {
@@ -257,38 +297,17 @@ function lazyload()
         border: 0;
         background-color: #606870;
     }
-    pre
-    {
-        margin: 0;
-    }
 </style>
     </head>
     <body>
         <pre>
 ', empty( $address ) ? '' : " / $address", W8IO_ROOT, W8IO_ROOT,
-isset( $showtime ) ? '0.66vw' : '0.90vw',
+//isset( $showtime ) ? '0.66vw' : '14pt',
 $bcolor, $tcolor,
 isset( $showtime ) ? 'margin: 1em 2em 1em 2em; filter: brightness(144%);' : '',
 $tcolor,
 isset( $showtime ) ? 'text-decoration: none;' : '',
 $tcolor );
-
-if( empty( $address ) )
-    $address = 'GENESIS';
-
-if( $f === 'f' )
-{
-    if( $arg === 'Waves' )
-        $arg = 0;
-    else
-    {
-        $arg = $api->get_asset( $arg );
-        if( $arg === false )
-            w8io_error( 'unknown asset' );
-    }
-}
-elseif( $arg !== false )
-    $arg = (int)$arg;
 
 function w8io_print_distribution( $assetId )
 {
@@ -337,7 +356,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
 {
     global $RO;
     
-    $pts = $RO->getPTSByAddressId( $aid );
+    $pts = $RO->getPTSByAddressId( $aid, $where, $count + 1, $uid );
     //$pts = $RO->getPTSAtHeight( 2214328 );
 
     //$wtxs = $api->get_transactions_where( $aid, $where, $uid, $count + 1 );
@@ -349,7 +368,6 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
     $n = 0;
     foreach( $pts as $ts )
     {
-        /*
         if( $count && ++$n > $count )
         {
             $wk = wk();
@@ -357,56 +375,79 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                 'f' => 't',
                 'i' => $aid,
                 'w' => $where,
-                'u' => $wtx['uid'],
+                'u' => $ts[UID],
                 'a' => $address,
             ];
             $call = W8IO_ROOT . 'api/' . $wk->base58Encode( $wk->encryptash( json_encode( $call ) ) );
             $lazy = '</pre><pre class="lazyload" url="' . $call . '">...';
             break;
         }
-        */        
 
         $type = $ts[TYPE];
         $asset = $ts[ASSET];
         $amount = $ts[AMOUNT];
         $a = $ts[A];
         $b = $ts[B];
-        $isa = $a === $aid;
-        $isb = $b === $aid;
-
-        $sign = ( ( $type === 9 ) ? -1 : 1 ) * ( ( $amount < 0 ) ? -1 : 1 ) * ( $isb ? ( $isa ? 0 : 1 ) : -1 );
-
-        if( $asset )
+        unset( $reclen );
+        if( $aid !== false && $b === UNDEFINED )
         {
-            $info = $RO->getAssetInfoById( $asset );
-            if( $spam && $info[1] === 's' )
-                continue;
-
-            $name = substr( $info, 2 );
-            $amount = w8io_amount( $amount, $info[0], 0, false );
-            $amount = ' ' . w8io_sign( $sign ) . $amount;
-            $asset = ' <a href="' . W8IO_ROOT . $address . '/f/' . $asset . '">' . $name . '</a>';
-            $reclen = strlen( $amount ) + mb_strlen( html_entity_decode( $name ), 'UTF-8' );
-        }
-        else if( $b !== - 3 )
-        {
-            $amount = ' ' . w8io_sign( $sign ) . w8io_amount( $amount, 8, 0, false );
-            $asset = ' <a href="' . W8IO_ROOT . $address . '/f/Waves">Waves</a>';
-            $reclen = strlen( $amount ) + 5;
+            $b = $a;
+            $isa = true;
+            $isb = true;
+            
+            if( $asset === WAVES_ASSET )
+            {
+                $amount = '';
+                $asset = '';
+                $reclen = -1;
+            }
         }
         else
         {
-            $asset = '';
-            $amount = '';
-            $reclen = -1;
+            $isa = $a === $aid;
+            $isb = $b === $aid;
         }
+
+        if( !isset( $reclen ) )
+        {
+            if( $asset > 0 )
+            {
+                if( $type === TX_ISSUE || $type === TX_REISSUE )
+                    $sign = 1;
+                else if( $type === TX_BURN )
+                    $sign = -1;
+                else
+                    $sign = ( $amount < 0 ? -1 : 1 ) * ( $isb ? ( $isa ? 0 : 1 ) : -1 );
+
+                $info = $RO->getAssetInfoById( $asset );
+                if( $spam && $info[1] === chr( 1 ) )
+                    continue;
+
+                $name = substr( $info, 2 );
+                $amount = w8io_amount( $amount, $info[0], 0, false );
+                $amount = ' ' . w8io_sign( $sign ) . $amount;
+                $asset = ' <a href="' . W8IO_ROOT . $address . '/f/' . $asset . '">' . $name . '</a>';
+                $reclen = strlen( $amount ) + mb_strlen( html_entity_decode( $name ), 'UTF-8' );
+            }
+            else
+            {
+                $sign = ( ( $type === TX_LEASE_CANCEL ) ? -1 : 1 ) * ( ( $amount < 0 ) ? -1 : 1 ) * ( $isb ? ( $isa ? 0 : 1 ) : -1 );
+
+                $amount = ' ' . w8io_sign( $sign ) . w8io_amount( $amount, 8, 0, false );
+                $asset = ' <a href="' . W8IO_ROOT . $address . '/f/Waves">Waves</a>';
+                $reclen = strlen( $amount ) + 5;
+            }
+        }
+
+        if( $type == TX_ISSUE )
+            $type = 3;
 
         $a = $isa ? $address : $RO->getAddressById( $a );
         $b = $isb ? $address : $RO->getAddressById( $b );
 
         $fee = $ts[FEE];
 
-        if( $a === $address && $fee )
+        if( $isa && $fee )
         {
             $afee = $ts[FEEASSET];
 
@@ -423,11 +464,21 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
         else
             $fee = '';
 
-        $data = $ts[ADDON];
-        $price = null;
+        $addon = $ts[ADDON];
 
-        if( 0 && $data !== '0' )
+        if( $addon === 0 )
+            $addon = '';
+        else
         {
+            if( $type === TX_ALIAS )
+            {
+                $addon = $RO->getAliasById( $addon );
+                $addon = ' ' . $addon;
+                $maxlen2 = max( $maxlen2, strlen( $addon ) );
+            }
+            else
+                $addon = '';
+/*
             $data = json_decode( $data, true );
 
             if( $type === 7 )
@@ -439,47 +490,40 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             else
             if( isset( $data['b'] ) )
                 $b = $api->get_data( $data['b'] );
+                */
         }
 
-        $wtype = ( $ts[FEEASSET] === '-1' ? 'invoke ' : '' ) . w8io_tx_type( $type );
+        $wtype = ( $ts[FEEASSET] === INVOKE_ASSET ? 'invoke ' : '' ) . w8io_tx_type( $type );
         $reclen += strlen( $wtype );
         $maxlen1 = max( $maxlen1, $reclen );
         $block = w8k2h( $ts[TXKEY] );
 
         if( $aid )
         {
-            $act = $isa ? ( $isb ? '>' : '>' ) : '<';
+            $act = $isa ? '>' : ' ';
             $tar = $isa ? ( $isb ? '<>' : w8io_a( $b ) ) : w8io_a( $a );
 
-            if( isset( $price ) )
-            {
-                $price = ' ' . $price;
-                $maxlen2 = max( $maxlen2, strlen( $price ) );
-            }
-            else
-            {
-                $price = '';
-            }
+            $date = date( 'Y.m.d H:i', $RO->getTimestampByHeight( w8k2h( $ts[TXKEY] ) ) );
+            $txkey = $type === 0 ? $date : ( '<a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . $date . '</a>' );
 
             $outs[] = [
                 $act,
-                ( $isa ? '<b>' : '' ) . '<small><a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . date( 'Y.m.d H:i', $RO->getTimestampByHeight( w8k2h( $ts[TXKEY] ) ) ) . '</a>' .
-                ' (<a href="' . W8IO_ROOT . 'blocks/' . $block . '">' . $block . '</a>)</small>' . ' ' . $act .
-                ' <a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>' . $amount . $asset . ( $isa ? '</b>' :  '' ),
+                '<small>' . $txkey . ' (<a href="' . W8IO_ROOT . 'b/' . $block . '">' . $block . '</a>) ' . $act .
+                ' </small><a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>' . $amount . $asset,
                 $reclen,
-                $price,
+                $addon,
                 $tar . $fee,
             ];
         }
         else
         {
-            if( isset( $price ) )
-                $price = ' (' . $price . ')';
+            if( isset( $addon ) )
+                $addon = ' (' . $addon . ')';
             echo
                 '<small><a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . date( 'Y.m.d H:i', $RO->getTimestampByHeight( w8k2h( $ts[TXKEY] ) ) ) . '</a>' .
-                ' (<a href="' . W8IO_ROOT . 'blocks/' . $block . '">' . $block . '</a>)</small>' .
+                ' (<a href="' . W8IO_ROOT . 'b/' . $block . '">' . $block . '</a>)</small>' .
                 ' (<a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>) ' . w8io_a( $a ) . ' -> ' . w8io_a( $b ) .
-                $amount . $asset . $price . PHP_EOL;
+                $amount . $asset . $addon . PHP_EOL;
         }
     }
 
@@ -488,8 +532,8 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
         $act = $out[0];
         $p1 = $out[1];
         $p1pad = $out[2];
-        $price = $out[3];
-        $p2pad = mb_strlen( html_entity_decode( $price ), 'UTF-8' ); 
+        $addon = $out[3];
+        $p2pad = mb_strlen( html_entity_decode( $addon ), 'UTF-8' ); 
         $p3 = $out[4];
 
         if( $p2pad === 0 )
@@ -505,7 +549,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
         }
         $pad1 = $p1pad > 3 ? ( ' ' . str_repeat( '-', $p1pad - 1 ) ) : str_repeat( ' ', $p1pad );
 
-        echo $p1 . $pad1 . $price . $pad2 . ' ' . $p3 . PHP_EOL;
+        echo $p1 . $pad1 . $addon . $pad2 . ' ' . $p3 . PHP_EOL;
     }
 
     if( isset( $lazy ) )
@@ -548,6 +592,11 @@ function w8io_a( $address, $asset = null )
         $address = substr( $address, 8 );
     $f = isset( $asset ) ? ( '/f/' . $asset ) : '';
     return '<a href=' . W8IO_ROOT . $address . $f . '>' . $address . '</a>';
+}
+
+function w8io_height( $height )
+{
+    return '<a href=' . W8IO_ROOT . 'b/' . $height . '>' . $height . '</a>';
 }
 
 function w8io_txid( $txid )
@@ -785,10 +834,10 @@ if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
     echo '</tr></table>';
 }
 else
-if( $address === 'blocks' )
+if( $address === 'b' )
 {
     $height = (int)$f;
-    $block = $api->getBlockAt( (int)$f );
+    $block = wk()->getBlockAt( $height );
     $txs = $block['transactions'];
     unset( $block['transactions'] );
 
@@ -802,10 +851,10 @@ if( $address === 'blocks' )
         if( $height > 1 )
         {
             unset( $block['height'] );
-            $block['previous'] = $height - 1;
+            $block['previous'] = w8io_height( $height - 1 );
         }
-        $block['height'] = $height;
-        $block['next'] = $height + 1;
+        $block['height'] = w8io_height( $height );
+        $block['next'] = w8io_height( $height + 1 );
         foreach( $txs as &$tx )
             txproc( $tx );
         $block['transactions'] = $txs;
@@ -957,33 +1006,34 @@ if( $address === 'GENERATORS' )
 }
 else
 {
-    require_once 'include/RO.php';
-    $RO = new RO( W8DB );
+    if( !isset( $RO ) )
+    {
+        require_once 'include/RO.php';
+        $RO = new RO( W8DB );
+    }    
 
     $where = false;
     if( $f === 'f' )
-        $where = "asset = $arg";
+        $where = "r5 = $arg";
     else if( $f === 't' )
-        $where = "type = $arg";
-    else if( $f === 't-' )
-        $where = "type != $arg";
+        $where = "r2 = $arg";
 
     $aid = $RO->getAddressIdByString( $address );
     if( $aid === false )
     {
-        $assetId = $address === 'WAVES' ? 0 : $api->get_asset( $address );
-        if( $assetId === false )
+        //$assetId = $address === 'WAVES' ? 0 : $RO->getAssetInfoById( $address );
+        //if( $assetId === false )
         {
             echo '<pre>';
             w8io_print_transactions( false, $where, false, 100, $address, !( $f === 'f' ) );
             echo '</pre>';
         }
-        else
-        {
-            echo '<pre>';
-            w8io_print_distribution( $assetId );
-            echo '</pre>';
-        }
+        //else
+        //{
+        //    echo '<pre>';
+        //    w8io_print_distribution( $assetId );
+        //    echo '</pre>';
+        //}
     }
     else
     {
@@ -1010,6 +1060,9 @@ else
         if( !isset( $balance[0] ) )
             $balance[0] = 0;
 
+        $weights = [];
+        $prints = [];
+
         // WAVES
         {
             $asset = "Waves";
@@ -1022,7 +1075,10 @@ else
                 echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
             }
             else
-                $tickers[] = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
+            {
+                $weights[WAVES_ASSET] = 10000;
+                $prints[WAVES_ASSET] = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
+            }
         }
 
         if( isset( $balance[WAVES_LEASE_ASSET] ) )
@@ -1034,7 +1090,8 @@ else
                 $asset = "Waves (GENERATOR)";
                 $amount = w8io_amount( $amount, 8 );
 
-                $tickers[] = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
+                $weights[WAVES_LEASE_ASSET] = 1000;
+                $prints[WAVES_LEASE_ASSET] = [ 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
             }
         }
 
@@ -1046,10 +1103,10 @@ else
             if( $asset > 0 )
             {
                 $info = $RO->getAssetInfoById( $asset );
-                if( $info[1] === 's' )
+                if( $info[1] === chr( 1 ) )
                     continue;
 
-                $id = $asset;//$info['id'];
+                $id = $asset;
                 $b = $asset === $arg;
                 $decimals = (int)$info[0];
                 $asset = substr( $info, 2 );
@@ -1061,15 +1118,13 @@ else
 
                 if( $b )
                     $frecord = $record;
-                else if( isset( $info['ticker'] ) )
-                    $tickers[] = $record;
                 else
-                    $unlisted[] = $record;
+                {
+                    $weights[$asset] = ord( $info[1] );
+                    $prints[$asset] = $record;
+                }
             }
         }
-
-        $tickers = prios( $tickers );
-        $unlisted = prios( $unlisted );
 
         if( isset( $frecord ) )
         {
@@ -1077,13 +1132,25 @@ else
             echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
         }
 
-        foreach( $tickers as $record )
+        arsort( $weights );
+
+        foreach( $weights as $asset => $weight )
+        {
+            $record = $prints[$asset];
             echo $record['amount'] . ' <a href="' . $record['furl'] . '">' . $record['asset'] . '</a>' . PHP_EOL;
 
+            if( $weight === 0 && !isset( $zerotrades ) )
+            {
+                echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
+                $zerotrades = true;
+            }
+        }
+
+        if( !isset( $zerotrades ) )
+        {
             echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
-
-        foreach( $unlisted as $record )
-            echo $record['amount'] . ' <a href="' . $record['furl'] . '">' . $record['asset'] . '</a>' . PHP_EOL;
+            $zerotrades = true;
+        }
 
         echo '</pre></td><td valign="top"><pre>';
 

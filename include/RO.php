@@ -15,25 +15,44 @@ class RO
         $this->db = new Triples( $db, 'pts' );
     }
 
-    public function getTxKeyById( $txid )
+    public function getTxKeyByTxId( $txid )
     {
         $txid = d58( $txid );
         $bucket = unpack( 'J1', $txid )[1];
         $txpart = substr( $txid, 8 );
 
-        if( !isset( $this->q_getTxKeyById ) )
+        if( !isset( $this->getTxKeyByTxId ) )
         {
-            $this->q_getTxKeyById = $this->db->db->prepare( 'SELECT r0 FROM ts WHERE r1 = ? AND r2 = ? ORDER BY r0 DESC LIMIT 1' );
-            if( $this->q_getTxKeyById === false )
+            $this->getTxKeyByTxId = $this->db->db->prepare( 'SELECT r0 FROM ts WHERE r1 = ? AND r2 = ? ORDER BY r0 DESC LIMIT 1' );
+            if( $this->getTxKeyByTxId === false )
                 w8_err();
         }
 
-        if( false === $this->q_getTxKeyById->execute( [ $bucket, $txpart ] ) )
+        if( false === $this->getTxKeyByTxId->execute( [ $bucket, $txpart ] ) )
             w8_err();
 
-        $r = $this->q_getTxKeyById->fetchAll();
+        $r = $this->getTxKeyByTxId->fetchAll();
         if( isset( $r[0] ) )
             return (int)$r[0][0];
+
+        return false;
+    }
+
+    public function getTxIdByTxKey( $txkey )
+    {
+        if( !isset( $this->getTxIdByTxKey ) )
+        {
+            $this->getTxIdByTxKey = $this->db->db->prepare( 'SELECT r1, r2 FROM ts WHERE r0 = ? LIMIT 1' );
+            if( $this->getTxIdByTxKey === false )
+                w8_err();
+        }
+
+        if( false === $this->getTxIdByTxKey->execute( [ $txkey ] ) )
+            w8_err();
+
+        $r = $this->getTxIdByTxKey->fetchAll();
+        if( isset( $r[0] ) )
+            return e58( pack( 'J', (int)$r[0][0] ) . $r[0][1] );
 
         return false;
     }
@@ -127,7 +146,7 @@ class RO
     {
         if( !isset( $this->q_getAddressIdByAlias ) )
         {
-            $this->q_getAddressIdByAlias = $this->db->db->prepare( 'SELECT r1 FROM aliases WHERE r0 = ?' );
+            $this->q_getAddressIdByAlias = $this->db->db->prepare( 'SELECT r1 FROM aliasInfo WHERE r0 IN ( SELECT r0 FROM aliases WHERE r1 = ? LIMIT 1 ) LIMIT 1' );
             if( $this->q_getAddressIdByAlias === false )
                 w8_err();
         }
@@ -192,6 +211,25 @@ class RO
         return false;
     }
 
+    public function getAliasById( $id )
+    {
+        if( !isset( $this->getAliasById ) )
+        {
+            $this->getAliasById = $this->db->db->prepare( 'SELECT r1 FROM aliases WHERE r0 = ? LIMIT 1' );
+            if( $this->getAliasById === false )
+                w8_err();
+        }
+
+        if( false === $this->getAliasById->execute( [ $id ] ) )
+            w8_err();
+
+        $r = $this->getAliasById->fetchAll();
+        if( isset( $r[0] ) )
+            return $r[0][0];
+
+        return false;
+    }
+
     public function getBalanceByAddressId( $id )
     {
         if( !isset( $this->q_getBalanceByAddressId ) )
@@ -233,24 +271,73 @@ class RO
         return false;
     }
 
-    public function getPTSByAddressId( $id )
+    public function getAssetById( $id )
     {
-        if( !isset( $this->getPTSByAddressId ) )
+        if( !isset( $this->getAssetById ) )
         {
-            //SELECT * FROM ( SELECT * FROM transactions WHERE a = $aid$where ORDER BY uid DESC LIMIT $limit ) UNION
-                 //SELECT * FROM ( SELECT * FROM transactions WHERE b = $aid$where ORDER BY uid DESC LIMIT $limit ) ORDER BY uid DESC LIMIT $limit
-
-            $this->getPTSByAddressId = $this->db->db->prepare( 'SELECT * FROM ( SELECT * FROM pts WHERE r3 = ? ORDER BY r0 DESC LIMIT 200 )
-                                                                UNION
-                                                                SELECT * FROM pts WHERE r4 = ? ORDER BY r0 DESC LIMIT 200' );
-            if( $this->getPTSByAddressId === false )
+            $this->getAssetById = $this->db->db->prepare( 'SELECT r1 FROM assets WHERE r0 = ?' );
+            if( $this->getAssetById === false )
                 w8_err();
         }
 
-        if( false === $this->getPTSByAddressId->execute( [ $id, $id ] ) )
+        if( false === $this->getAssetById->execute( [ $id ] ) )
             w8_err();
 
-        return ptsFilter( $this->getPTSByAddressId->fetchAll() );
+        $r = $this->getAssetById->fetchAll();
+        if( isset( $r[0] ) )
+            return $r[0][0];
+
+        return false;
+    }
+
+    public function getIdByAsset( $asset )
+    {
+        if( !isset( $this->getIdByAsset ) )
+        {
+            $this->getIdByAsset = $this->db->db->prepare( 'SELECT r0 FROM assets WHERE r1 = ?' );
+            if( $this->getIdByAsset === false )
+                w8_err();
+        }
+
+        if( false === $this->getIdByAsset->execute( [ $asset ] ) )
+            w8_err();
+
+        $r = $this->getIdByAsset->fetchAll();
+        if( isset( $r[0] ) )
+            return (int)$r[0][0];
+
+        return false;
+    }
+
+    public function getPTSByAddressId( $id, $filter, $limit, $uid )
+    {
+        $wheres = [];
+        if( $filter !== false )
+            $wheres[] = $filter;
+        if( $uid !== false )
+            $wheres[] = 'r0 <= ' . $uid;
+
+        $where = '';
+        $n = count( $wheres );
+        if( $n > 0 )
+        {
+            for( $i = 0; $i < $n; ++$i )
+                if( $i === 0 )
+                    $where = ( $id === false ? ' WHERE ' : ' AND ' ) . $wheres[$i];
+                else
+                    $where .= ' AND ' . $wheres[$i] . ' ';
+        }
+
+        if( $id === false )
+            $query = "SELECT * FROM ( 
+                SELECT * FROM pts $where ORDER BY r0 DESC LIMIT $limit ) UNION
+                SELECT * FROM pts $where ORDER BY r0 DESC LIMIT $limit";
+        else
+            $query = "SELECT * FROM ( 
+                SELECT * FROM pts WHERE r3 = $id $where ORDER BY r0 DESC LIMIT $limit ) UNION
+                SELECT * FROM pts WHERE r4 = $id $where ORDER BY r0 DESC LIMIT $limit";
+        
+        return ptsFilter( $this->db->query( $query )->fetchAll() );
     }
 
     public function getPTSAtHeight( $height )

@@ -120,9 +120,9 @@ class BlockchainParser
 
     private function getLeaseInfoById( $id )
     {
-        $txkey = $this->RO->getTxKeyById( $id );
+        $txkey = $this->RO->getTxKeyByTxId( $id );
         if( $txkey === false )
-            w8_err( "getLeaseInfoById: getTxKeyById( $id )" );
+            w8_err( "getLeaseInfoById: getTxKeyByTxId( $id )" );
 
         foreach( $this->recs as $ts )
             if( $ts[TXKEY] === $txkey && $ts[TYPE] === TX_LEASE )
@@ -220,7 +220,7 @@ class BlockchainParser
     {
         $id = $this->kvAssets->getForcedKeyByValue( $tx['assetId'] );
         $name = htmlentities( trim( preg_replace( '/\s+/', ' ', $tx['name'] ) ) );
-        $this->kvAssetInfo->setKeyValue( $id, $tx['decimals'] . '_' . $name );
+        $this->kvAssetInfo->setKeyValue( $id, $tx['decimals'] . chr( 0 ) . $name );
         return $id;
     }
 
@@ -417,7 +417,7 @@ class BlockchainParser
                 ] );
                 break;
             default:
-                w8_err( 'unknown failed transaction ' . $tx['type'] );
+                w8_err( 'processFailedTransaction unknown type: ' . $tx['type'] );
         }
     }
 
@@ -938,10 +938,10 @@ class BlockchainParser
         {
             foreach( $stateChanges['issues'] as $itx )
                 $this->processIssueTransaction( $txkey, $itx, $dApp );
-            foreach( $stateChanges['transfers'] as $itx )
-                $this->processTransferTransaction( $txkey, $itx, $dApp );
             foreach( $stateChanges['reissues'] as $itx )
                 $this->processReissueTransaction( $txkey, $itx, $dApp );
+            foreach( $stateChanges['transfers'] as $itx )
+                $this->processTransferTransaction( $txkey, $itx, $dApp );            
             foreach( $stateChanges['burns'] as $itx )
                 $this->processBurnTransaction( $txkey, $itx, $dApp );
             foreach( $stateChanges['sponsorFees'] as $itx )
@@ -989,7 +989,7 @@ class BlockchainParser
                 case 'script_execution_failed':
                     return $this->processFailedTransaction( $txkey, $tx );
                 default:
-                    w8io_error();
+                    w8_err( 'applicationStatus unknown: ' . $tx['applicationStatus'] );
             }
 
         //$tt = microtime( true );

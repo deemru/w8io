@@ -323,13 +323,9 @@ class Blockchain
                         unset( $update );
                     }
 
-                    if( $i >= GetHeight_RideV4() )
-                    {
-                        $tx = wk()->getTransactionById( $txid );
-                        if( !isset( $tx['applicationStatus'] ) )
-                            w8_err();
-                    }
-                    
+                    if( $i >= GetHeight_RideV4() && !isset( $tx['applicationStatus'] ) )
+                        w8_err( 'applicationStatus missed' );
+
                     if( $tx['type'] === TX_INVOKE )
                     {
                         $tx = wk()->getStateChanges( $txid );
