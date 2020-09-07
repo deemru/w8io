@@ -9,7 +9,7 @@ require_once 'config.php';
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'api/Dkb2AdqFYTqqT9MmSy3TH7EZBveKSw7YyNjqtCj9pg1NiUvPDYwwgnW6Un6rtSPbU3B8aHybi22wR6c7vgseahbJaqDY9VP7sCev';
+    $uri = 'MASS';
 
 $uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $uri . chr( 0 ) ) );
 
@@ -607,7 +607,8 @@ function w8io_txid( $txid )
 function txproc( &$tx )
 {
     $tx['id'] = w8io_txid( $tx['id'] );
-    $tx['sender'] = w8io_a( $tx['sender'] );
+    if( $tx['type'] !== 1 )
+        $tx['sender'] = w8io_a( $tx['sender'] );
     if( isset( $tx['target'] ) )
         $tx['target'] = w8io_a( $tx['target'] );
     if( isset( $tx['recipient'] ) )
@@ -1044,7 +1045,7 @@ else
         $balance = $RO->getBalanceByAddressId( $aid );
 
         if( $balance === false )
-            w8_err( "getBalanceByAddressId( $aid ) failed" );
+            $balance = [ 0 => 0 ];
 
         $height = $RO->getLastHeightTimestamp();
         $time = date( 'Y.m.d H:i:s', $height[1] );
