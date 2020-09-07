@@ -56,7 +56,12 @@ function w8_error_handler( $errno, $errstr, $errfile, $errline )
     $bt = w8_bt( $errno, $errstr, $errfile, $errline );
     echo( PHP_EOL . $bt[1] . PHP_EOL );
     if( function_exists( 'w8_report' ) )
-        w8_report( $bt[0], '<pre>' . $bt[1] . '</pre>' );
+    {
+        $body = $bt[1];
+        if( isset( $_SERVER['REQUEST_URI'] ) )
+            $body = $_SERVER['REQUEST_URI'] . PHP_EOL . PHP_EOL . $body;
+        w8_report( $bt[0], '<pre>' . $body . '</pre>' );
+    }
     exit( $errno );
 }
 
