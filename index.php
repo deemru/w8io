@@ -508,8 +508,8 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
 
             $outs[] = [
                 $act,
-                '<small>' . $txkey . ' (<a href="' . W8IO_ROOT . 'b/' . $block . '">' . $block . '</a>) ' . $act .
-                ' </small><a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>' . $amount . $asset,
+                ( $isa ? '<b>' : '' ) . '<small>' . $txkey . ' (<a href="' . W8IO_ROOT . 'b/' . $block . '">' . $block . '</a>) ' . $act .
+                ' </small><a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>' . $amount . $asset . ( $isa ? '</b>' : '' ),
                 $reclen,
                 $addon,
                 $tar . $fee,
