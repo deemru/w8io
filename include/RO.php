@@ -230,6 +230,25 @@ class RO
         return false;
     }
 
+    public function getGroupById( $id )
+    {
+        if( !isset( $this->getGroupById ) )
+        {
+            $this->getGroupById = $this->db->db->prepare( 'SELECT r1 FROM groups WHERE r0 = ? LIMIT 1' );
+            if( $this->getGroupById === false )
+                w8_err();
+        }
+
+        if( false === $this->getGroupById->execute( [ $id ] ) )
+            w8_err();
+
+        $r = $this->getGroupById->fetchAll();
+        if( isset( $r[0] ) )
+            return $r[0][0];
+
+        return false;
+    }
+
     public function getBalanceByAddressId( $id )
     {
         if( !isset( $this->q_getBalanceByAddressId ) )
@@ -254,6 +273,9 @@ class RO
 
     public function getAssetInfoById( $id )
     {
+        if( $id === 0 )
+            return '8_Waves';
+
         if( !isset( $this->getAssetInfoById ) )
         {
             $this->getAssetInfoById = $this->db->db->prepare( 'SELECT r1 FROM assetInfo WHERE r0 = ?' );

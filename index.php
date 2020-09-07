@@ -476,6 +476,36 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                 $addon = ' ' . $addon;
                 $maxlen2 = max( $maxlen2, strlen( $addon ) );
             }
+            else if( $type === TX_EXCHANGE )
+            {
+                $groupId = $ts[GROUP];
+                $group = $RO->getGroupById( $groupId );
+                if( $group === false )
+                    w8_err( "getGroupById( $groupId )" );
+                $pair = explode( '/', substr( $group, 1 ) );
+                $buy = $RO->getAssetInfoById( (int)$pair[0] );
+                $sell = $RO->getAssetInfoById( (int)$pair[1] );
+
+                $bdecimals = (int)$buy[0];
+                $bname = substr( $buy, 2 );
+                $sdecimals = (int)$sell[0];
+                $sname = substr( $sell, 2 );
+
+                $price = $addon;
+                if( $bdecimals !== 8 )
+                    $price = substr( $price, 0, -8 + $bdecimals );
+
+                if( $sdecimals )
+                {
+                    if( strlen( $price ) <= $sdecimals )
+                        $price = str_pad( $price, $sdecimals + 1, '0', STR_PAD_LEFT );
+                    $price = substr_replace( $price, '.', -$sdecimals, 0 );
+                }
+                $addon = $price . ' ' . $bname . '/' . $sname;
+                if( $aid )
+                    $addon = ' ' . $addon;
+                $maxlen2 = max( $maxlen2, strlen( $addon ) );
+            }
             else
                 $addon = '';
 /*
@@ -517,7 +547,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
         }
         else
         {
-            if( isset( $addon ) )
+            if( !empty( $addon ) )
                 $addon = ' (' . $addon . ')';
             echo
                 '<small><a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . date( 'Y.m.d H:i', $RO->getTimestampByHeight( w8k2h( $ts[TXKEY] ) ) ) . '</a>' .
