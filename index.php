@@ -210,7 +210,7 @@ echo sprintf( '
         <meta name="format-detection" content="email=no">
         <title>w8io%s</title>
         <link rel="shortcut icon" href="%sfavicon.ico" type="image/x-icon">
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inconsolata">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap">
         <script type="text/javascript" src="%sjquery.js" charset="UTF-8"></script>
 <script>
 $(document).ready( function()
@@ -717,13 +717,12 @@ if( $address === 'tx' && isset( $f ) )
 else
 if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
 {
-    require_once './include/w8io_blockchain_transactions.php';
-    require_once './include/w8io_api.php';
-    $api = new w8io_api();
+    require_once 'include/RO.php';
+    $RO = new RO( W8DB );
 
     $assetId = $f;
-    $height = $api->get_height() - 1440;
-    $capid = $api->get_asset( $assetId );
+    $height = $height = $RO->getLastHeightTimestamp()[0] - 1500;
+    $capid = $RO->getIdByAsset( $assetId );
 
     echo '<table><tr>';
     for( $i = 0; $i < 1; $i++ )
@@ -731,25 +730,26 @@ if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
         $adds = [];
         $addsv = [];
         $addsp = [];
-        $exchanges = $api->get_transactions_query( 'SELECT * FROM transactions WHERE block > ' . $height );
+        $exchanges = $RO->db->query( 'SELECT * FROM pts WHERE r1 > ' . w8h2k( $height ) );
         $n = 0;
         $txs = [];
-        foreach( $exchanges as $tx )
+        foreach( $exchanges as $ts )
         {
-            $type = (int)$tx['type'];
+            $type = (int)$ts[TYPE];
             if( $type !== ( !$i ? 7 : 4 ) )
                 continue;
 
-            $a = (int)$tx['a'];
+            $a = (int)$ts[A];
             if( $a <= 0 )
                 continue;
 
-            $asset = (int)$tx['asset'];
+            $asset = (int)$ts[ASSET];
             if( $asset !== $capid )
                 continue;
+            if( 16695 !== (int)$ts[GROUP] )
+                continue;
 
-            $tx['price'] = $api->get_data( wk()->json_decode( $tx['data'] )['p'] );
-            $txs[(int)$tx['uid']] = $tx;
+            $txs[(int)$ts[UID]] = $ts;
         }
 
         krsort( $txs );
@@ -757,17 +757,17 @@ if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
         $bots = [];
 
         $uid = [];
-        foreach( $txs as $tx )
+        foreach( $txs as $ts )
         {
-            $a = (int)$tx['a'];
-            $b = (int)$tx['b'];
-            $amount = (int)$tx['amount'];
-            $price = $tx['price'];
+            $a = (int)$ts[A];
+            $b = (int)$ts[B];
+            $amount = (int)$ts[AMOUNT];
+            $price = (int)$ts[ADDON] / 100000000;
             
             if( !isset( $uid[$a] ) )
-                $uid[$a] = (int)$tx['uid'];
+                $uid[$a] = (int)$ts[UID];
             if( !isset( $uid[$b] ) )
-                $uid[$b] = (int)$tx['uid'];
+                $uid[$b] = (int)$ts[UID];
             if( !isset( $adds[$a] ) )
                 $adds[$a] = 0;
             if( !isset( $adds[$b] ) )
@@ -796,7 +796,7 @@ if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
             //$addsp[$a][3] = ( $addsp[$a][3] * ( $addsp[$a][2] - 1 ) + $price ) / $addsp[$a][2];
             //$addsp[$b][3] = ( $addsp[$b][3] * ( $addsp[$b][2] - 1 ) + $price ) / $addsp[$b][2];
 
-            if( (int)$tx['timestamp'] >= 1575275064 && (int)$tx['timestamp'] <= 1575290274 )
+            //if( (int)$tx['timestamp'] >= 1575275064 && (int)$tx['timestamp'] <= 1575290274 )
             {
                 //$bots[$api->get_address( $a )] = true;
                 //$bots[$api->get_address( $b )] = true;
@@ -814,7 +814,7 @@ if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
         foreach( $uid as $address => $t )
         {
             $amount = $adds[$address];
-            $address = $api->get_address( $address );
+            $address = $RO->getAddressById( $address );
             if( in_array( $address, $bots ) )
                 echo '<b>';
             echo w8io_a( $address, $assetId ) . ' = ' . w8io_amount( $amount, 8, 0 ) . '&nbsp;<br>';
@@ -853,8 +853,8 @@ if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
         echo '<td valign=top>';
         foreach( $uid as $address => $t )
         {
-            $balance = $api->get_address_balance( $address );
-            echo str_pad( '(' . w8io_amount( $balance['balance'][0], 8, 0 ) . ')', 20 ) . '(' . w8io_amount( $balance['balance'][$capid], 8, 0 ) . ')&nbsp;&nbsp;&nbsp;<br>';
+            $balance = $RO->getBalanceByAddressId( $address );
+            echo str_pad( '(' . w8io_amount( $balance[0], 8, 0 ) . ')', 20 ) . '(' . w8io_amount( $balance[$capid], 8, 0 ) . ')&nbsp;&nbsp;&nbsp;<br>';
         }
         echo '</td>';
 
@@ -864,7 +864,7 @@ if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
         foreach( $addsv as $address => $amount )
         {
             $volume = $adds[$address];
-            $address = $api->get_address( $address );
+            $address = $RO->getAddressById( $address );
             echo w8io_a( $address ) . ' = ' . w8io_amount( $amount, 8, 0 ) . ' ('. w8io_amount( $volume, 8, 0 ) .')&nbsp;<br>';
         }
         echo '</td>';
