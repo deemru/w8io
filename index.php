@@ -470,11 +470,16 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             $addon = '';
         else
         {
-            if( $type === TX_ALIAS )
+            if( $type === TX_TRANSFER ||
+                $type === TX_LEASE ||
+                $type === TX_LEASE_CANCEL ||
+                $type === TX_ALIAS ||
+                $type === TX_MASS_TRANSFER ||
+                $type === TX_INVOKE )
             {
-                $addon = $RO->getAliasById( $addon );
-                $addon = ' ' . $addon;
-                $maxlen2 = max( $maxlen2, strlen( $addon ) );
+                $b = $RO->getAliasById( $addon );
+                $addon = '';
+                $isb = false;
             }
             else if( $type === TX_EXCHANGE )
             {
@@ -601,36 +606,6 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
 
     if( isset( $lazy ) )
         echo $lazy;
-}
-
-function prios( $tickers )
-{
-    $t_prios = [];
-    $t_other = [];
-
-    $prios = [
-        '8LQW8f7P5d5PZM7GtZEBgaqRPGSzS3DfPuiXrURJ4AJS', // WBTC
-        '474jTeYx2r2Va35794tCScAXWJG9hU2HcgxzMowaZUnu', // WETH
-        'Ft8X1v1LTa1ABafufpaCWyVj8KkaxUWE6xBhW6sNFJck', // WUSD
-        'Gtb1WRznfchDnTh37ezoDTJ4wcoKaRsKqKjJjy7nm2zU', // WEUR
-        '2mX5DzVKWrAJw8iwdJnV2qtoeVG9h5nTDpTqC1wb1WEN', // WTRY
-        'HZk1mbfuJpmxU1Fs4AX5MWLVYtctsNcg6e2C6VKqK8zk', // Litecoin
-        'zMFqXuoyrn5w17PFurTqxB7GsS71fp9dfk6XFwxbPCy',  // Bitcoin Cash
-        'BrjUWjndUanm5VsJkbUip8VRYy6LWJePtxya3FNv4TQa', // Zcash
-        'B3uGHFRpSUuGEDWjqB9LWWxafQj8VTvpMucEyoxzws5H', // DASH
-        '7FzrHF1pueRFrPEupz6oiVGTUZqe8epvC7ggWUx8n1bd', // Liquid
-        'DHgwrRvVyqJsepd32YbBqUeDH4GJ1N984X8QoekjgH8J', // WavesCommunity
-        '4uK8i4ThRGbehENwa6MxyLtxAjAo1Rj9fduborGExarC', // MinersReward
-        '4LHHvYGNKJUg5hj65aGD5vgScvCBmLpdRFtjokvCjSL8', // Vostok
-    ];
-
-    foreach( $tickers as $record )
-        if( !isset( $record['id'] ) || in_array( $record['id'], $prios, true ) )
-            $t_prios[] = $record;
-        else
-            $t_other[] = $record;
-
-    return array_merge( $t_prios, $t_other );
 }
 
 function w8io_a( $address, $asset = null )
