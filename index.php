@@ -9,7 +9,7 @@ require_once 'config.php';
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'MASS';
+    $uri = 't/t/16';
 
 $uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $uri . chr( 0 ) ) );
 
@@ -521,6 +521,23 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             if( isset( $data['b'] ) )
                 $b = $api->get_data( $data['b'] );
                 */
+        }
+
+        if( $type === TX_INVOKE )
+        {
+            $groupId = $ts[GROUP];
+            if( $groupId !== 0 )
+            {
+                $group = $RO->getGroupById( $groupId );
+                if( $group === false )
+                    w8_err( "getGroupById( $groupId )" );
+                $pair = explode( '/', substr( $group, 1 ) );
+                $addon = $RO->getFunctionById( (int)$pair[1] );
+
+                if( $aid )
+                    $addon = ' ' . $addon;
+                $maxlen2 = max( $maxlen2, strlen( $addon ) );
+            }
         }
 
         $wtype = ( $ts[FEEASSET] === INVOKE_ASSET ? 'invoke ' : '' ) . w8io_tx_type( $type );
