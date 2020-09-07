@@ -718,7 +718,7 @@ class BlockchainParser
             AMOUNT =>   $ts[AMOUNT],
             FEEASSET => $tx[FEEASSET],
             FEE =>      $tx[FEE],
-            ADDON =>    $ts[ADDON],
+            ADDON =>    $ts[TXKEY],
             GROUP =>    0,
         ] );
     }

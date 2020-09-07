@@ -472,7 +472,6 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
         {
             if( $type === TX_TRANSFER ||
                 $type === TX_LEASE ||
-                $type === TX_LEASE_CANCEL ||
                 $type === TX_ALIAS ||
                 $type === TX_MASS_TRANSFER ||
                 $type === TX_INVOKE )
