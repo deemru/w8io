@@ -892,7 +892,7 @@ class BlockchainParser
         $dApp = $this->getRecipientId( $tx['dApp'] );
         $addon = $this->getAliasId( $tx['dApp'] );
         $function = $this->getFunctionId( isset( $tx['call'] ) ? $tx['call']['function'] : 'default' );
-        $group = $this->getGroupInvoke( $dApp, $function );
+        $group = $this->getGroupInvoke( $dApp, $function, true );
 
         $this->appendTS( [
             UID =>      $this->getNewUid(),
