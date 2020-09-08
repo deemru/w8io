@@ -274,6 +274,7 @@ function lazyload()
         font-stretch: 100%%;
         font-size: 14pt;
         margin: 0;
+        unicode-bidi: bidi-override;
     }
     small
     {
