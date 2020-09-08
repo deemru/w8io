@@ -63,7 +63,7 @@ class BlockchainParser
 
         $this->setHighs();
         $this->recs = [];
-        $this->workpts = [];
+        $this->feerecs = [];
         $this->workheight = -1;
         $this->resetMTS();
     }
@@ -301,7 +301,7 @@ class BlockchainParser
         $ngfees = [];
 
         if( $this->workheight === $height )
-            $pts = $this->workpts;
+            $pts = $this->feerecs;
         else
         {
             $this->flush();
@@ -311,10 +311,7 @@ class BlockchainParser
         foreach( $pts as $ts )
         {
             $fee = $ts[FEE];
-            if( $fee <= 0 )
-                continue;
-
-            if( $ts[TYPE] === TX_EXCHANGE ) // TX_MATCHER pays real fees
+            if( $fee === 0 )
                 continue;
 
             $feeasset = $ts[FEEASSET];
@@ -369,7 +366,8 @@ class BlockchainParser
     private function appendTS( $ts )
     {
         $this->recs[] = $ts;
-        $this->workpts[] = $ts;
+        if( $ts[FEE] !== 0 )
+            $this->feerecs[] = [ FEEASSET => $ts[FEEASSET], FEE => $ts[FEE] ];
     }
 
     private function processGeneratorTransaction( $txkey, $tx )
@@ -394,7 +392,7 @@ class BlockchainParser
         }
 
         $this->workheight = w8k2h( $txkey ) + 1;
-        $this->workpts = [];
+        $this->feerecs = [];
     }
 
     private function processFailedTransaction( $txkey, $tx )
@@ -1059,7 +1057,7 @@ class BlockchainParser
         $this->pts->query( 'DELETE FROM pts WHERE r1 >= '. $txfrom );
         $this->sponsorships->reset();
         $this->setHighs();
-        $this->workpts = [];
+        $this->feerecs = [];
         $this->workheight = -1;
     }
 
