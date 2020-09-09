@@ -311,7 +311,7 @@ class BlockchainParser
         foreach( $pts as $ts )
         {
             $fee = $ts[FEE];
-            if( $fee === 0 )
+            if( $fee === 0 || $ts[TYPE] === TX_EXCHANGE )
                 continue;
 
             $feeasset = $ts[FEEASSET];
