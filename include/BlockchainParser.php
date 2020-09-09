@@ -311,7 +311,7 @@ class BlockchainParser
         foreach( $pts as $ts )
         {
             $fee = $ts[FEE];
-            if( $fee === 0 || $ts[TYPE] === TX_EXCHANGE )
+            if( $fee === 0 || ( isset( $ts[TYPE] ) && $ts[TYPE] === TX_EXCHANGE ) ) // TX_EXCHANGE fees for MATCHER
                 continue;
 
             $feeasset = $ts[FEEASSET];
@@ -366,7 +366,7 @@ class BlockchainParser
     private function appendTS( $ts )
     {
         $this->recs[] = $ts;
-        if( $ts[FEE] !== 0 )
+        if( $ts[FEE] !== 0 && $ts[TYPE] !== TX_EXCHANGE ) // TX_EXCHANGE fees for MATCHER
             $this->feerecs[] = [ FEEASSET => $ts[FEEASSET], FEE => $ts[FEE] ];
     }
 
