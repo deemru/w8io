@@ -683,10 +683,15 @@ if( $address === 'tx' && isset( $f ) )
     {
         $wk = wk();
         $tx = $wk->getTransactionById( $f );
-        if( $tx['type'] === 16 )
-            $tx = $wk->getStateChanges( $tx['id'] );
-        txproc( $tx );
-        echo json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        if( $tx === false )
+            echo json_encode( [ 'error' => "getTransactionById( $f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        else
+        {
+            if( $tx['type'] === 16 )
+                $tx = $wk->getStateChanges( $tx['id'] );
+            txproc( $tx );
+            echo json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        } 
     }
 }
 else
