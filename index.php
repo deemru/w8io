@@ -209,9 +209,9 @@ echo sprintf( '
         <meta name="format-detection" content="address=no">
         <meta name="format-detection" content="email=no">
         <title>w8io%s</title>
-        <link rel="shortcut icon" href="%sfavicon.ico" type="image/x-icon">
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap">
-        <script type="text/javascript" src="%sjquery.js" charset="UTF-8"></script>
+        <link rel="shortcut icon" href="%sstatic/favicon.ico" type="image/x-icon">
+        <link rel="stylesheet" href="%sstatic/fonts.css">
+        <script type="text/javascript" src="%sstatic/jquery.js" charset="UTF-8"></script>
 <script>
 $(document).ready( function()
 {
@@ -302,7 +302,7 @@ function lazyload()
     </head>
     <body>
         <pre>
-', empty( $address ) ? '' : " / $address", W8IO_ROOT, W8IO_ROOT,
+', empty( $address ) ? '' : " / $address", W8IO_ROOT, W8IO_ROOT, W8IO_ROOT,
 //isset( $showtime ) ? '0.66vw' : '14pt',
 $bcolor, $tcolor,
 isset( $showtime ) ? 'margin: 1em 2em 1em 2em; filter: brightness(144%);' : '',
@@ -531,7 +531,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
         if( $type === TX_INVOKE )
         {
             $groupId = $ts[GROUP];
-            if( $groupId !== 0 )
+            if( $groupId > 0 )
             {
                 $group = $RO->getGroupById( $groupId );
                 if( $group === false )
@@ -539,6 +539,13 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                 $pair = explode( '/', substr( $group, 1 ) );
                 $addon = $RO->getFunctionById( (int)$pair[1] );
 
+                if( $aid )
+                    $addon = ' ' . $addon;
+                $maxlen2 = max( $maxlen2, strlen( $addon ) );
+            }
+            else if( $groupId === -1 )
+            {
+                $addon = 'default';
                 if( $aid )
                     $addon = ' ' . $addon;
                 $maxlen2 = max( $maxlen2, strlen( $addon ) );
