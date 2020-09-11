@@ -47,7 +47,7 @@ function updater()
     {
         $status = $blockchain->update();
 
-        if( memory_get_usage( true ) / 1024 / 1024 > 4096 )
+        if( memory_get_usage( true ) / 1024 / 1024 > 1024 )
         {
             wk()->log( 'w', 'restart updater()' );
             sleep( $sleep );

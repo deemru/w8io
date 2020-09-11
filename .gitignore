@@ -3,3 +3,4 @@ config.php
 var/
 vendor/
 *.log
+composer.lock
