@@ -64,7 +64,7 @@ class RO
             case 'GENESIS': return GENESIS;
             case 'GENERATOR': return GENERATOR;
             case 'MATCHER': return MATCHER;
-            case 'UNDEFINED': return UNDEFINED;
+            case 'SELF': return SELF;
             case 'SPONSOR': return SPONSOR;
             case 'MASS': return MASS;
             default:
@@ -168,7 +168,7 @@ class RO
             case GENESIS: return 'GENESIS';
             case GENERATOR: return 'GENERATOR';
             case MATCHER: return 'MATCHER';
-            case UNDEFINED: return 'UNDEFINED';
+            case SELF: return 'SELF';
             case SPONSOR: return 'SPONSOR';
             case MASS: return 'MASS';
             default:

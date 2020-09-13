@@ -146,6 +146,9 @@ class Blockchain
 
     public function rollback( $from )
     {
+        if( $this->height - $from > 1000 )
+            $this->rollback( $from + 1000 );
+
         $txfrom = w8h2k( $from ) - 1; // all txs + last generator
         $tt = microtime( true );
         $this->db->begin();
@@ -190,7 +193,7 @@ class Blockchain
 
         if( 0 ) // CUSTOM ROLLBACK
         {
-            $this->rollback( 2219998 );
+            $this->rollback( 1080000 );
             exit( 'ok' );
             return W8IO_STATUS_UPDATED; 
         }

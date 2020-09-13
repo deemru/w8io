@@ -19,7 +19,7 @@ define( 'GROUP', 10 );
 define( 'GENESIS', 0 );
 define( 'GENERATOR', -1 );
 define( 'MATCHER', -2 );
-define( 'UNDEFINED', -3 );
+define( 'SELF', -3 );
 define( 'SPONSOR', -4 );
 define( 'MASS', -5 );
 

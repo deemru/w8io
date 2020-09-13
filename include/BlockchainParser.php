@@ -98,17 +98,17 @@ class BlockchainParser
         if( $sponsorship !== false )
             return $sponsorship;
 
-        if( !isset( $this->q_getSponsorship ) )
+        if( !isset( $this->getSponsorship ) )
         {
-            $this->q_getSponsorship = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r10 = ? ORDER BY r0 DESC LIMIT 1' );
-            if( $this->q_getSponsorship === false )
+            $this->getSponsorship = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r2 = 14 AND r4 = ? ORDER BY r0 DESC LIMIT 1' );
+            if( $this->getSponsorship === false )
                 w8_err( __FUNCTION__ );
         }
 
-        if( $this->q_getSponsorship->execute( [ $this->getGroupSponsorship( $asset ) ] ) === false )
+        if( $this->getSponsorship->execute( [ $asset ] ) === false )
             w8_err( __FUNCTION__ );
 
-        $pts = ptsFilter( $this->q_getSponsorship->fetchAll() );
+        $pts = ptsFilter( $this->getSponsorship->fetchAll() );
         if( isset( $pts[0] ) && $pts[0][AMOUNT] !== 0 )
             $sponsorship = $pts[0];
         else
@@ -130,7 +130,7 @@ class BlockchainParser
 
         if( !isset( $this->getLeaseInfoById ) )
         {
-            $this->getLeaseInfoById = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r1 = ? GROUP BY r2 HAVING r2 = ' . TX_LEASE );
+            $this->getLeaseInfoById = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r1 = ? ORDER BY r0 DESC LIMIT 1' );
             if( $this->getLeaseInfoById === false )
                 w8_err();
         }
@@ -139,7 +139,7 @@ class BlockchainParser
             w8_err();
 
         $pts = ptsFilter( $this->getLeaseInfoById->fetchAll() );
-        if( count( $pts ) !== 1 )
+        if( $pts[0][TYPE] !== TX_LEASE )
             w8_err();
 
         return $pts[0];
@@ -254,9 +254,11 @@ class BlockchainParser
         }
 
         $afee = $this->getAssetId( $tx['feeAssetId'] );
-        $sponsorship = $this->getSponsorship( $afee );
-        if( $sponsorship !== 0 && w8k2h( $txkey ) >= GetHeight_Sponsorship() )
+        if( w8k2h( $txkey ) >= GetHeight_Sponsorship() )
         {
+            $sponsorship = $this->getSponsorship( $afee );
+            assert( $sponsorship !== 0 );
+
             $this->appendTS( [
                 UID =>      $this->getNewUid(),
                 TXKEY =>    $txkey,
@@ -273,11 +275,12 @@ class BlockchainParser
 
             $tx[FEEASSET] = SPONSOR_ASSET;
             $tx[FEE] = 0;
-            return;
         }
-
-        $tx[FEEASSET] = $afee;
-        $tx[FEE] = $tx['fee'];
+        else
+        {
+            $tx[FEEASSET] = $afee;
+            $tx[FEE] = $tx['fee'];
+        }
     }
 
     private function getPTS( $from, $to )
@@ -453,41 +456,75 @@ class BlockchainParser
         ] );
     }
 
-    private function processIssueTransaction( $txkey, $tx, $dApp = null )
+    private function processIssueTransaction( $txkey, $tx )
     {
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_ISSUE,
-            A =>        isset( $dApp ) ? $dApp : $this->getSenderId( $tx['sender'] ),
-            B =>        UNDEFINED,
+            A =>        $this->getSenderId( $tx['sender'] ),
+            B =>        SELF,
             ASSET =>    $this->getNewAssetId( $tx ),
             AMOUNT =>   $tx['quantity'],
-            FEEASSET => isset( $dApp ) ? INVOKE_ASSET : $tx[FEEASSET],
-            FEE =>      isset( $dApp ) ? 0 : $tx[FEE],
+            FEEASSET => $tx[FEEASSET],
+            FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
         ] );
     }
 
-    private function processReissueTransaction( $txkey, $tx, $dApp = null )
+    private function processInvokeIssueTransaction( $txkey, $tx, $dApp, $group )
+    {
+        $this->appendTS( [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_ISSUE,
+            A =>        $dApp,
+            B =>        SELF,
+            ASSET =>    $this->getNewAssetId( $tx ),
+            AMOUNT =>   $tx['quantity'],
+            FEEASSET => INVOKE_ASSET,
+            FEE =>      0,
+            ADDON =>    0,
+            GROUP =>    $group,
+        ] );
+    }
+
+    private function processReissueTransaction( $txkey, $tx )
     {
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_REISSUE,
-            A =>        isset( $dApp ) ? $dApp : $this->getSenderId( $tx['sender'] ),
-            B =>        UNDEFINED,
+            A =>        $this->getSenderId( $tx['sender'] ),
+            B =>        SELF,
             ASSET =>    $this->getAssetId( $tx['assetId'] ),
             AMOUNT =>   $tx['quantity'],
-            FEEASSET => isset( $dApp ) ? INVOKE_ASSET : $tx[FEEASSET],
-            FEE =>      isset( $dApp ) ? 0 : $tx[FEE],
+            FEEASSET => $tx[FEEASSET],
+            FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
         ] );
     }
 
-    private function processBurnTransaction( $txkey, $tx, $dApp = null )
+    private function processInvokeReissueTransaction( $txkey, $tx, $dApp, $group )
+    {
+        $this->appendTS( [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_REISSUE,
+            A =>        $dApp,
+            B =>        SELF,
+            ASSET =>    $this->getAssetId( $tx['assetId'] ),
+            AMOUNT =>   $tx['quantity'],
+            FEEASSET => INVOKE_ASSET,
+            FEE =>      0,
+            ADDON =>    0,
+            GROUP =>    $group,
+        ] );
+    }
+
+    private function processBurnTransaction( $txkey, $tx )
     {
         $amount = isset( $tx['amount'] ) ? $tx['amount'] : $tx['quantity'];
 
@@ -495,14 +532,33 @@ class BlockchainParser
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_BURN,
-            A =>        isset( $dApp ) ? $dApp : $this->getSenderId( $tx['sender'] ),
-            B =>        UNDEFINED,
+            A =>        $this->getSenderId( $tx['sender'] ),
+            B =>        SELF,
             ASSET =>    $this->getAssetId( $tx['assetId'] ),
             AMOUNT =>   $amount,
-            FEEASSET => isset( $dApp ) ? INVOKE_ASSET : $tx[FEEASSET],
-            FEE =>      isset( $dApp ) ? 0 : $tx[FEE],
+            FEEASSET => $tx[FEEASSET],
+            FEE =>      $tx[FEE],
             ADDON =>    0,
             GROUP =>    0,
+        ] );
+    }
+
+    private function processInvokeBurnTransaction( $txkey, $tx, $dApp, $group )
+    {
+        $amount = isset( $tx['amount'] ) ? $tx['amount'] : $tx['quantity'];
+
+        $this->appendTS( [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_BURN,
+            A =>        $dApp,
+            B =>        SELF,
+            ASSET =>    $this->getAssetId( $tx['assetId'] ),
+            AMOUNT =>   $amount,
+            FEEASSET => INVOKE_ASSET,
+            FEE =>      0,
+            ADDON =>    0,
+            GROUP =>    $group,
         ] );
     }
 
@@ -645,44 +701,38 @@ class BlockchainParser
         }
     }
 
-    private function processTransferTransaction( $txkey, $tx, $dApp = null )
+    private function processTransferTransaction( $txkey, $tx )
     {
-        if( isset( $dApp ) )
-        {
-            //$amount = $tx['amount'];
-            //if( $amount === 0 )
-                //return;
+        $this->appendTS( [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_TRANSFER,
+            A =>        $this->getSenderId( $tx['sender'] ),
+            B =>        $this->getRecipientId( $tx['recipient'] ),
+            ASSET =>    isset( $tx['assetId'] ) ? $this->getAssetId( $tx['assetId'] ) : WAVES_ASSET,
+            AMOUNT =>   $tx['amount'],
+            FEEASSET => $tx[FEEASSET],
+            FEE =>      $tx[FEE],
+            ADDON =>    $this->getAliasId( $tx['recipient'] ),
+            GROUP =>    0,
+        ] );
+    }
 
-            $this->appendTS( [
-                UID =>      $this->getNewUid(),
-                TXKEY =>    $txkey,
-                TYPE =>     TX_TRANSFER,
-                A =>        $dApp,
-                B =>        $this->getRecipientId( $tx['address'] ),
-                ASSET =>    isset( $tx['asset'] ) ? $this->getAssetId( $tx['asset'] ) : WAVES_ASSET,
-                AMOUNT =>   $tx['amount'],
-                FEEASSET => INVOKE_ASSET,
-                FEE =>      0,
-                ADDON =>    $this->getAliasId( $tx['address'] ),
-                GROUP =>    0,
-            ] );
-        }        
-        else
-        {
-            $this->appendTS( [
-                UID =>      $this->getNewUid(),
-                TXKEY =>    $txkey,
-                TYPE =>     TX_TRANSFER,
-                A =>        $this->getSenderId( $tx['sender'] ),
-                B =>        $this->getRecipientId( $tx['recipient'] ),
-                ASSET =>    isset( $tx['assetId'] ) ? $this->getAssetId( $tx['assetId'] ) : WAVES_ASSET,
-                AMOUNT =>   $tx['amount'],
-                FEEASSET => $tx[FEEASSET],
-                FEE =>      $tx[FEE],
-                ADDON =>    $this->getAliasId( $tx['recipient'] ),
-                GROUP =>    0,
-            ] );
-        }
+    private function processInvokeTransferTransaction( $txkey, $tx, $dApp, $group )
+    {
+        $this->appendTS( [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_TRANSFER,
+            A =>        $dApp,
+            B =>        $this->getRecipientId( $tx['address'] ),
+            ASSET =>    isset( $tx['asset'] ) ? $this->getAssetId( $tx['asset'] ) : WAVES_ASSET,
+            AMOUNT =>   $tx['amount'],
+            FEEASSET => INVOKE_ASSET,
+            FEE =>      0,
+            ADDON =>    $this->getAliasId( $tx['address'] ),
+            GROUP =>    $group,
+        ] );
     }
 
     private function processLeaseTransaction( $txkey, $tx )
@@ -732,7 +782,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_ALIAS,
             A =>        $a,
-            B =>        UNDEFINED,
+            B =>        SELF,
             ASSET =>    0,
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
@@ -784,7 +834,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_DATA,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        UNDEFINED,
+            B =>        SELF,
             ASSET =>    0,
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
@@ -801,7 +851,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_SMART_ACCOUNT,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        UNDEFINED,
+            B =>        SELF,
             ASSET =>    0,
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
@@ -818,7 +868,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_SMART_ASSET,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        UNDEFINED,
+            B =>        SELF,
             ASSET =>    $this->getAssetId( $tx['assetId'] ),
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
@@ -826,12 +876,6 @@ class BlockchainParser
             ADDON =>    0,
             GROUP =>    0,
         ] );
-    }
-
-    private function getGroupSponsorship( $asset, $new = false )
-    {
-        $groupName = 's' . $asset;
-        return $new ? $this->kvGroups->getForcedKeyByValue( $groupName ) : $this->kvGroups->getKeyByValue( $groupName );
     }
 
     private function getGroupExchange( $basset, $sasset, $new = false )
@@ -846,26 +890,47 @@ class BlockchainParser
         return $new ? $this->kvGroups->getForcedKeyByValue( $groupName ) : $this->kvGroups->getKeyByValue( $groupName );
     }
 
-    private function processSponsorshipTransaction( $txkey, $tx, $dApp = null )
+    private function processSponsorshipTransaction( $txkey, $tx )
     {
         $asset = $this->getAssetId( $tx['assetId'] );
-        $group = $this->getGroupSponsorship( $asset, true );
 
         $ts = [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_SPONSORSHIP,
-            A =>        isset( $dApp ) ? $dApp : $this->getSenderId( $tx['sender'] ),
-            B =>        UNDEFINED,
-            ASSET =>    $this->getAssetId( $tx['assetId'] ),
+            A =>        $this->getSenderId( $tx['sender'] ),
+            B =>        $asset,
+            ASSET =>    $asset,
             AMOUNT =>   $tx['minSponsoredAssetFee'],
-            FEEASSET => isset( $dApp ) ? INVOKE_ASSET : $tx[FEEASSET],
-            FEE =>      isset( $dApp ) ? 0 : $tx[FEE],
+            FEEASSET => $tx[FEEASSET],
+            FEE =>      $tx[FEE],
+            ADDON =>    0,
+            GROUP =>    0,
+        ];
+
+        $this->setSponsorship( $asset, $ts );
+        $this->appendTS( $ts );
+    }
+
+    private function processInvokeSponsorshipTransaction( $txkey, $tx, $dApp, $group )
+    {
+        $asset = $this->getAssetId( $tx['assetId'] );
+
+        $ts = [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_SPONSORSHIP,
+            A =>        $dApp,
+            B =>        $asset,
+            ASSET =>    $asset,
+            AMOUNT =>   $tx['minSponsoredAssetFee'],
+            FEEASSET => INVOKE_ASSET,
+            FEE =>      0,
             ADDON =>    0,
             GROUP =>    $group,
         ];
 
-        $this->setSponsorship( $ts[ASSET], $ts );
+        $this->setSponsorship( $asset, $ts );
         $this->appendTS( $ts );
     }
 
@@ -935,21 +1000,20 @@ class BlockchainParser
         if( w8k2h( $txkey ) >= GetHeight_RideV4() )
         {
             foreach( $stateChanges['issues'] as $itx )
-                $this->processIssueTransaction( $txkey, $itx, $dApp );
+                $this->processInvokeIssueTransaction( $txkey, $itx, $dApp, $group );
             foreach( $stateChanges['reissues'] as $itx )
-                $this->processReissueTransaction( $txkey, $itx, $dApp );
-            foreach( $stateChanges['transfers'] as $itx )
-                $this->processTransferTransaction( $txkey, $itx, $dApp );            
+                if( $itx['quantity'] !== 0 )
+                    $this->processInvokeReissueTransaction( $txkey, $itx, $dApp, $group );         
             foreach( $stateChanges['burns'] as $itx )
-                $this->processBurnTransaction( $txkey, $itx, $dApp );
+                if( $itx['quantity'] !== 0 )
+                    $this->processInvokeBurnTransaction( $txkey, $itx, $dApp, $group );
             foreach( $stateChanges['sponsorFees'] as $itx )
-                $this->processSponsorshipTransaction( $txkey, $itx, $dApp );
+                $this->processInvokeSponsorshipTransaction( $txkey, $itx, $dApp, $group );
         }
-        else
-        {
-            foreach( $stateChanges['transfers'] as $itx )
-                $this->processTransferTransaction( $txkey, $itx, $dApp );
-        }
+
+        foreach( $stateChanges['transfers'] as $itx )
+            if( $itx['amount'] !== 0 )
+                $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $group );
     }
 
     private function processUpdateAssetInfoTransaction( $txkey, $tx )
@@ -959,7 +1023,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_UPDATE_ASSET_INFO,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        UNDEFINED,
+            B =>        SELF,
             ASSET =>    $this->getUpdatedAssetId( $tx ),
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
