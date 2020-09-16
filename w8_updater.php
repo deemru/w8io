@@ -12,11 +12,7 @@ singleton();
 wk()->log( 'w8_updater' );
 wk()->setBestNode();
 wk()->log( wk()->getNodeAddress() );
-for( ;; )
-{
-    updater();
-    gc_collect_cycles();
-}
+updater();
 
 function singleton()
 {
@@ -40,14 +36,14 @@ function updater()
 
     $blockchain = new Blockchain( W8DB );
 
-    $update_addon = defined( 'W8IO_UPDATE_ADDON' ) && W8IO_UPDATE_ADDON && W8IO_NETWORK === 'W';
+    $procs = defined( 'W8IO_UPDATE_PROCS' ) && W8IO_UPDATE_PROCS;
     $sleep = defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17;
 
     for( ;; )
     {
         $status = $blockchain->update();
 
-        if( memory_get_usage( true ) / 1024 / 1024 > 1024 )
+        if( defined( W8IO_MAX_MEMORY ) && memory_get_usage( true ) > W8IO_MAX_MEMORY )
         {
             wk()->log( 'w', 'restart updater()' );
             sleep( $sleep );
@@ -57,9 +53,13 @@ function updater()
         if( $status === W8IO_STATUS_UPDATED )
             continue;
 
-        procResetInfo( $blockchain->parser );
-        procScam( $blockchain->parser );
-        procWeight( $blockchain, $blockchain->parser );
+        if( $procs )
+        {
+            procResetInfo( $blockchain->parser );
+            if( W8IO_NETWORK === 'W' )
+                procScam( $blockchain->parser );
+            procWeight( $blockchain, $blockchain->parser );
+        }
 
         sleep( $sleep );
     }
