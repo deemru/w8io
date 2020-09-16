@@ -688,7 +688,7 @@ function txproc( &$tx )
         case 'sender':
         case 'recipient':
         case 'target': $ftx[$k] = w8io_a( $v ); break;
-        case 'attachment': $ftx[$k] = $v; $ftx[$k . '-decoded'] = html_entity_decode( htmlentities( trim( preg_replace( '/\s+/', ' ', wk()->base58Decode( $v ) ) ) ) ); break;
+        case 'attachment': $ftx[$k] = $v; $ftx[$k . '-decoded'] = trim( preg_replace( '/\s+/', ' ', wk()->base58Decode( $v ) ) ); break;
         default: $ftx[$k] = $v; break;
     }
     $tx = $ftx;
@@ -735,7 +735,7 @@ if( $address === 'tx' && isset( $f ) )
             if( $tx['type'] === 16 )
                 $tx = $wk->getStateChanges( $tx['id'] );
             txproc( $tx );
-            echo json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+            echo htmlentities( json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
         } 
     }
 }
@@ -931,7 +931,7 @@ if( $address === 'b' )
         foreach( $txs as &$tx )
             txproc( $tx );
         $block['transactions'] = $txs;
-        echo json_encode( $block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        echo htmlentities( json_encode( $block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
     }
 }
 else
