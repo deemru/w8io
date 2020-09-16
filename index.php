@@ -771,7 +771,7 @@ if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
             $asset = (int)$ts[ASSET];
             if( $asset !== $capid )
                 continue;
-            if( 16695 !== (int)$ts[GROUP] )
+            if( 15658 !== (int)$ts[GROUP] )
                 continue;
 
             $txs[(int)$ts[UID]] = $ts;
@@ -1129,7 +1129,7 @@ else
             $balance = [ 0 => 0 ];
 
         $heightTime = $RO->getLastHeightTimestamp();
-        $time = date( 'Y.m.d H:i:s', $heightTime[1] );
+        $time = date( 'Y.m.d H:i', $heightTime[1] );
         $height = $heightTime[0];
         
         if( $js )
@@ -1137,7 +1137,7 @@ else
         else
         {
             $full_address = $full_address !== $address ? " / <a href=\"". W8IO_ROOT . $full_address ."\">$full_address</a>" : '';
-            echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height" . PHP_EOL . PHP_EOL;
+            echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height <small>($time)</small>" . PHP_EOL . PHP_EOL;
             echo '<table><tr><td valign="top"><pre>';
         }
 
