@@ -9,7 +9,7 @@ require_once 'config.php';
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'b/1182278';
+    $uri = 'b/2246836';
 
 $js = false;
 
@@ -922,8 +922,6 @@ if( $address === 'b' )
 {
     $height = (int)$f;
     $block = wk()->getBlockAt( $height );
-    $txs = $block['transactions'];
-    unset( $block['transactions'] );
 
     if( $block === false )
     {
@@ -931,6 +929,8 @@ if( $address === 'b' )
     }
     else
     {
+        $txs = $block['transactions'];
+        unset( $block['transactions'] );
         $block['generator'] = w8io_a( $block['generator'] );
         if( $height > 1 )
         {
