@@ -9,7 +9,7 @@ require_once 'config.php';
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = '3P2HNUd5VUPLMQkJmctTPEeeHumiPN2GkTb';
+    $uri = 'b/1182278';
 
 $js = false;
 
@@ -676,22 +676,33 @@ function w8io_txid( $txid )
     return '<a href=' . W8IO_ROOT . 'tx/' . $txid . '>' . $txid . '</a>';
 }
 
-function txproc( &$tx )
+function htmlfilter( $kv )
 {
-    $ftx = [];
-    foreach( $tx as $k => $v )
-    switch( $k )
-    {
-        case 'id': $ftx[$k] = w8io_txid( $v ); break;
-        case 'order1':
-        case 'order2': $v['sender'] = w8io_a( $v['sender'] ); $ftx[$k] = $v; break;
-        case 'sender':
-        case 'recipient':
-        case 'target': $ftx[$k] = w8io_a( $v ); break;
-        case 'attachment': $ftx[$k] = $v; $ftx[$k . '-decoded'] = trim( preg_replace( '/\s+/', ' ', wk()->base58Decode( $v ) ) ); break;
-        default: $ftx[$k] = $v; break;
-    }
-    $tx = $ftx;
+    $fkv = [];
+    foreach( $kv as $k => $v )
+        if( is_array( $v ) )
+        {
+            if( $k === 'proofs' )
+                $k = 'proofs';
+            $fkv[$k] = htmlfilter( $v );
+        }
+        else
+        {
+            if( is_string( $k ) )
+                switch( $k )
+                {
+                    case 'id': $v = w8io_txid( $v ); break;
+                    case 'sender': 
+                    case 'recipient':
+                    case 'target': $v = w8io_a( $v ); break;
+                    case 'attachment': $fkv[$k . '-decoded'] = htmlentities( trim( preg_replace( '/\s+/', ' ', wk()->base58Decode( $v ) ) ) );
+                    default: $v = htmlentities( $v );
+                }
+
+            $fkv[$k] = $v;
+        }
+
+    return $fkv;
 }
 
 if( $address === 'CHARTS' )
@@ -734,8 +745,8 @@ if( $address === 'tx' && isset( $f ) )
         {
             if( $tx['type'] === 16 )
                 $tx = $wk->getStateChanges( $tx['id'] );
-            txproc( $tx );
-            echo htmlentities( json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
+            $tx = htmlfilter( $tx );
+            echo json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
         } 
     }
 }
@@ -928,10 +939,11 @@ if( $address === 'b' )
         }
         $block['height'] = w8io_height( $height );
         $block['next'] = w8io_height( $height + 1 );
-        foreach( $txs as &$tx )
-            txproc( $tx );
-        $block['transactions'] = $txs;
-        echo htmlentities( json_encode( $block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
+        $ftxs = [];
+        foreach( $txs as $tx )
+            $ftxs[] = htmlfilter( $tx );
+        $block['transactions'] = $ftxs;
+        echo json_encode( $block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
     }
 }
 else
