@@ -22,6 +22,9 @@ $arg2 = isset( $uri[3] ) ? $uri[3] : false;
 $arg3 = isset( $uri[4] ) ? $uri[4] : false;
 $arg4 = isset( $uri[5] ) ? $uri[5] : false;
 
+if( empty( $address ) )
+    $address = 'GENERATORS';
+
 $light = ( isset( $_COOKIE['light'] ) && (bool)$_COOKIE['light'] ) ? true : false;
 if( $address === 'ld' )
 {
@@ -161,9 +164,6 @@ if( $address === 'api' )
     
     exit;
 }
-
-if( empty( $address ) )
-    $address = 'GENESIS';
 
 if( $f === 'f' )
 {
