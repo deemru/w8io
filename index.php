@@ -1080,7 +1080,7 @@ if( $address === 'GENERATORS' )
     }
 
     $ntotal = str_pad( isset( $showtime ) ? $n : '', isset( $showtime ) ? 4 : 3, ' ', STR_PAD_LEFT );
-    $gentotal = str_pad( number_format( $gentotal / 100000000, 0, '', "'" ), 80, ' ', STR_PAD_LEFT );
+    $gentotal = str_pad( number_format( $gentotal / 100000000, 0, '', "'" ), 79, ' ', STR_PAD_LEFT );
     $feetotal = str_pad( number_format( $feetotal / 100000000, 8, '.', '' ), ( isset( $showtime ) ? 48 : 0 ) + 104, ' ', STR_PAD_LEFT );
 
     echo "<small style=\"font-size: 50%;\"><br></small><b>$ntotal $gentotal $feetotal</b> ($blktotal)" .  PHP_EOL;
