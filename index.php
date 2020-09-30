@@ -9,7 +9,7 @@ require_once 'config.php';
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'b/2246836';
+    $uri = 'w8io/pay/2200000/22630000';
 
 $js = false;
 
@@ -1258,7 +1258,111 @@ else
         if( !$js )
             echo '</pre></td><td valign="top"><pre>';
 
-        w8io_print_transactions( $aid, $where, false, 100, $address, !( $f === 'f' ) );
+        if( $f === 'pay' )
+        {
+            $from = $arg;
+            $to = $arg2;
+
+            $incomes = $RO->getLeasingIncomes( $aid, $from, $to );
+
+            if( $incomes !== false )
+            for( ;; )
+            {
+                arsort( $incomes );
+
+                if( $arg3 === 'raw' )
+                {
+                    echo "raw income ($from .. $to):" . PHP_EOL . PHP_EOL;
+
+                    $raw = [];
+                    foreach( $incomes as $a => $p )
+                    {
+                        $address = $RO->getAddressById( $a );
+                        $p = number_format( $p, 14, '.', '' );
+                        $raw[$address] = $p;
+                    }
+
+                    echo json_encode( $raw, JSON_PRETTY_PRINT );
+                    break;
+                }
+
+                $percent = (int)$arg3;
+                $percent = ( $percent > 0 && $percent < 100 ) ? $percent : 100;
+
+                // waves_fees
+                $waves_blocks = 0;
+                $waves_fees = 0;
+
+                $start_uid = $RO->db->query( 'SELECT * FROM pts WHERE r1 = ' . w8h2kg( $from ) )->fetchAll();
+                if( isset( $start_uid[0][UID] ) )
+                    $start_uid = (int)$start_uid[0][UID];
+                else
+                    break;
+
+                $end_uid = $RO->db->query( 'SELECT * FROM pts WHERE r1 = ' . w8h2kg( $to ) )->fetchAll();
+                if( isset( $end_uid[0][UID] ) )
+                    $end_uid = (int)$end_uid[0][UID];
+                else
+                    $end_uid = PHP_INT_MAX;
+
+                $query = $RO->db->query( "SELECT * FROM pts WHERE r0 >= $start_uid AND r0 <= $end_uid AND r4 = $aid AND r2 = 0" );
+                foreach( $query as $ts )
+                {
+                    if( (int)$ts[ASSET] === 0 )
+                    {
+                        $waves_fees += (int)$ts[AMOUNT];
+                        $waves_blocks++;
+                    }
+                }
+                $waves_fees = intval( $waves_fees * $percent / 100 );
+
+                echo "pay ($from .. $to) ($percent %):" . PHP_EOL . PHP_EOL;
+                echo w8io_amount( $waves_blocks, 0 ) . ' Blocks' . PHP_EOL;
+                echo w8io_amount( $waves_fees, 8 ) . " Waves" . PHP_EOL;
+
+                $payments = [];
+                foreach( $incomes as $a => $p )
+                    if( $p * $waves_fees > 10000 )
+                        $payments[] = $a;
+
+                $reserve = count( $payments );
+                $reserve = ( intdiv( $reserve, 100 ) + 1 ) * 100000 + $reserve * 50000 + ( $reserve % 2 ) * 50000;
+                $waves_fees -= $reserve * 2;
+
+                echo PHP_EOL;
+                $waves = 0;
+                $m = 0;
+                $n = 0;
+
+                foreach( $payments as $a )
+                {
+                    $p = $incomes[$a];
+
+                    if( $n === 0 )
+                    {
+                        $m++;
+                        echo "    Mass (Waves) #$m:" . PHP_EOL;
+                        echo "    ------------------------------------------------------------" . PHP_EOL;
+                    }
+                    $address = $RO->getAddressById( $a );
+                    $pay = number_format( $p * $waves_fees / 100000000, 8, '.', '' );
+                    $waves += $pay;
+                    echo "    $address, $pay" . PHP_EOL;
+                    if( ++$n === 100 )
+                    {
+                        $n = 0;
+                        echo "    ------------------------------------------------------------" . PHP_EOL . PHP_EOL;
+                    }
+                }
+
+                if( $n )
+                    echo "    ------------------------------------------------------------" . PHP_EOL . PHP_EOL;
+
+                break;
+            }
+        }
+        else
+            w8io_print_transactions( $aid, $where, false, 100, $address, !( $f === 'f' ) );
     }
 }
 

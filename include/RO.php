@@ -399,4 +399,77 @@ class RO
 
         return false;
     }
+
+    public function getLeasingIncomes( $aid, $from, $to )
+    {
+        if( $from > $to || $from < 0 || $to < 0 )
+            return false;
+
+        require_once 'w8_update_helpers.php';
+        $leases = [];
+
+        $query = $this->db->query( "SELECT * FROM pts WHERE r4 = $aid AND r2 = 8" );
+        foreach( $query as $ts )
+        {
+            $amount = (int)$ts[AMOUNT];
+            if( $amount === 0 )
+                continue;
+
+            $txkey = (int)$ts[TXKEY];
+            $a = (int)$ts[A];
+
+            $start = w8k2h( $txkey );
+            if( $start < GetHeight_LeaseReset() )
+                continue;
+
+            $start += 1000;
+            if( $start > $to )
+                continue;
+
+            $leases[$txkey] = [ 'start' => $start, 'a' => $a, 'amount' => $amount ];
+        }
+
+        $query = $this->db->query( "SELECT * FROM pts WHERE r4 = $aid AND r2 = 9" );
+        foreach( $query as $ts )
+        {
+            $txkey = (int)$ts[TXKEY];
+            $ltxkey = (int)$ts[ADDON];
+            if( isset( $leases[$ltxkey] ) )
+            {
+                $end = w8k2h( $txkey );
+
+                if( $end < $from || $end < $leases[$ltxkey]['start'] )
+                {
+                    unset( $leases[$ltxkey] );
+                    continue;
+                }
+
+                $leases[$ltxkey]['end'] = $end;
+            }
+        }
+
+        $range = $to - $from + 1;
+        $total = 0;
+
+        $incomes = [];
+        foreach( $leases as $lease )
+        {
+            $lease_range = $range;
+            if( $lease['start'] > $from )
+                $lease_range -= $lease['start'] - $from;
+            if( isset( $lease['end'] ) && $to > $lease['end'] )
+                $lease_range -= $to - $lease['end'];
+
+            $power = $lease_range / $range * $lease['amount'];
+            $total += $power;
+
+            $a = $lease['a'];
+            $incomes[$a] = $power + ( isset( $incomes[$a] ) ? $incomes[$a] : 0 );
+        }
+
+        foreach( $incomes as $a => $power )
+            $incomes[$a] = $power / $total;
+
+        return $incomes;
+    }
 }
