@@ -1235,18 +1235,18 @@ else
 
         foreach( $weights as $asset => $weight )
         {
-            $record = $prints[$asset];
-            if( $js )
-                $REST->setBalance( $asset, $weight, trim( $record['amount'] ), $record['asset'] );
-            else
-                echo $record['amount'] . ' <a href="' . $record['furl'] . '">' . $record['asset'] . '</a>' . PHP_EOL;
-
             if( $weight === 0 && !isset( $zerotrades ) )
             {
                 if( !$js )
                     echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
                 $zerotrades = true;
             }
+
+            $record = $prints[$asset];
+            if( $js )
+                $REST->setBalance( $asset, $weight, trim( $record['amount'] ), $record['asset'] );
+            else
+                echo $record['amount'] . ' <a href="' . $record['furl'] . '">' . $record['asset'] . '</a>' . PHP_EOL;
         }
 
         if( !isset( $zerotrades ) && !$js )
