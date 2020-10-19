@@ -435,7 +435,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                     $sign = ( $amount < 0 ? -1 : 1 ) * ( $isb ? ( $isa ? 0 : 1 ) : -1 );
 
                 $info = $RO->getAssetInfoById( $asset );
-                if( $spam && $info[1] === chr( 1 ) )
+                if( $spam && !$isa && $info[1] === chr( 1 ) )
                     continue;
 
                 $name = substr( $info, 2 );
@@ -706,7 +706,7 @@ function htmlfilter( $kv )
 }
 
 if( $address === 'CHARTS' )
-{
+{/*
     $height = $api->get_height();
 
     $from = $f ? (int)$f : 0;
@@ -730,7 +730,7 @@ if( $address === 'CHARTS' )
     $s |= isset( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https';
     $hostroot = 'http' . ( $s ? 's' : '' ) . '://' . $_SERVER['HTTP_HOST'] . W8IO_ROOT;
     echo w8io_chart( $title, "$froms .. $to", $hostroot . "api/chart/$from/$to" );
-}
+*/}
 else
 if( $address === 'tx' && isset( $f ) )
 {
