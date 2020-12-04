@@ -682,8 +682,6 @@ function htmlfilter( $kv )
     foreach( $kv as $k => $v )
         if( is_array( $v ) )
         {
-            if( $k === 'proofs' )
-                $k = 'proofs';
             $fkv[$k] = htmlfilter( $v );
         }
         else
@@ -703,6 +701,72 @@ function htmlfilter( $kv )
         }
 
     return $fkv;
+}
+
+function htmlscript( $tx )
+{
+    $decompile = wk()->fetch( '/utils/script/decompile', true, $tx['script'] );
+    if( $decompile === false )
+        return;
+    $decompile = wk()->json_decode( $decompile );
+    if( $decompile === false )
+        return;
+    $decompile1 = $decompile['script'];
+
+    require_once 'include/RO.php';
+    $RO = new RO( W8DB );
+    $a = $RO->getAddressIdByAddress( $tx['sender'] );
+    $txkey = $RO->getTxKeyByTxId( $tx['id'] );
+    if( $tx['type'] === 15 )
+    {
+        $assetId = $RO->getIdByAsset( $tx['assetId'] );
+        $prevScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 15 AND r5 = ' . $assetId . ' AND r1 < ' . $txkey . ' ORDER BY r0 DESC LIMIT 1' );
+    }
+    else if( $tx['type'] === 13 )
+    {
+        $prevScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 13 AND r1 < ' . $txkey . ' ORDER BY r0 DESC LIMIT 1' );
+    }
+    else
+        return;
+    $r = $prevScript->fetchAll();
+    if( !isset( $r[0][1] ) )
+    {
+        $decompile2 = '';
+        $result = 'Previous script: none' . PHP_EOL . PHP_EOL;
+    }
+    else
+    {
+        $tx = $RO->getTxIdByTxKey( $r[0][1] );
+        $tx = wk()->getTransactionById( $tx );
+        $result = 'Previous script: ' . w8io_txid( $tx['id'] ) . PHP_EOL . PHP_EOL;
+
+        if( empty( $tx['script'] ) )
+            $decompile2 = '';
+        else
+        {
+            $decompile = wk()->fetch( '/utils/script/decompile', true, $tx['script'] );
+            if( $decompile === false )
+                return;
+            $decompile = wk()->json_decode( $decompile );
+            if( $decompile === false )
+                return;
+            $decompile2 = $decompile['script'];
+        }
+    }
+
+    if( $decompile1 === $decompile2 )
+    {
+        $result .= 'Diff: no diff';
+    }
+    else
+    {
+        $result .= '<style>' . file_get_contents( 'vendor/jfcherng/php-diff/example/diff-table.css' ) . '</style>';
+        $result .= 'Diff: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'SideBySide', [], [ 'detailLevel' => 'word' ] ) . PHP_EOL;
+        if( !empty( $decompile2 ) )
+            $result .= 'Full: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'SideBySide', [ 'context' => \Jfcherng\Diff\Differ::CONTEXT_ALL ], [ 'detailLevel' => 'word' ] );
+    }
+    
+    return $result;
 }
 
 if( $address === 'CHARTS' )
@@ -745,8 +809,12 @@ if( $address === 'tx' && isset( $f ) )
         {
             if( $tx['type'] === 16 )
                 $tx = $wk->getStateChanges( $tx['id'] );
+            if( !empty( $tx['script'] ) )
+                $addon = htmlscript( $tx );
             $tx = htmlfilter( $tx );
             echo json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+            if( isset( $addon ) )
+                echo PHP_EOL . PHP_EOL . $addon;
         } 
     }
 }
