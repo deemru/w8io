@@ -1,8 +1,8 @@
 {
-    "minimum-stability": "dev",
     "require": {
-        "deemru/waveskit": "1.0.*",
+        "jfcherng/php-diff": "^6.8",
+        "deemru/waveskit": "^1.0",
         "deemru/triples": "^1.0",
-        "phpmailer/phpmailer": "^6.1"
+        "phpmailer/phpmailer": "^6.2"
     }
 }
