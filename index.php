@@ -570,7 +570,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
 
         if( $aid )
         {
-            $act = $isa ? '&#183;' : ' ';
+            $act = $isa ? '&#183; ' : '&nbsp; ';
             $tar = $isa ? ( $isb ? '<>' : w8io_a( $b ) ) : w8io_a( $a );
 
             if( $js )
@@ -606,8 +606,8 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
 
                 $outs[] = [
                     $act,
-                    ( $isa ? '<b>' : '' ) . '<small>' . $act . $txkey . '&nbsp;<a href="' . W8IO_ROOT . 'b/' . $block . '">[' . $block . ']</a>' .
-                    '</small> <a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>' . $amount . $asset . ( $isa ? '</b>' : '' ),
+                    ( $isa ? '<b>' : '' ) . '<small>' . $act . $txkey . '&nbsp;<a href="' . W8IO_ROOT . 'b/' . $block . '">&#183;</a>' .
+                    ' </small><a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>' . $amount . $asset . ( $isa ? '</b>' : '' ),
                     $reclen,
                     $addon, $linklen,
                     $tar . $fee,
@@ -807,8 +807,6 @@ if( $address === 'tx' && isset( $f ) )
             echo json_encode( [ 'error' => "getTransactionById( $f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
         else
         {
-            if( $tx['type'] === 16 )
-                $tx = $wk->getStateChanges( $tx['id'] );
             if( !empty( $tx['script'] ) )
                 $addon = htmlscript( $tx );
             $tx = htmlfilter( $tx );
@@ -819,14 +817,14 @@ if( $address === 'tx' && isset( $f ) )
     }
 }
 else
-if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
+if( $address === 'CAP' && isset( $f ) )
 {
     require_once 'include/RO.php';
     $RO = new RO( W8DB );
 
-    $assetId = $f;
-    $height = $height = $RO->getLastHeightTimestamp()[0] - 1500;
-    $capid = $RO->getIdByAsset( $assetId );
+    $group = (int)$f;
+    $height = $RO->getLastHeightTimestamp()[0] - 1500;
+    $gs = explode( '/', substr( $RO->getGroupById( $group ), 1 ) );
 
     echo '<table><tr>';
     for( $i = 0; $i < 1; $i++ )
@@ -847,10 +845,7 @@ if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
             if( $a <= 0 )
                 continue;
 
-            $asset = (int)$ts[ASSET];
-            if( $asset !== $capid )
-                continue;
-            if( 15658 !== (int)$ts[GROUP] )
+            if( $group !== (int)$ts[GROUP] )
                 continue;
 
             $txs[(int)$ts[UID]] = $ts;
@@ -921,7 +916,7 @@ if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
             $address = $RO->getAddressById( $address );
             if( in_array( $address, $bots ) )
                 echo '<b>';
-            echo w8io_a( $address, $assetId ) . ' = ' . w8io_amount( $amount, 8, 0 ) . '&nbsp;<br>';
+            echo w8io_a( $address ) . ' = ' . w8io_amount( $amount, 8, 0 ) . '&nbsp;<br>';
             if( in_array( $address, $bots ) )
                 echo '</b>';
         }
@@ -958,7 +953,7 @@ if( $address === 'CAP' && isset( $f ) && strlen( $f ) > 40 )
         foreach( $uid as $address => $t )
         {
             $balance = $RO->getBalanceByAddressId( $address );
-            echo str_pad( '(' . w8io_amount( $balance[0], 8, 0 ) . ')', 20 ) . '(' . w8io_amount( $balance[$capid], 8, 0 ) . ')&nbsp;&nbsp;&nbsp;<br>';
+            echo str_pad( '(' . w8io_amount( $balance[(int)$gs[0]], 8, 0 ) . ')', 20 ) . '(' . w8io_amount( $balance[(int)$gs[1]], 8, 0 ) . ')&nbsp;&nbsp;&nbsp;<br>';
         }
         echo '</td>';
 
@@ -1270,7 +1265,7 @@ else
             if( $asset > 0 )
             {
                 $info = $RO->getAssetInfoById( $asset );
-                if( $info[1] === chr( 1 ) )
+                if( $info[1] === chr( 1 ) && $arg !== $asset )
                     continue;
 
                 $id = $asset;
