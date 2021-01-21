@@ -331,7 +331,7 @@ class Blockchain
 
                     if( $tx['type'] === TX_INVOKE )
                     {
-                        $tx = wk()->getStateChanges( $txid );
+                        $tx = wk()->getTransactionById( $txid );
                         if( $tx === false || $tx['height'] !== $i )
                         {
                             wk()->log( 'i', 'OFFLINE: cannot get state changes' );
