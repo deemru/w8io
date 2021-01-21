@@ -1182,7 +1182,7 @@ else
         //if( $assetId === false )
         {
             echo '<pre>';
-            w8io_print_transactions( false, $where, false, 100, $address, !( $f === 'f' ) );
+            w8io_print_transactions( false, $where, false, 100, $address, !( $f === 'f' || $f === 'g' ) );
             echo '</pre>';
         }
         //else
