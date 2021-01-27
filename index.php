@@ -46,6 +46,37 @@ if( $address === 'tx' && is_numeric( $f ) )
         exit( header( 'location: ' . W8IO_ROOT . 'tx/' . $txid ) );
 }
 else
+if( $address === 'top' && $f !== false )
+{
+    require_once 'include/RO.php';
+    $RO = new RO( W8DB );
+
+    if( is_numeric( $f ) )
+    {
+        $f = $RO->getAssetById( $f );
+        if( $f !== false )
+            exit( header( 'location: ' . W8IO_ROOT . 'top/' . $f ) );
+    }
+
+    $aid = $f === 'Waves' ? 0 : $RO->getIdByAsset( $f );
+    if( $aid !== false )
+    {
+        $info = $RO->getAssetInfoById( $aid );
+        if( $info !== false )
+        {
+            if( $arg === false )
+                $arg = 1000;
+            else if( $arg > 10000 )
+                exit( header( 'location: ' . W8IO_ROOT . 'top/' . $f . '/10000' ) );
+        }
+        else
+        {
+            unset( $info );
+            unset( $aid );
+        }
+    }
+}
+else
 if( $address === 'GENERATORS' )
 {
     //$showtime = true;
@@ -318,38 +349,36 @@ $tcolor,
 isset( $showtime ) ? 'text-decoration: none;' : '',
 $tcolor );
 
-function w8io_print_distribution( $assetId )
+function w8io_print_distribution( $f, $aid, $info, $n )
 {
-    global $api;
+    global $RO;
 
-    if( $assetId )
-    {
-        $info = $api->get_asset_info( $assetId );
-        $decimals = $info['decimals'];
-        $name = $info['name'];
-    }
-    else
-    {
-        $decimals = 8;
-        $name = 'Waves';
-    }
-    
-    $balances = $api->get_asset_distribution( $assetId );
+    $decimals = (int)$info[0];
+    $asset = substr( $info, 2 );
+
+    $balances = $RO->db->query( 'SELECT * FROM balances WHERE r2 = ' . $aid . ' ORDER BY r3 DESC LIMIT ' . $n );
     $total = 0;
+    $n = 0;
+    $out = '';
     foreach( $balances as $balance )
     {
-        $aid = (int)$balance[0];
-        if( $aid > 0 )
-        {
-            $amount = (int)$balance[1];
-            if( $amount === 0 )
-                break;
-            $address = $api->get_address( $aid );
-            $total += $amount;
-            $amount = w8io_amount( $amount, $decimals );
-            echo '<a href="' . W8IO_ROOT . $address . '\">' . $address . '</a>: ' . $amount . PHP_EOL;
-        }    
+        $amount = (int)$balance[3];
+        if( $amount <= 0 )
+            break;
+        $total += $amount;
+        $aid = (int)$balance[1];
+        $amount = (int)$balance[3];
+        $address = $RO->getAddressById( $aid );
+        $out .= str_pad( ++$n, 5, ' ', STR_PAD_LEFT ) . ') <a href="' . W8IO_ROOT . $address . '/f/' . $f . '">' . $address . '</a>: ' . w8io_amount( $amount, $decimals ) . PHP_EOL;
     }
+
+    $heightTime = $RO->getLastHeightTimestamp();
+    $time = date( 'Y.m.d H:i', $heightTime[1] );
+    $height = $heightTime[0];
+
+    echo 'Top ' . $n . ' (' . $asset .') @ ' . $height . ' <small>(' . $time . ')</small>'. PHP_EOL . PHP_EOL;
+    echo str_pad( 'Top ' . $n . ' balance: ', 44, ' ', STR_PAD_LEFT ) . w8io_amount( $total, $decimals ) . PHP_EOL . PHP_EOL;
+    echo $out;
 }
 
 function w8io_sign( $sign )
@@ -1010,6 +1039,13 @@ if( $address === 'b' )
     }
 }
 else
+if( $address === 'top' && isset( $info ) )
+{
+    echo '<pre>';
+    w8io_print_distribution( $f, $aid, $info, $arg );
+    echo '</pre>';
+}
+else
 if( $address === 'GENERATORS' )
 {
     $arg = isset( $showtime ) && $arg !== false ? intval( $arg ) : null;
@@ -1082,7 +1118,7 @@ if( $address === 'GENERATORS' )
     }
 
     $generators = $infos;
-    uasort( $generators, function( $a, $b ){ return( $a['balance'] < $b['balance'] ); } );
+    uasort( $generators, function( $a, $b ){ return( $a['balance'] < $b['balance'] ? 1 : -1 ); } );
 
     $n = 0;
     foreach( $generators as $id => $generator )
@@ -1178,19 +1214,9 @@ else
 
     if( $aid === false )
     {
-        //$assetId = $address === 'WAVES' ? 0 : $RO->getAssetInfoById( $address );
-        //if( $assetId === false )
-        {
-            echo '<pre>';
-            w8io_print_transactions( false, $where, false, 100, $address, !( $f === 'f' || $f === 'g' ) );
-            echo '</pre>';
-        }
-        //else
-        //{
-        //    echo '<pre>';
-        //    w8io_print_distribution( $assetId );
-        //    echo '</pre>';
-        //}
+        echo '<pre>';
+        w8io_print_transactions( false, $where, false, 100, $address, !( $f === 'f' || $f === 'g' ) );
+        echo '</pre>';
     }
     else
     {
@@ -1233,7 +1259,7 @@ else
 
             if( $arg === 0 && $f !== 't' )
             {
-                echo '<b>' . $amount . ' <a href="' . $furl . '">' . $asset . '</a></b>' . PHP_EOL;
+                echo '<b>' . $amount . ' <a href="' . W8IO_ROOT . 'top/Waves">' . $asset . '</a></b>' . PHP_EOL;
                 echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
             }
             else
@@ -1290,7 +1316,7 @@ else
 
         if( isset( $frecord ) )
         {
-            echo '<b>' . $frecord['amount'] . ' <a href="' . $frecord['furl'] . '">' . $frecord['asset'] . '</a></b>' . PHP_EOL;
+            echo '<b>' . $frecord['amount'] . ' <a href="' . W8IO_ROOT . 'top/' . $frecord['id'] . '">' . $frecord['asset'] . '</a></b>' . PHP_EOL;
             echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
         }
 

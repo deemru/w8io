@@ -20,6 +20,7 @@ class BlockchainBalances
             [ 0,                     1,         1,         0 ] );
 
         $this->balances->db->exec( 'CREATE INDEX IF NOT EXISTS balances_r1_r2_index ON balances( r1, r2 )' );
+        $this->balances->db->exec( 'CREATE INDEX IF NOT EXISTS balances_r2_r3_index ON balances( r2, r3 )' );
 
         $this->uids = new KV;
         $this->setUid();
