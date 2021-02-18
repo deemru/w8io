@@ -187,42 +187,86 @@ function procWeight( $blockchain, $parser )
     $txheight = w8h2k( $height - 2880 );
     $pts = $parser->db->query( "SELECT * FROM pts WHERE r1 > $txheight" );
 
-    $weights = [];
+    $assets = $parser->kvAssets;
+    $assetInfo = $parser->kvAssetInfo;
+
+    $usdn = $assets->getKeyByValue( 'DG2xFkPdDwKUoBkzGAhQtLpSGzfXLiCYPEzeKH2Ad24p' );
+
+    $weights_waves = [];
+    $total_waves = 0;
+    $weights_usdn = [];
+    $total_usdn = 0;
+
     $lastTxKey = 0;
-    $total = 0;
+    $lastAsset = 0;
+    $lastAmount = 0;
+    $isWaves = true;
     foreach( $pts as $ts )
     {
         if( $ts[TYPE] !== '7' )
             continue;
         if( $ts[A] === $ts[B] )
             continue;
-        $asset = (int)$ts[ASSET];
 
-        if( $lastTxKey === $ts[TXKEY] )
+        $txkey = (int)$ts[TXKEY];
+        $asset = (int)$ts[ASSET];
+        $amount = (int)$ts[AMOUNT];
+
+        if( $lastTxKey === $txkey )
         {
-            if( $asset === 0 )
+            if( $asset === 0 || $asset === $usdn )
             {
-                $asset = (int)$lastTs[ASSET];
-                $amount = (int)$ts[AMOUNT];
+                $isWaves = $asset === 0;
+                $asset = $lastAsset;
             }
             else
             {
-                if( (int)$lastTs[ASSET] !== 0 )
+                if( $lastAsset !== 0 && $lastAsset !== $usdn )
                     continue;
-                $amount = (int)$lastTs[AMOUNT];
+
+                $isWaves = $lastAsset === 0;
+                $amount = $lastAmount;
             }
-            $weights[$asset] = $amount + ( isset( $weights[$asset] ) ? $weights[$asset] : 0 );
-            $total += $amount;
+
+            if( $isWaves )
+            {
+                $weights_waves[$asset] = $amount + ( isset( $weights_waves[$asset] ) ? $weights_waves[$asset] : 0 );
+                $total_waves += $amount;
+            }
+            else
+            {
+                $weights_usdn[$asset] = $amount + ( isset( $weights_usdn[$asset] ) ? $weights_usdn[$asset] : 0 );
+                $total_usdn += $amount;
+            }                
         }
         else
         {
-            $lastTxKey = $ts[TXKEY];
-            $lastTs = $ts;
+            $lastTxKey = $txkey;
+            $lastAsset = $asset;
+            $lastAmount = $amount;
         }
     }
 
-    $assets = $parser->kvAssets;
-    $assetInfo = $parser->kvAssetInfo;
+    $weights_usdn[$usdn] = $weights_usdn[0] * 2;
+    unset( $weights_usdn[0] );
+
+    foreach( $weights_waves as $asset => $weight )
+        $weights_waves[$asset] = $weight / $total_waves;
+    foreach( $weights_usdn as $asset => $weight )
+        $weights_usdn[$asset] = $weight / $total_usdn;
+
+    $weights = [];
+    foreach( $weights_waves as $asset => $weight )
+    {
+        $weights[$asset] = $weight;
+        if( isset( $weights_usdn[$asset] ) )
+        {
+            $weights[$asset] += $weights_usdn[$asset];
+            unset( $weights_usdn[$asset] );
+        }
+    }
+    foreach( $weights_usdn as $asset => $weight )
+        $weights[$asset] = $weight;
 
     arsort( $weights );
 
@@ -230,14 +274,14 @@ function procWeight( $blockchain, $parser )
     $num = 255;
     foreach( $weights as $asset => $weight )
     {
-        if( $weight < 100000000 )
+        if( $weight < 0.00001 )
             break;
         $tickers[$asset] = $num;
         if( $num > 2 )
             $num--;
     }
 
-    $mark_tickers = array_diff( $tickers, $last_tickers );
+    $mark_tickers = array_diff_assoc( $tickers, $last_tickers );
     $unset_tickers = array_diff( $last_tickers, $tickers );
 
     foreach( $mark_tickers as $asset => $num )
