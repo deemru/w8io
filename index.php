@@ -4,7 +4,10 @@ namespace w8io;
 
 use w8io_api;
 
-require_once 'config.php';
+if( file_exists( 'config.php' ) )
+    require_once 'config.php';
+else
+    require_once 'config.sample.php';
 
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );

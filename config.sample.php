@@ -1,25 +1,47 @@
 <?php
 
+require_once __DIR__ . '/include/w8_error_handler.php';
+require_once __DIR__ . '/vendor/autoload.php';
+use deemru\WavesKit;
+
 if( PHP_INT_SIZE < 8 )
     exit( 'ERROR: 64-bit required' );
 
-define( 'W8IO_DB_DIR', './var/db/' );
-define( 'W8IO_NODES', 'https://nodes.wavesnodes.com' );
-define( 'W8IO_NETWORK', 'T' ); // 'W' -- mainnet, 'T' -- testnet
-define( 'W8IO_ROOT', '/' );
+date_default_timezone_set( 'Europe/Moscow' );
 
-define( 'W8IO_HEIGHT_CORRECTION', 1 );
-define( 'W8IO_CACHE_PAIRS', 1024 );
-define( 'W8IO_CACHE_BLOCKS', 32 );
-define( 'W8IO_DB_PRAGMAS', 'PRAGMA temp_store = MEMORY;' );
-define( 'W8IO_DB_WRITE_PRAGMAS', 'PRAGMA synchronous = NORMAL; PRAGMA journal_mode = WAL; PRAGMA journal_size_limit = 16777216; PRAGMA optimize;' );
-define( 'W8DB', W8IO_DB_DIR . 'sqlite:blockchain.sqlite3' );
-define( 'W8DB_TRANSACTIONS', W8IO_DB_DIR . 'blockchain_transactions.sqlite3' );
-define( 'W8DB_BALANCES', W8IO_DB_DIR . 'blockchain_balances.sqlite3' );
-define( 'W8DB_AGGREGATE', W8IO_DB_DIR . 'blockchain_aggregate.sqlite3' );
-define( 'W8IO_CHECKPOINT_BLOCKCHAIN', 0 );
-define( 'W8IO_CHECKPOINT_BLOCKCHAIN_TRANSACTIONS', 1 );
-define( 'W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES', 2 );
-define( 'W8IO_CHECKPOINT_BLOCKCHAIN_AGGREGATE', 3 );
-define( 'W8IO_MAX_UPDATE_BATCH', 1 );
-define( 'W8IO_UPDATE_DELAY', 10 );
+function wk( $full = true ) : WavesKit
+{
+    static $wk;
+
+    if( !isset( $wk ) )
+    {
+        $wk = new WavesKit( W8IO_NETWORK, [ 'w', 'e', 'i', 's' ] );
+        if( $full )
+        {
+            $nodes = explode( '|', W8IO_NODES );
+            define( 'WK_CURL_SETBESTONERROR', true );
+            $wk->setNodeAddress( $nodes, 0 );
+            $wk->setCryptash( 'SECRET_STRING_SET_YOURS_HERE' );
+        }
+    }
+    
+    return $wk;
+}
+
+function w8_err( $message = '(no message)' )
+{
+    if( isset( $_SERVER['REQUEST_URI'] ) )
+        $message .= ' (' . $_SERVER['REQUEST_URI'] . ')';
+    trigger_error( $message, E_USER_ERROR );
+}
+
+define( 'W8IO_DB_DIR', __DIR__ . '/var/db/' );
+define( 'W8IO_NODES', 'http://127.0.0.1:6869|https://gamenode.tradisys.com' );
+define( 'W8IO_NETWORK', 'W' ); // 'W' -- mainnet, 'T' -- testnet
+define( 'W8IO_ROOT', '/' );
+define( 'W8DB', 'sqlite:' . W8IO_DB_DIR . 'blockchain.sqlite3' );
+define( 'W8IO_MAX_UPDATE_BATCH', 1 ); // set more on when on a local node
+define( 'W8IO_UPDATE_DELAY', 1 );
+define( 'W8IO_UPDATE_PROCS', 1 );
+define( 'WK_CURL_TIMEOUT', 15 );
+define( 'W8IO_MAX_MEMORY', 1024 * 1024 * 1024 );
