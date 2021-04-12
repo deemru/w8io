@@ -478,6 +478,12 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                 $asset = ' <a href="' . W8IO_ROOT . $address . '/f/' . $asset . '">' . $name . '</a>';
                 $reclen = strlen( $amount ) + mb_strlen( html_entity_decode( $name ), 'UTF-8' );
             }
+            else if( $amount === 0 && $type === TX_INVOKE )
+            {
+                $amount = '';
+                $asset = '';
+                $reclen = -1;
+            }
             else
             {
                 $sign = ( ( $type === TX_LEASE_CANCEL ) ? -1 : 1 ) * ( ( $amount < 0 ) ? -1 : 1 ) * ( $isb ? ( $isa ? 0 : 1 ) : -1 );
