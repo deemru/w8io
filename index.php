@@ -601,7 +601,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             }
         }
 
-        $wtype = ( $ts[FEEASSET] === INVOKE_ASSET ? 'invoke ' : '' ) . w8io_tx_type( $type );
+        $wtype = w8io_tx_type( $type );
         $reclen += strlen( $wtype );
         $maxlen1 = max( $maxlen1, $reclen );
         $block = w8k2h( $ts[TXKEY] );
@@ -641,6 +641,9 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             {
                 $date = date( 'Y.m.d H:i', $RO->getTimestampByHeight( w8k2h( $ts[TXKEY] ) ) );
                 $txkey = '<a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . $date . '</a>';
+
+                if( $ts[FEEASSET] === INVOKE_ASSET )
+                    $fee = ' <small>invoke</small>';
 
                 $outs[] = [
                     $act,
