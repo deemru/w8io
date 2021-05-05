@@ -12,7 +12,7 @@ else
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'w8io/pay/2200000/22630000';
+    $uri = 'tk/AZ31KrCCx2F7Q1gtDAmKYegFdkfRHUnttGuBaboBBZH4';
 
 $js = false;
 
@@ -47,6 +47,15 @@ if( $address === 'tx' && is_numeric( $f ) )
     $txid = $RO->getTxIdByTxKey( $f );
     if( $txid !== false )
         exit( header( 'location: ' . W8IO_ROOT . 'tx/' . $txid ) );
+}
+else
+if( $address === 'tk' )
+{
+    require_once 'include/RO.php';
+    $RO = new RO( W8DB );
+
+    $txkey = $RO->getTxKeyByTxId( $f );
+    exit( (string)$txkey );
 }
 else
 if( $address === 'top' && $f !== false )
