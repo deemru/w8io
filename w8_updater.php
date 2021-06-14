@@ -8,17 +8,24 @@ else
     require_once __DIR__ . '/config.sample.php';
 require_once __DIR__ . '/include/w8_update_helpers.php';
 
-if( 0 ) // SELFTEST
+function selftest()
 {
     require_once 'include/RO.php';
     $RO = new RO( W8DB );
 
-    for( $a = 55524;; ++$a )
-    //$a = 0;
+    for( $a = 0;; ++$a )
     {
-        $assetId = $RO->getAssetById( $a );
-        if( $assetId === false )
-            break;
+        if( $a === 0 )
+        {
+            $assetId = 'WAVES';
+        }
+        else
+        {
+            $assetId = $RO->getAssetById( $a );
+            if( $assetId === false )
+                break;
+        }
+        
         $aid = $assetId === 'WAVES' ? 0 : $RO->getIdByAsset( $assetId );
         $info = $RO->getAssetInfoById( $aid );
 
@@ -28,7 +35,7 @@ if( 0 ) // SELFTEST
         $balances = $RO->db->query( 'SELECT * FROM balances WHERE r2 = ' . $aid );
         $total = 0;
         $i = 0;
-        //wk()->log( $a .': ' . $assetId . ' (' . $asset . ')' );
+        wk()->log( $a .': ' . $assetId . ' (' . $asset . ')' );
         foreach( $balances as $balance )
         {
             if( ++$i % 10000 === 0 )
@@ -49,10 +56,14 @@ if( 0 ) // SELFTEST
             $address = $RO->getAddressById( $aid );
             $chainAmount = wk()->balance( $address, $assetId );
 
+            if( $a === 0 && $address === '3MkcWFcRjVjFvmyk1F4LECZcW1nkThUS2ug' ) // last GENERATOR
+                continue;
+
             if( $chainAmount !== $amount )
             {
                 wk()->log( $a .': ' . $assetId . ' (' . $asset . ')' );
                 wk()->log( 'e', $address . ': ' . w8io_amount( $chainAmount, $decimals ) . ' !== ' . w8io_amount( $amount, $decimals ) );
+                exit;
             }
         }
     }
@@ -61,7 +72,7 @@ if( 0 ) // SELFTEST
 
 singleton();
 if( !isset( $argv[1] ) )
-    $argv[1] = 'updater';
+    $argv[1] = 'selftest';
 
 switch( $argv[1] )
 {
@@ -71,6 +82,14 @@ switch( $argv[1] )
         wk()->setBestNode();
         wk()->log( wk()->getNodeAddress() );
         updater();
+        break;
+    }
+    case 'selftest':
+    {
+        wk()->log( 'w8_selftest' );
+        wk()->setBestNode();
+        wk()->log( wk()->getNodeAddress() );
+        selftest();
         break;
     }
     case 'indexer':
