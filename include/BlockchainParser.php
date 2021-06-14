@@ -3,7 +3,6 @@
 namespace w8io;
 
 require_once 'common.php';
-require_once 'RO.php';
 
 use deemru\Pairs;
 use deemru\Triples;
@@ -21,8 +20,10 @@ class BlockchainParser
     public KV $kvGroups;
     public KV $kvFunctions;
     public KV $sponsorships;
+    public KV $leases;
     public Blockchain $blockchain;
     public BlockchainParser $parser;
+    public BlockchainBalances $balances;
 
     public function __construct( $db )
     {
@@ -31,14 +32,18 @@ class BlockchainParser
             // uid                 | txkey    | type     | a        | b        | asset    | amount   | feeasset | fee      | addon    | group
             // r0                  | r1       | r2       | r3       | r4       | r5       | r6       | r7       | r8       | r9       | r10
             [ 'INTEGER PRIMARY KEY', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER' ],
-            [ 0,                     1,         1,         1,         1,         1,         0,         0,         0,         0,         1 ] );
+          //[ 0,                     1,         1,         1,         1,         1,         0,         0,         0,         0,         1 ] );
+            [ 0,                     1,         0,         0,         0,         0,         0,         0,         0,         0,         0 ] );
 
-        $this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r3_r2_index ON pts( r3, r2 )' );
-        $this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r4_r2_index ON pts( r4, r2 )' );
-        $this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r3_r5_index ON pts( r3, r5 )' );
-        $this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r4_r5_index ON pts( r4, r5 )' );
+        // CREATE INDEX pts_r3_index ON pts( r3 )
+        // CREATE INDEX pts_r4_index ON pts( r4 )
+        // CREATE INDEX pts_r5_index ON pts( r5 )
+        // CREATE INDEX pts_r5_index ON pts( r10 )
+        //$this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r3_r2_index ON pts( r3, r2 )' );
+        //$this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r4_r2_index ON pts( r4, r2 )' );
+        //$this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r3_r5_index ON pts( r3, r5 )' );
+        //$this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r4_r5_index ON pts( r4, r5 )' );
 
-        $this->RO = new RO( $this->db );
         $this->balances = new BlockchainBalances( $this->db );
 
         $this->kvAddresses =     ( new KV( true )  )->setStorage( $this->db, 'addresses', true );
@@ -50,6 +55,7 @@ class BlockchainParser
         $this->kvFunctions =     ( new KV( true ) )->setStorage( $this->db, 'functions', true );
 
         $this->sponsorships = new KV;
+        $this->leases = new KV;
 
         $this->kvs = [
             $this->kvAddresses,
@@ -118,31 +124,24 @@ class BlockchainParser
         return $sponsorship;
     }
 
-    private function getLeaseInfoById( $id )
+    private function setLeaseInfo( $id, $tx )
     {
-        $txkey = $this->RO->getTxKeyByTxId( $id );
-        if( $txkey === false )
-            w8_err( "getLeaseInfoById: getTxKeyByTxId( $id )" );
+        $this->leases->setKeyValue( $id, $tx );
+    }
 
-        foreach( $this->recs as $ts )
-            if( $ts[TXKEY] === $txkey && $ts[TYPE] === TX_LEASE )
-                return $ts;
-
-        if( !isset( $this->getLeaseInfoById ) )
+    private function getLeaseInfo( $id )
+    {
+        $tx = $this->leases->getValueByKey( $id );
+        if( $tx === false )
         {
-            $this->getLeaseInfoById = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r1 = ? ORDER BY r0 DESC LIMIT 1' );
-            if( $this->getLeaseInfoById === false )
-                w8_err();
+            if( false === ( $tx = wk()->fetch( '/leasing/info/' . $id, false, null, [ 404 ] ) ) )
+                w8_err( __FUNCTION__ );
+
+            if( null === ( $tx = wk()->json_decode( $tx ) ) )
+                w8_err( __FUNCTION__ );
         }
 
-        if( $this->getLeaseInfoById->execute( [ $txkey ] ) === false )
-            w8_err();
-
-        $pts = ptsFilter( $this->getLeaseInfoById->fetchAll() );
-        if( $pts[0][TYPE] !== TX_LEASE )
-            w8_err();
-
-        return $pts[0];
+        return $tx;
     }
 
     public function setHighs()
@@ -322,19 +321,19 @@ class BlockchainParser
             if( $height >= GetHeight_NG() )
             {
                 $ngfee = intdiv( $fee, 5 ) * 2;
-                $fees[$feeasset] = $ngfee + ( isset( $fees[$feeasset] ) ? $fees[$feeasset] : 0 );
-                $ngfees[$feeasset] = $fee - $ngfee + ( isset( $ngfees[$feeasset] ) ? $ngfees[$feeasset] : 0 );
+                $fees[$feeasset] = $ngfee + ( $fees[$feeasset] ?? 0 );
+                $ngfees[$feeasset] = $fee - $ngfee + ( $ngfees[$feeasset] ?? 0 );
             }
             else
             {
-                $fees[$feeasset] = $fee + ( isset( $fees[$feeasset] ) ? $fees[$feeasset] : 0 );
+                $fees[$feeasset] = $fee + ( $fees[$feeasset] ?? 0 );
             }
         }
 
         if( $height > GetHeight_NG() )
             foreach( $this->getNGFeesAt( $height - 1 ) as $feeasset => $fee )
                 if( $fee > 0 )
-                    $fees[$feeasset] = $fee + ( isset( $fees[$feeasset] ) ? $fees[$feeasset] : 0 );
+                    $fees[$feeasset] = $fee + ( $fees[$feeasset] ?? 0 );
 
         $this->lastfees = [ $height, $ngfees ];
         return [ $fees, $ngfees ];
@@ -375,7 +374,7 @@ class BlockchainParser
 
     private function processGeneratorTransaction( $txkey, $tx )
     {
-        list( $fees, $ngfees ) = $this->getFeesAt( w8k2h( $txkey ), $tx['reward'] );
+        [ $fees, $ngfees ] = $this->getFeesAt( w8k2h( $txkey ), $tx['reward'] );
 
         foreach( $fees as $feeasset => $fee )
         {
@@ -389,7 +388,7 @@ class BlockchainParser
                 AMOUNT =>   $fee,
                 FEEASSET => 0,
                 FEE =>      0,
-                ADDON =>    isset( $ngfees[$feeasset] ) ? $ngfees[$feeasset] : 0,
+                ADDON =>    $ngfees[$feeasset] ?? 0,
                 GROUP =>    0,
             ];
         }
@@ -478,12 +477,12 @@ class BlockchainParser
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
-            TYPE =>     TX_ISSUE,
+            TYPE =>     ITX_ISSUE,
             A =>        $dApp,
             B =>        SELF,
             ASSET =>    $this->getNewAssetId( $tx ),
             AMOUNT =>   $tx['quantity'],
-            FEEASSET => INVOKE_ASSET,
+            FEEASSET => 0,
             FEE =>      0,
             ADDON =>    0,
             GROUP =>    $group,
@@ -512,12 +511,12 @@ class BlockchainParser
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
-            TYPE =>     TX_REISSUE,
+            TYPE =>     ITX_REISSUE,
             A =>        $dApp,
             B =>        SELF,
             ASSET =>    $this->getAssetId( $tx['assetId'] ),
             AMOUNT =>   $tx['quantity'],
-            FEEASSET => INVOKE_ASSET,
+            FEEASSET => 0,
             FEE =>      0,
             ADDON =>    0,
             GROUP =>    $group,
@@ -526,7 +525,7 @@ class BlockchainParser
 
     private function processBurnTransaction( $txkey, $tx )
     {
-        $amount = isset( $tx['amount'] ) ? $tx['amount'] : $tx['quantity'];
+        $amount = $tx['amount'] ?? $tx['quantity'];
 
         $this->appendTS( [
             UID =>      $this->getNewUid(),
@@ -545,17 +544,17 @@ class BlockchainParser
 
     private function processInvokeBurnTransaction( $txkey, $tx, $dApp, $group )
     {
-        $amount = isset( $tx['amount'] ) ? $tx['amount'] : $tx['quantity'];
+        $amount = $tx['amount'] ?? $tx['quantity'];
 
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
-            TYPE =>     TX_BURN,
+            TYPE =>     ITX_BURN,
             A =>        $dApp,
             B =>        SELF,
             ASSET =>    $this->getAssetId( $tx['assetId'] ),
             AMOUNT =>   $amount,
-            FEEASSET => INVOKE_ASSET,
+            FEEASSET => 0,
             FEE =>      0,
             ADDON =>    0,
             GROUP =>    $group,
@@ -604,8 +603,8 @@ class BlockchainParser
         // MATCHER;
         $diff = [];
         $diff[$bafee] = $bfee;
-        $diff[$safee] = $sfee + ( isset( $diff[$safee] ) ? $diff[$safee] : 0 );
-        $diff[$afee] = -$fee + ( isset( $diff[$afee] ) ? $diff[$afee] : 0 );
+        $diff[$safee] = $sfee + ( $diff[$safee] ?? 0 );
+        $diff[$afee] = -$fee + ( $diff[$afee] ?? 0 );
         foreach( $diff as $masset => $mamount )
         {
             if( $masset === $afee )
@@ -723,12 +722,12 @@ class BlockchainParser
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
-            TYPE =>     TX_TRANSFER,
+            TYPE =>     ITX_TRANSFER,
             A =>        $dApp,
             B =>        $this->getRecipientId( $tx['address'] ),
             ASSET =>    isset( $tx['asset'] ) ? $this->getAssetId( $tx['asset'] ) : WAVES_ASSET,
             AMOUNT =>   $tx['amount'],
-            FEEASSET => INVOKE_ASSET,
+            FEEASSET => 0,
             FEE =>      0,
             ADDON =>    $this->getAliasId( $tx['address'] ),
             GROUP =>    $group,
@@ -743,31 +742,71 @@ class BlockchainParser
             TYPE =>     TX_LEASE,
             A =>        $this->getSenderId( $tx['sender'] ),
             B =>        $this->getRecipientId( $tx['recipient'] ),
-            ASSET =>    isset( $tx['assetId'] ) ? $this->getAssetId( $tx['assetId'] ) : WAVES_ASSET,
+            ASSET =>    WAVES_ASSET,
             AMOUNT =>   $tx['amount'],
             FEEASSET => $tx[FEEASSET],
             FEE =>      $tx[FEE],
             ADDON =>    $this->getAliasId( $tx['recipient'] ),
             GROUP =>    0,
         ] );
+
+        $this->setLeaseInfo( $tx['id'], $tx );
+    }
+
+    private function processInvokeLeaseTransaction( $txkey, $tx, $dApp, $group )
+    {
+        $this->appendTS( [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     ITX_LEASE,
+            A =>        $dApp,
+            B =>        $this->getRecipientId( $tx['recipient'] ),
+            ASSET =>    WAVES_ASSET,
+            AMOUNT =>   $tx['amount'],
+            FEEASSET => 0,
+            FEE =>      0,
+            ADDON =>    $this->getAliasId( $tx['recipient'] ),
+            GROUP =>    $group,
+        ] );
+
+        $this->setLeaseInfo( $tx['id'], $tx );
     }
 
     private function processLeaseCancelTransaction( $txkey, $tx )
     {
-        $ts = $this->getLeaseInfoById( $tx['leaseId'] );
+        $ltx = $this->getLeaseInfo( $tx['leaseId'] );
 
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_LEASE_CANCEL,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        $ts[B],
-            ASSET =>    $ts[ASSET],
-            AMOUNT =>   $ts[AMOUNT],
+            B =>        $this->getRecipientId( $ltx['recipient'] ),
+            ASSET =>    WAVES_ASSET,
+            AMOUNT =>   $ltx['amount'],
             FEEASSET => $tx[FEEASSET],
             FEE =>      $tx[FEE],
-            ADDON =>    $ts[TXKEY],
+            ADDON =>    0,
             GROUP =>    0,
+        ] );
+    }
+
+    private function processInvokeLeaseCancelTransaction( $txkey, $tx, $dApp, $group )
+    {
+        $ltx = $this->getLeaseInfo( $tx['id'] );
+
+        $this->appendTS( [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     ITX_LEASE_CANCEL,
+            A =>        $dApp,
+            B =>        $this->getRecipientId( $ltx['recipient'] ),
+            ASSET =>    WAVES_ASSET,
+            AMOUNT =>   $ltx['amount'],
+            FEEASSET => 0,
+            FEE =>      0,
+            ADDON =>    0,
+            GROUP =>    $group,
         ] );
     }
 
@@ -919,12 +958,12 @@ class BlockchainParser
         $ts = [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
-            TYPE =>     TX_SPONSORSHIP,
+            TYPE =>     ITX_SPONSORSHIP,
             A =>        $dApp,
             B =>        $asset,
             ASSET =>    $asset,
             AMOUNT =>   $tx['minSponsoredAssetFee'],
-            FEEASSET => INVOKE_ASSET,
+            FEEASSET => 0,
             FEE =>      0,
             ADDON =>    0,
             GROUP =>    $group,
@@ -934,47 +973,84 @@ class BlockchainParser
         $this->appendTS( $ts );
     }
 
-    private function processInvokeTransaction( $txkey, $tx )
+    private function processInvokeTransaction( $txkey, $tx, $dAppToDapp = null )
     {
-        if( !isset( $tx['stateChanges'] ) )
-            w8io_error( "getStateChanges( {$tx['id']} ) failed" );
-
-        if( isset( $tx['payment'][0] ) )
+        if( isset( $dAppToDapp ) )
         {
-            $payment = $tx['payment'][0];
-            $asset = isset( $payment['assetId'] ) ? $this->getAssetId( $payment['assetId'] ) : WAVES_ASSET;
-            $amount = $payment['amount'];
+            if( isset( $tx['payments'][0] ) )
+            {
+                $payments = $tx['payments'];
+                $n = count( $payments );
+
+                $payment = $payments[0];
+                $asset = isset( $payment['asset'] ) ? $this->getAssetId( $payment['asset'] ) : WAVES_ASSET;
+                $amount = $payment['amount'];
+                
+            }
+            else
+            {
+                $n = 0;
+
+                $asset = WAVES_ASSET;
+                $amount = 0;
+            }
+
+            $sender = $dAppToDapp;
+            $feeasset = 0;
+            $fee = 0;
+            $type = ITX_INVOKE;
         }
         else
         {
-            $asset = WAVES_ASSET;
-            $amount = 0;
+            if( isset( $tx['payment'][0] ) )
+            {
+                $payments = $tx['payment'];
+                $n = count( $payments );
+
+                $payment = $payments[0];
+                $asset = isset( $payment['assetId'] ) ? $this->getAssetId( $payment['assetId'] ) : WAVES_ASSET;
+                $amount = $payment['amount'];
+            }
+            else
+            {
+                $n = 0;
+
+                $asset = WAVES_ASSET;
+                $amount = 0;
+            }
+
+            $sender = $this->getSenderId( $tx['sender'], $tx );
+            $feeasset = $tx[FEEASSET];
+            $fee = $tx[FEE];
+            $type = TX_INVOKE;
         }
 
-        $sender = $this->getSenderId( $tx['sender'], $tx );
         $dApp = $this->getRecipientId( $tx['dApp'] );
         $addon = $this->getAliasId( $tx['dApp'] );
-        $function = $this->getFunctionId( isset( $tx['call'] ) ? $tx['call']['function'] : 'default' );
+        $function = $this->getFunctionId( $tx['call']['function'] ?? 'default' );
         $group = $this->getGroupInvoke( $dApp, $function, true );
 
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
-            TYPE =>     TX_INVOKE,
+            TYPE =>     $type,
             A =>        $sender,
             B =>        $dApp,
             ASSET =>    $asset,
             AMOUNT =>   $amount,
-            FEEASSET => $tx[FEEASSET],
-            FEE =>      $tx[FEE],
+            FEEASSET => $feeasset,
+            FEE =>      $fee,
             ADDON =>    $addon,
             GROUP =>    $group,
         ] );
 
-        if( isset( $tx['payment'][1] ) )
+        for( $i = 1; $i < $n; ++$i )
         {
-            $payment = $tx['payment'][1];
-            $asset = isset( $payment['assetId'] ) ? $this->getAssetId( $payment['assetId'] ) : WAVES_ASSET;
+            $payment = $payments[$i];
+            if( isset( $dAppToDapp ) )
+                $asset = isset( $payment['asset'] ) ? $this->getAssetId( $payment['asset'] ) : WAVES_ASSET;
+            else
+                $asset = isset( $payment['assetId'] ) ? $this->getAssetId( $payment['assetId'] ) : WAVES_ASSET;
             $amount = $payment['amount'];
 
             $this->appendTS( [
@@ -992,11 +1068,31 @@ class BlockchainParser
             ] );
         }
 
-        if( isset( $tx['payment'][2] ) )
-            w8_err( 'unexpected 3rd payment' );
-
         $stateChanges = $tx['stateChanges'];
 
+        if( w8k2h( $txkey ) >= GetHeight_RideV5() )
+        {
+            foreach( $stateChanges['invokes'] as $itx )
+                $this->processInvokeTransaction( $txkey, $itx, $dApp );
+            foreach( $stateChanges['issues'] as $itx )
+                $this->processInvokeIssueTransaction( $txkey, $itx, $dApp, $group );
+            foreach( $stateChanges['reissues'] as $itx )
+                if( $itx['quantity'] !== 0 )
+                    $this->processInvokeReissueTransaction( $txkey, $itx, $dApp, $group );         
+            foreach( $stateChanges['burns'] as $itx )
+                if( $itx['quantity'] !== 0 )
+                    $this->processInvokeBurnTransaction( $txkey, $itx, $dApp, $group );
+            foreach( $stateChanges['sponsorFees'] as $itx )
+                $this->processInvokeSponsorshipTransaction( $txkey, $itx, $dApp, $group );
+            foreach( $stateChanges['transfers'] as $itx )
+                if( $itx['amount'] !== 0 )
+                    $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $group );
+            foreach( $stateChanges['leases'] as $itx )
+                $this->processInvokeLeaseTransaction( $txkey, $itx, $dApp, $group );
+            foreach( $stateChanges['leaseCancels'] as $itx )
+                $this->processInvokeLeaseCancelTransaction( $txkey, $itx, $dApp, $group );
+        }
+        else
         if( w8k2h( $txkey ) >= GetHeight_RideV4() )
         {
             foreach( $stateChanges['issues'] as $itx )
@@ -1009,11 +1105,16 @@ class BlockchainParser
                     $this->processInvokeBurnTransaction( $txkey, $itx, $dApp, $group );
             foreach( $stateChanges['sponsorFees'] as $itx )
                 $this->processInvokeSponsorshipTransaction( $txkey, $itx, $dApp, $group );
+            foreach( $stateChanges['transfers'] as $itx )
+                if( $itx['amount'] !== 0 )
+                    $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $group );
         }
-
-        foreach( $stateChanges['transfers'] as $itx )
-            if( $itx['amount'] !== 0 )
-                $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $group );
+        else
+        {
+            foreach( $stateChanges['transfers'] as $itx )
+                if( $itx['amount'] !== 0 )
+                    $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $group );
+        }
     }
 
     private function processUpdateAssetInfoTransaction( $txkey, $tx )
@@ -1120,6 +1221,7 @@ class BlockchainParser
         // PTS
         $this->pts->query( 'DELETE FROM pts WHERE r1 >= '. $txfrom );
         $this->sponsorships->reset();
+        $this->leases->reset();
         $this->setHighs();
         $this->feerecs = [];
         $this->workheight = -1;

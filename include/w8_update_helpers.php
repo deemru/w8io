@@ -47,6 +47,20 @@ function GetHeight_RideV4()
     return $height;
 }
 
+function GetHeight_RideV5()
+{
+    static $height;
+
+    if( !isset( $height ) )
+    {
+        foreach( wk()->json_decode( wk()->fetch( '/activation/status' ) )['features'] as $feature )
+            if( $feature['id'] === 16 && ( $feature['blockchainStatus'] === 'ACTIVATED' || $feature['blockchainStatus'] === 'APPROVED' ) )
+                return ( $height = $feature['activationHeight'] );
+    }
+
+    return $height;
+}
+
 function GetHeight_Sponsorship()
 {
     static $height;
@@ -247,8 +261,11 @@ function procWeight( $blockchain, $parser )
         }
     }
 
-    $weights_usdn[$usdn] = $weights_usdn[0] * 2;
-    unset( $weights_usdn[0] );
+    if( isset( $weights_usdn[0] ) )
+    {
+        $weights_usdn[$usdn] = $weights_usdn[0] * 2;
+        unset( $weights_usdn[0] );
+    }
 
     foreach( $weights_waves as $asset => $weight )
         $weights_waves[$asset] = $weight / $total_waves;

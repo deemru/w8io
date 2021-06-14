@@ -193,7 +193,7 @@ class Blockchain
 
         if( 0 ) // CUSTOM ROLLBACK
         {
-            $this->rollback( 1080000 );
+            $this->rollback( 1555300 );
             exit( 'ok' );
             return W8IO_STATUS_UPDATED; 
         }
@@ -401,7 +401,7 @@ class Blockchain
                 }
 
                 $generator = $block['generator'];
-                $reward = isset( $block['reward'] ) ? $block['reward'] : 0;
+                $reward = $block['reward'] ?? 0;
                 $parserTxs[w8h2kg( $height )] = [ 'type' => TX_GENERATOR, 'generator' => $generator, 'reward' => $reward ];
             }
 
@@ -420,20 +420,6 @@ class Blockchain
             $this->lastBlock = $newHdrs[$height];
         }            
         $this->db->commit();
-
-        // SELFTEST
-        if( 0 && 0 === count( $newTxs ) )
-        {
-            $waves = $this->parser->balances->getAllWaves();
-            $ngfees = $this->parser->getNGFeesAt( $to - 1 );
-            if( isset( $ngfees[0] ) )
-                $waves += $ngfees[0];
-            $cmp = 10000000000000000;
-            if( $to > 1740000 )
-                $cmp += 600000000 * ( $to - 1740000 );
-            if( $waves !== $cmp )
-                w8_err();
-        }
 
         $this->lastUp = microtime( true );
         $newTxs = $from === $to ? ( ' +' . count( $newTxs ) ) : '';

@@ -17,10 +17,16 @@ class BlockchainBalances
             // uid                 | address  | asset    | balance    
             // r0                  | r1       | r2       | r3
             [ 'INTEGER PRIMARY KEY', 'INTEGER', 'INTEGER', 'INTEGER' ],
-            [ 0,                     1,         1,         0 ] );
+//          [ 0,                     1,         1,         0 ] );
+            [ 0,                     0,         0,         0 ] );
 
+        // uids
         $this->balances->db->exec( 'CREATE INDEX IF NOT EXISTS balances_r1_r2_index ON balances( r1, r2 )' );
-        $this->balances->db->exec( 'CREATE INDEX IF NOT EXISTS balances_r2_r3_index ON balances( r2, r3 )' );
+
+        // DELAY_INDEX
+        // CREATE INDEX balances_r1_index ON balances( r1 )
+        // CREATE INDEX balances_r2_index ON balances( r2 )
+        //$this->balances->db->exec( 'CREATE INDEX IF NOT EXISTS balances_r2_r3_index ON balances( r2, r3 )' );
 
         $this->uids = new KV;
         $this->setUid();
@@ -57,7 +63,6 @@ class BlockchainBalances
     {
         if( !isset( $this->query_get_distribution ) )
         {
-            $id = W8IO_CHECKPOINT_BLOCKCHAIN_BALANCES;
             $this->query_get_distribution = $this->checkpoint->db()->prepare( 'SELECT address, amount FROM balances WHERE asset = :aid ORDER BY amount DESC' );
             if( !is_object( $this->query_get_distribution ) )
                 return false;
@@ -76,10 +81,7 @@ class BlockchainBalances
             if( $amount === 0 )
                 continue;
 
-            if( isset( $procs[$aid][$asset] ) )
-                $procs[$aid][$asset] += $amount;
-            else
-                $procs[$aid][$asset] = $amount;
+            $procs[$aid][$asset] = $amount + ( $procs[$aid][$asset] ?? 0 );
         }
     }
 
@@ -150,7 +152,7 @@ class BlockchainBalances
             if( $isRollback )
                 $amount = -$amount;
 
-            list( $uid, $update ) = $this->getUid( $address, $asset );
+            [ $uid, $update ] = $this->getUid( $address, $asset );
 
             if( $update === false )
                 $this->insertBalance( $uid, $address, $asset, $amount );
@@ -167,64 +169,71 @@ class BlockchainBalances
         $fee = $ts[FEE];
         $afee = $ts[FEEASSET];
 
-        //$procs_a = [];
-        //$procs_b = [];
-
         switch( $type )
         {
             case TX_SPONSOR:
-                $procs_a = [ $asset => -$amount ];
-                $procs_b = [ $asset => +$amount, $afee => -$fee ];
+                $procs_a = [ asset_out( $type ) => 1, $asset => -$amount ];
+                $procs_b = [ asset_in( $type ) => 1, $asset => +$amount, $afee => -$fee ];
                 break;
 
             case TX_GENERATOR:
                 if( $asset === $afee )
-                    $procs_a = [ $asset => -$amount -$fee ];
+                    $procs_a = [ asset_out( $type ) => 1, $asset => -$amount -$fee ];
                 else
-                    $procs_a = [ $asset => -$amount, $afee => -$fee ];
-                $procs_b = [ $asset => +$amount ];
+                    $procs_a = [ asset_out( $type ) => 1, $asset => -$amount, $afee => -$fee ];
+                $procs_b = [ asset_in( $type ) => 1, $asset => +$amount ];
                 break;
+
             case TX_GENESIS:
             case TX_PAYMENT:
             case TX_TRANSFER:
+            case ITX_TRANSFER:
             case TX_EXCHANGE:
             case TX_MATCHER:
             case TX_INVOKE:
+            case ITX_INVOKE:
                 if( $asset === $afee )
-                    $procs_a = [ $asset => -$amount -$fee ];
+                    $procs_a = [ asset_out( $type ) => 1, $asset => -$amount -$fee ];
                 else
-                    $procs_a = [ $asset => -$amount, $afee => -$fee ];
-                $procs_b = [ $asset => +$amount ];
+                    $procs_a = [ asset_out( $type ) => 1, $asset => -$amount, $afee => -$fee ];
+                $procs_b = [ asset_in( $type ) => 1, $asset => +$amount ];
                 break;
 
             case TX_ISSUE:
+            case ITX_ISSUE:
             case TX_REISSUE:
-                $procs_a = [ $asset => +$amount, $afee => -$fee ];
+            case ITX_REISSUE:
+                $procs_a = [ asset_out( $type ) => 1, $asset => +$amount, $afee => -$fee ];
                 break;
+
             case TX_BURN:
-                $procs_a = [ $asset => -$amount, $afee => -$fee ];
+            case ITX_BURN:
+                $procs_a = [ asset_out( $type ) => 1, $asset => -$amount, $afee => -$fee ];
                 break;
 
             case TX_LEASE:
+            case ITX_LEASE:
                 if( w8k2h( $ts[TXKEY] ) > GetHeight_LeaseReset() )
                 {
-                    $procs_a = [ WAVES_LEASE_ASSET => -$amount, $afee => -$fee ];
-                    $procs_b = [ WAVES_LEASE_ASSET => +$amount ];
+                    $procs_a = [ asset_out( $type ) => 1, WAVES_LEASE_ASSET => -$amount, $afee => -$fee ];
+                    $procs_b = [ asset_in( $type ) => 1, WAVES_LEASE_ASSET => +$amount ];
                 }
                 else
                 {
-                    $procs_a = [ $afee => -$fee ];
+                    $procs_a = [ asset_out( $type ) => 1, $afee => -$fee ];
                 }
                 break;
+
             case TX_LEASE_CANCEL:
+            case ITX_LEASE_CANCEL:
                 if( w8k2h( $ts[TXKEY] ) > GetHeight_LeaseReset() )
                 {
-                    $procs_a = [ WAVES_LEASE_ASSET => +$amount, $afee => -$fee ];
-                    $procs_b = [ WAVES_LEASE_ASSET => -$amount ];
+                    $procs_a = [ asset_out( $type ) => 1, WAVES_LEASE_ASSET => +$amount, $afee => -$fee ];
+                    $procs_b = [ asset_in( $type ) => 1, WAVES_LEASE_ASSET => -$amount ];
                 }
                 else
                 {
-                    $procs_a = [ $afee => -$fee ];
+                    $procs_a = [ asset_out( $type ) => 1, $afee => -$fee ];
                 }
                 break;
 
@@ -232,22 +241,23 @@ class BlockchainBalances
             case TX_DATA:
             case TX_SMART_ACCOUNT:
             case TX_SPONSORSHIP:
+            case ITX_SPONSORSHIP:
             case TX_SMART_ASSET:
             case TX_UPDATE_ASSET_INFO:
-                $procs_a = [ $afee => -$fee ];
+                $procs_a = [ asset_out( $type ) => 1, $afee => -$fee ];
                 break;
 
             case TX_MASS_TRANSFER:
                 if( $ts[B] === MASS )
                 {
                     if( $asset === $afee )
-                        $procs_a = [ $asset => -$amount -$fee ];
+                        $procs_a = [ asset_out( $type ) => 1, $asset => -$amount -$fee ];
                     else
-                        $procs_a = [ $asset => -$amount, $afee => -$fee ];
+                        $procs_a = [ asset_out( $type ) => 1, $asset => -$amount, $afee => -$fee ];
                 }
                 else
                 {
-                    $procs_b = [ $asset => +$amount ];
+                    return $this->finalizeChanges( $ts[B], [ asset_in( $type ) => 1, $asset => +$amount ], $procs );
                 }
                 break;
 
@@ -255,8 +265,7 @@ class BlockchainBalances
                 w8io_error( 'unknown tx type = ' . $type );
         }
 
-        if( isset( $procs_a ) )
-            $this->finalizeChanges( $ts[A], $procs_a, $procs );
+        $this->finalizeChanges( $ts[A], $procs_a, $procs );
         if( isset( $procs_b ) )
             $this->finalizeChanges( $ts[B], $procs_b, $procs );
     }

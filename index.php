@@ -12,7 +12,7 @@ else
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'tk/AZ31KrCCx2F7Q1gtDAmKYegFdkfRHUnttGuBaboBBZH4';
+    $uri = '3ND86XoiA9ytxysBCvhkRQez82R3d6wZBzP/t/16';
 
 $js = false;
 
@@ -379,7 +379,6 @@ function w8io_print_distribution( $f, $aid, $info, $n )
             break;
         $total += $amount;
         $aid = (int)$balance[1];
-        $amount = (int)$balance[3];
         $address = $RO->getAddressById( $aid );
         $out .= str_pad( ++$n, 5, ' ', STR_PAD_LEFT ) . ') <a href="' . W8IO_ROOT . $address . '/f/' . $f . '">' . $address . '</a>: ' . w8io_amount( $amount, $decimals ) . PHP_EOL;
     }
@@ -416,6 +415,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
     $maxlen1 = 0;
     $maxlen2 = 0;
     $outs = [];
+    $tdb = [];
 
     $n = 0;
     foreach( $pts as $ts )
@@ -495,7 +495,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             }
             else
             {
-                $sign = ( ( $type === TX_LEASE_CANCEL ) ? -1 : 1 ) * ( ( $amount < 0 ) ? -1 : 1 ) * ( $isb ? ( $isa ? 0 : 1 ) : -1 );
+                $sign = ( ( $type === TX_LEASE_CANCEL || $type === ITX_LEASE_CANCEL ) ? -1 : 1 ) * ( ( $amount < 0 ) ? -1 : 1 ) * ( $isb ? ( $isa ? 0 : 1 ) : -1 );
 
                 $amount = ' ' . w8io_sign( $sign ) . w8io_amount( $amount, 8, 0, false );
                 $asset = ' <a href="' . W8IO_ROOT . $address . '/f/Waves">Waves</a>';
@@ -541,11 +541,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             $addon = '';
         else
         {
-            if( $type === TX_TRANSFER ||
-                $type === TX_LEASE ||
-                $type === TX_ALIAS ||
-                $type === TX_MASS_TRANSFER ||
-                $type === TX_INVOKE )
+            if( isAliasType( $type ) )
             {
                 $b = $RO->getAliasById( $addon );
                 $addon = '';
@@ -554,17 +550,30 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
             else if( $type === TX_EXCHANGE )
             {
                 $groupId = $ts[GROUP];
-                $group = $RO->getGroupById( $groupId );
-                if( $group === false )
-                    w8_err( "getGroupById( $groupId )" );
-                $pair = explode( '/', substr( $group, 1 ) );
-                $buy = $RO->getAssetInfoById( (int)$pair[0] );
-                $sell = $RO->getAssetInfoById( (int)$pair[1] );
 
-                $bdecimals = (int)$buy[0];
-                $bname = substr( $buy, 2 );
-                $sdecimals = (int)$sell[0];
-                $sname = substr( $sell, 2 );
+                if( isset( $tdb[$groupId] ) )
+                {
+                    [ $bdecimals, $bname, $sdecimals, $sname, $link, $linklen ] = $tdb[$groupId];
+                }
+                else
+                {
+                    $group = $RO->getGroupById( $groupId );
+                    if( $group === false )
+                        w8_err( "getGroupById( $groupId )" );
+                    $pair = explode( '/', substr( $group, 1 ) );
+                    $buy = $RO->getAssetInfoById( (int)$pair[0] );
+                    $sell = $RO->getAssetInfoById( (int)$pair[1] );
+
+                    $bdecimals = (int)$buy[0];
+                    $bname = substr( $buy, 2 );
+                    $sdecimals = (int)$sell[0];
+                    $sname = substr( $sell, 2 );
+
+                    $link = ' <a href="' . W8IO_ROOT . 'txs/g/' . $groupId . '">';
+                    $linklen = strlen( $link ) + 3;
+
+                    $tdb[$groupId] = [ $bdecimals, $bname, $sdecimals, $sname, $link, $linklen ];
+                }
 
                 $price = $addon;
                 if( $bdecimals !== 8 )
@@ -576,8 +585,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                         $price = str_pad( $price, $sdecimals + 1, '0', STR_PAD_LEFT );
                     $price = substr_replace( $price, '.', -$sdecimals, 0 );
                 }
-                $link = ' <a href="' . W8IO_ROOT . 'txs/g/' . $groupId . '">';
-                $linklen = strlen( $link ) + 3;
+
                 $addon = ' ' . $price . $link . $bname . '/' . $sname . '</a>';
                 $maxlen2 = max( $maxlen2, strlen( $addon ) - $linklen );
             }
@@ -585,9 +593,16 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                 $addon = '';
         }
 
-        if( $type === TX_INVOKE || $ts[FEEASSET] === INVOKE_ASSET )
+        if( $type === TX_INVOKE || $type <= ITX_ISSUE )
         {
             $groupId = $ts[GROUP];
+
+            if( isset( $tdb[$groupId] ) )
+            {
+                [ $link, $linklen, $addon, $maxlen ] = $tdb[$groupId];
+                if( $maxlen > $maxlen2 )
+                    $maxlen2 = $maxlen;
+            }
             if( $groupId > 0 )
             {
                 $group = $RO->getGroupById( $groupId );
@@ -600,13 +615,17 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                 $linklen = strlen( $link ) + 3;
                 $addon = $link . $addon . '</a>';
                 $maxlen2 = max( $maxlen2, strlen( $addon ) - $linklen );
+
+                $tdb[$groupId] = [ $link, $linklen, $addon, $maxlen2 ];
             }
-            else if( $groupId === -1 )
+            else if( $groupId === FAILED_GROUP )
             {
                 $link = ' <a href="' . W8IO_ROOT . 'txs/g/' . $groupId . '">';
                 $linklen = strlen( $link ) + 3;
                 $addon = $link . ':failed:</a>';
                 $maxlen2 = max( $maxlen2, strlen( $addon ) - $linklen );
+
+                $tdb[$groupId] = [ $link, $linklen, $addon, $maxlen2 ];
             }
         }
 
@@ -651,7 +670,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                 $date = date( 'Y.m.d H:i', $RO->getTimestampByHeight( w8k2h( $ts[TXKEY] ) ) );
                 $txkey = '<a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . $date . '</a>';
 
-                if( $ts[FEEASSET] === INVOKE_ASSET )
+                if( $type <= ITX_ISSUE )
                     $fee = ' <small>invoke</small>';
 
                 $outs[] = [
