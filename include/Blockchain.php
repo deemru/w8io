@@ -19,9 +19,12 @@ class Blockchain
     public function __construct( $db )
     {
         $this->ts = new Triples( $db, 'ts', 1, ['INTEGER PRIMARY KEY', 'INTEGER', 'TEXT'], [0, 1] );
-        $this->db = $this->ts;
-        $this->hs = new Triples( $this->db, 'hs', 1, ['INTEGER PRIMARY KEY', 'TEXT', 'INTEGER'] );
 
+        $this->db = $this->ts;
+        $this->db->db->exec( 'PRAGMA journal_size_limit = ' . ( 8 * 1024 * 1024 ) );
+        $this->db->db->exec( 'PRAGMA wal_autocheckpoint = ' . ( 8 * 1024 ) );
+
+        $this->hs = new Triples( $this->db, 'hs', 1, ['INTEGER PRIMARY KEY', 'TEXT', 'INTEGER'] );
         $this->parser = new BlockchainParser( $this->db );
 
         $this->setHeight();
@@ -371,7 +374,10 @@ class Blockchain
             if( isset( $rollback ) )
                 $this->rollback( $from );
             else if( $this->txheight >= $fixate )
+            {
                 $this->fixate( $fixate );
+                $txCount -= w8k2i( $fixate );
+            }
 
             $hs = [];
             foreach( $newHdrs as $height => $block )

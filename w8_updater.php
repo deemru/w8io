@@ -72,7 +72,7 @@ function selftest()
 
 singleton();
 if( !isset( $argv[1] ) )
-    $argv[1] = 'selftest';
+    $argv[1] = 'updater';
 
 switch( $argv[1] )
 {
@@ -111,6 +111,26 @@ switch( $argv[1] )
             'CREATE INDEX IF NOT EXISTS pts_r4_r2_index ON pts( r4, r2 )',
             'CREATE INDEX IF NOT EXISTS pts_r3_r5_index ON pts( r3, r5 )',
             'CREATE INDEX IF NOT EXISTS pts_r4_r5_index ON pts( r4, r5 )',
+        ];
+        
+        foreach( $cmds as $cmd )
+        {
+            $tt = microtime( true );
+            $cmd = 'sqlite3 ' . W8IO_DB_PATH . ' "' . $cmd . '"';
+            wk()->log( 'exec( ' . $cmd . ' )' );
+            exec( $cmd );
+            wk()->log( sprintf( '%.00f seconds', ( microtime( true ) - $tt ) ) );
+        }
+        wk()->log( 'done' );
+        break;
+    }
+    case 'onbreak':
+    {
+        wk()->log( 'w8_indexer' );
+        $db = W8IO_DB_PATH;
+        $cmds = 
+        [
+            'CREATE INDEX IF NOT EXISTS pts_r4_r2_index ON pts( r4, r2 )',
         ];
         
         foreach( $cmds as $cmd )
