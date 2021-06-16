@@ -350,7 +350,7 @@ class RO
         return false;
     }
 
-    public function getPTSByAddressId( $id, $filter, $limit, $uid )
+    public function getPTSByAddressId( $id, $filter, $limit, $uid, $d )
     {
         $wheres = [];
         if( $filter !== false )
@@ -370,13 +370,14 @@ class RO
         }
 
         if( $id === false )
-            $query = "SELECT * FROM ( 
-                SELECT * FROM pts $where ORDER BY r0 DESC LIMIT $limit ) UNION
-                SELECT * FROM pts $where ORDER BY r0 DESC LIMIT $limit";
+            $query = 'SELECT * FROM pts ' . $where . ' ORDER BY r0 DESC LIMIT ' . $limit;
+        else if( $d === 1 )
+            $query = 'SELECT * FROM pts WHERE r4 = ' . $id . $where . ' ORDER BY r0 DESC LIMIT ' . $limit;
+        else if( $d === 2 )
+            $query = 'SELECT * FROM pts WHERE r3 = ' . $id . $where . ' ORDER BY r0 DESC LIMIT ' . $limit;
         else
-            $query = "SELECT * FROM ( 
-                SELECT * FROM pts WHERE r3 = $id $where ORDER BY r0 DESC LIMIT $limit ) UNION
-                SELECT * FROM pts WHERE r4 = $id $where ORDER BY r0 DESC LIMIT $limit";
+            $query = 'SELECT * FROM ( SELECT * FROM pts WHERE r3 = ' . $id . $where . ' ORDER BY r0 DESC LIMIT ' . $limit . ' ) UNION
+                                      SELECT * FROM pts WHERE r4 = ' . $id . $where . ' ORDER BY r0 DESC LIMIT ' . $limit;
         
         return ptsFilter( $this->db->query( $query )->fetchAll() );
     }

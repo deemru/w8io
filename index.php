@@ -19,11 +19,11 @@ $js = false;
 $uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $uri . chr( 0 ) ) );
 
 $address = $uri[0];
-$f = isset( $uri[1] ) ? $uri[1] : false;
-$arg = isset( $uri[2] ) ? $uri[2] : false;
-$arg2 = isset( $uri[3] ) ? $uri[3] : false;
-$arg3 = isset( $uri[4] ) ? $uri[4] : false;
-$arg4 = isset( $uri[5] ) ? $uri[5] : false;
+$f = $uri[1] ?? false;
+$arg = $uri[2] ?? false;
+$arg2 = $uri[3] ?? false;
+$arg3 = $uri[4] ?? false;
+$arg4 = $uri[5] ?? false;
 
 if( empty( $address ) )
     $address = 'GENERATORS';
@@ -132,9 +132,10 @@ if( $address === 'api' )
                 $where = $call['w'];
                 $uid = $call['u'];
                 $address = $call['a'];
+                $d = $call['d'];
 
                 echo '<pre>';
-                w8io_print_transactions( $aid, $where, $uid, 100, $address, false === strpos( $where, 'r5' ) );
+                w8io_print_transactions( $aid, $where, $uid, 100, $address, false === strpos( $where, 'r5' ), $d );
                 echo '</pre>';
                 return;
             }
@@ -208,7 +209,7 @@ if( $address === 'api' )
     exit;
 }
 
-if( $f === 'f' )
+if( isset( $f[0] ) && $f[0] === 'f' )
 {
     if( $arg === 'Waves' )
         $arg = 0;
@@ -228,6 +229,7 @@ if( $f === 'f' )
         require_once 'include/RO.php';
         $RO = new RO( W8DB );
 
+        $fasset = $arg;
         $arg = $RO->getIdByAsset( $arg );
         if( $arg === false )
             w8io_error( 'unknown asset' );
@@ -401,13 +403,13 @@ function w8io_sign( $sign )
     return '';
 }
 
-function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = true )
+function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam, $d )
 {
     global $RO;
     global $REST;
     global $js;
     
-    $pts = $RO->getPTSByAddressId( $aid, $where, $count + 1, $uid );
+    $pts = $RO->getPTSByAddressId( $aid, $where, $count + 1, $uid, $d );
     //$pts = $RO->getPTSAtHeight( 2214328 );
 
     //$wtxs = $api->get_transactions_where( $aid, $where, $uid, $count + 1 );
@@ -429,6 +431,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam = 
                 'w' => $where,
                 'u' => $ts[UID],
                 'a' => $address,
+                'd' => $d,
             ];
             $call = W8IO_ROOT . 'api/' . $wk->base58Encode( $wk->encryptash( json_encode( $call ) ) );
             $lazy = '</pre><pre class="lazyload" url="' . $call . '">...';
@@ -1245,17 +1248,53 @@ else
     $aid = $RO->getAddressIdByString( $address );
 
     $where = false;
-    if( $f === 'f' )
-        $where = "r5 = $arg";
-    else if( $f === 't' )
-        $where = "r2 = $arg";
-    else if( $aid === false && $f === 'g' )
-        $where = "r10 = $arg";
+    $d = 3;
+
+    if( !empty( $f ) )
+    {
+        if( $f[0] === 'f' )
+        {
+            $where = "r5 = $arg";
+
+            if( isset( $f[1] ) )
+            {
+                if( $f[1] === 'i' )
+                {
+                    $d = 1;
+                }
+                else
+                if( $f[1] === 'o' )
+                {
+                    $d = 2;
+                }
+            }
+        }
+        else
+        if( $f[0] === 't' )
+        {
+            $where = "r2 = $arg";
+
+            if( isset( $f[1] ) )
+            {
+                if( $f[1] === 'i' )
+                {
+                    $d = 1;
+                }
+                else
+                if( $f[1] === 'o' )
+                {
+                    $d = 2;
+                }
+            }
+        }
+        else if( $aid === false && $f === 'g' )
+            $where = "r10 = $arg";
+    }
 
     if( $aid === false )
     {
         echo '<pre>';
-        w8io_print_transactions( false, $where, false, 100, $address, !( $f === 'f' || $f === 'g' ) );
+        w8io_print_transactions( false, $where, false, 100, $address, !( $f === 'f' || $f === 'g' ), $d );
         echo '</pre>';
     }
     else
@@ -1277,9 +1316,30 @@ else
             $REST->setHeader( $height, $heightTime[1], $address, $full_address );
         else
         {
-            $full_address = $full_address !== $address ? " / <a href=\"". W8IO_ROOT . $full_address ."\">$full_address</a>" : '';
-            echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height <small>($time)</small>" . PHP_EOL . PHP_EOL;
-            echo '<table><tr><td valign="top"><pre>';
+            $full_address = $full_address !== $address ? ( ' / <a href="' . W8IO_ROOT . $full_address . '">' . $full_address . '</a>' ) : '';
+            //echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height <small>($time) ";
+            echo '<a href="' . W8IO_ROOT . $address . '">' . $address . '</a>' . $full_address . ' <small>&#183; ';
+
+            $out = '';
+            for( $t = -16; $t < 17; ++$t )
+            {
+                $ti = asset_in( $t );
+                $ti = $balance[$ti] ?? 0;
+                $to = asset_out( $t );
+                $to = $balance[$to] ?? 0;
+                if( $ti > 0 || $to > 0 )
+                {
+                    if( $out !== '' )
+                        $out .= ' &#183; ';
+                    $out .= '<a href="' . W8IO_ROOT . $address . '/t/' . $t . '">' . w8io_tx_type( $t ) . '</a>&#183;';
+                    if( $ti > 0 )
+                        $out .= '<a href="' . W8IO_ROOT . $address . '/ti/' . $t . '">i' . $ti . '</a>';
+                    if( $to > 0 )
+                        $out .= ( $ti > 0 ? '&#183;' : '' ) . '<a href="' . W8IO_ROOT . $address . '/to/' . $t . '">o' . $to . '</a>';
+                }
+            }
+            echo $out . '</small>';
+            echo PHP_EOL . PHP_EOL . '<table><tr><td valign="top"><pre>';
         }
 
         $tickers = [];
@@ -1299,8 +1359,9 @@ else
 
             if( $arg === 0 && $f !== 't' )
             {
-                echo '<b>' . $amount . ' <a href="' . W8IO_ROOT . 'top/Waves">' . $asset . '</a></b>' . PHP_EOL;
-                echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
+                echo '<b>' . $amount . ' <a href="' . W8IO_ROOT . 'top/Waves">' . $asset . '</a></b>';
+                echo ' <small><a href="' . W8IO_ROOT . $address . '/fi/Waves">i</a><a href="' . W8IO_ROOT . $address . '/fo/Waves">o</a></small>' . PHP_EOL;
+                echo '<span style="color:#606870">' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
             }
             else
             {
@@ -1356,8 +1417,9 @@ else
 
         if( isset( $frecord ) )
         {
-            echo '<b>' . $frecord['amount'] . ' <a href="' . W8IO_ROOT . 'top/' . $frecord['id'] . '">' . $frecord['asset'] . '</a></b>' . PHP_EOL;
-            echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
+            echo '<b>' . $frecord['amount'] . ' <a href="' . W8IO_ROOT . 'top/' . $frecord['id'] . '">' . $frecord['asset'] . '</a></b>';
+            echo ' <small><a href="' . W8IO_ROOT . $address . '/fi/' . $fasset . '">i</a><a href="' . W8IO_ROOT . $address . '/fo/' . $fasset . '">o</a></small>' . PHP_EOL;
+            echo '<span style="color:#606870">' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
         }
 
         arsort( $weights );
@@ -1367,7 +1429,7 @@ else
             if( $weight === 0 && !isset( $zerotrades ) )
             {
                 if( !$js )
-                    echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
+                    echo '<span style="color:#606870">' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
                 $zerotrades = true;
             }
 
@@ -1380,7 +1442,7 @@ else
 
         if( !isset( $zerotrades ) && !$js )
         {
-            echo '<span style="color:#606870">' . str_repeat( '—', 38 ) . '&nbsp;</span>' .  PHP_EOL;
+            echo '<span style="color:#606870">' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
             $zerotrades = true;
         }
 
@@ -1491,7 +1553,7 @@ else
             }
         }
         else
-            w8io_print_transactions( $aid, $where, false, 100, $address, !( $f === 'f' ) );
+            w8io_print_transactions( $aid, $where, false, 100, $address, !( $f === 'f' ), $d );
     }
 }
 
