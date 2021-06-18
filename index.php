@@ -127,12 +127,12 @@ if( $address === 'api' )
             {
                 require_once 'include/RO.php';
                 $RO = new RO( W8DB );
-                
+
                 $aid = $call['i'];
                 $where = $call['w'];
                 $uid = $call['u'];
                 $address = $call['a'];
-                $d = $call['d'];
+                $d = $call['d'] ?? 3;
 
                 echo '<pre>';
                 w8io_print_transactions( $aid, $where, $uid, 100, $address, false === strpos( $where, 'r5' ), $d );
