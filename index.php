@@ -1249,11 +1249,13 @@ else
 
     $where = false;
     $d = 3;
+    $filter = 0;
 
     if( !empty( $f ) )
     {
         if( $f[0] === 'f' )
         {
+            $filter = 1;
             $where = "r5 = $arg";
 
             if( isset( $f[1] ) )
@@ -1272,6 +1274,7 @@ else
         else
         if( $f[0] === 't' )
         {
+            $filter = 2;
             $where = "r2 = $arg";
 
             if( isset( $f[1] ) )
@@ -1347,6 +1350,8 @@ else
 
         if( !isset( $balance[0] ) )
             $balance[0] = 0;
+        if( $filter === 1 && !isset( $balance[$arg] ) )
+            $balance[$arg] = 0;
 
         $weights = [];
         $prints = [];
@@ -1357,7 +1362,7 @@ else
             $amount = w8io_amount( $balance[0], 8 );
             $furl = W8IO_ROOT . $address . '/f/Waves';
 
-            if( $arg === 0 && $f !== 't' )
+            if( $arg === 0 && $filter === 1 )
             {
                 echo '<b>' . $amount . ' <a href="' . W8IO_ROOT . 'top/Waves">' . $asset . '</a></b>';
                 echo ' <small><a href="' . W8IO_ROOT . $address . '/fi/Waves">i</a><a href="' . W8IO_ROOT . $address . '/fo/Waves">o</a></small>' . PHP_EOL;
@@ -1386,7 +1391,7 @@ else
 
         foreach( $balance as $asset => $amount )
         {
-            if( $amount === 0 )
+            if( $amount === 0 && ( $asset !== $arg || $filter !== 1 ) )
                 continue;
 
             if( $asset > 0 )
@@ -1396,7 +1401,7 @@ else
                     continue;
 
                 $id = $asset;
-                $b = $asset === $arg;
+                $b = $asset === $arg && $filter === 1;
                 $decimals = (int)$info[0];
                 $asset = substr( $info, 2 );
                 $amount = w8io_amount( $amount, $decimals );

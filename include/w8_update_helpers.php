@@ -53,9 +53,6 @@ function GetHeight_RideV5()
 
     if( !isset( $height ) )
     {
-        if( W8IO_NETWORK === 'W' )
-            return ( $height = 2640000 );
-
         foreach( wk()->json_decode( wk()->fetch( '/activation/status' ) )['features'] as $feature )
             if( $feature['id'] === 16 && ( $feature['blockchainStatus'] === 'ACTIVATED' || $feature['blockchainStatus'] === 'APPROVED' ) )
                 return ( $height = $feature['activationHeight'] );
