@@ -563,7 +563,7 @@ class BlockchainParser
 
     private function processExchangeTransaction( $txkey, $tx )
     {
-        if( $tx['version'] >= 3 )
+        if( $tx['version'] >= 4 )
             w8io_error();
 
         if( isset( $tx['feeAssetId'] ) )
