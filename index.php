@@ -1251,7 +1251,7 @@ else
     $d = 3;
     $filter = 0;
 
-    if( !empty( $f ) )
+    if( !empty( $f ) && $arg !== false )
     {
         if( $f[0] === 'f' )
         {
