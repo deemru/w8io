@@ -738,6 +738,11 @@ function w8io_a( $address, $asset = null )
     return '<a href=' . W8IO_ROOT . $address . $f . '>' . $address . '</a>';
 }
 
+function is_address( $value )
+{
+    return is_string( $value ) && strlen( $value ) === 35 && $value[0] === '3';
+}
+
 function w8io_height( $height )
 {
     return '<a href=' . W8IO_ROOT . 'b/' . $height . '>' . $height . '</a>';
@@ -767,6 +772,7 @@ function htmlfilter( $kv )
                     case 'dApp':
                     case 'target': $v = w8io_a( $v ); break;
                     case 'attachment': $fkv[$k . '-decoded'] = htmlentities( trim( preg_replace( '/\s+/', ' ', wk()->base58Decode( $v ) ) ) );
+                    case 'value': if( is_address( $v ) ) $v = w8io_a( $v ); break;
                     default: $v = htmlentities( $v );
                 }
 
