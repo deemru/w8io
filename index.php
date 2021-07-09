@@ -764,6 +764,7 @@ function htmlfilter( $kv )
                     case 'id': $v = w8io_txid( $v ); break;
                     case 'sender': 
                     case 'recipient':
+                    case 'dApp':
                     case 'target': $v = w8io_a( $v ); break;
                     case 'attachment': $fkv[$k . '-decoded'] = htmlentities( trim( preg_replace( '/\s+/', ' ', wk()->base58Decode( $v ) ) ) );
                     default: $v = htmlentities( $v );
