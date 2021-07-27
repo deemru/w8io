@@ -983,7 +983,7 @@ class BlockchainParser
                 $n = count( $payments );
 
                 $payment = $payments[0];
-                $asset = isset( $payment['asset'] ) ? $this->getAssetId( $payment['asset'] ) : WAVES_ASSET;
+                $asset = isset( $payment['assetId'] ) ? $this->getAssetId( $payment['assetId'] ) : WAVES_ASSET;
                 $amount = $payment['amount'];
                 
             }
