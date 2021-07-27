@@ -189,14 +189,11 @@ class Blockchain
 
     public function update( $block = null )
     {
-        //$this->dups();
-        //exit;
         $entrance = microtime( true );
-        $this->selfcheck();
 
         if( 0 ) // CUSTOM ROLLBACK
         {
-            $this->rollback( 1555300 );
+            $this->rollback( 2651414 );
             exit( 'ok' );
             return W8IO_STATUS_UPDATED; 
         }

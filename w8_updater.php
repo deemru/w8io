@@ -84,6 +84,16 @@ switch( $argv[1] )
         updater();
         break;
     }
+    case 'rollback':
+    {
+        if( !isset( $argv[2] ) )
+            exit( 'rollback needs block number' );
+        $block = (int)$argv[2];
+        wk()->log( 'w8_rollback to ' . $block );
+        rollback( $block );
+        wk()->log( 'done' );
+        break;
+    }
     case 'selftest':
     {
         wk()->log( 'w8_selftest' );
@@ -162,6 +172,16 @@ function singleton()
         return true;
     }
     return false;
+}
+
+function rollback( $block )
+{
+    require_once __DIR__ . '/include/Blockchain.php';
+    require_once __DIR__ . '/include/BlockchainParser.php';
+    require_once __DIR__ . '/include/BlockchainBalances.php';
+
+    $blockchain = new Blockchain( W8DB );
+    $blockchain->rollback( $block );
 }
 
 function updater()
