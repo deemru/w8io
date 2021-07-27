@@ -977,6 +977,17 @@ class BlockchainParser
     {
         if( isset( $dAppToDapp ) )
         {
+            if( isset( $tx['payment'][0] ) )
+            {
+                $payments = $tx['payment'];
+                $n = count( $payments );
+
+                $payment = $payments[0];
+                $asset = isset( $payment['asset'] ) ? $this->getAssetId( $payment['asset'] ) : WAVES_ASSET;
+                $amount = $payment['amount'];
+                
+            }
+            else
             if( isset( $tx['payments'][0] ) )
             {
                 $payments = $tx['payments'];
