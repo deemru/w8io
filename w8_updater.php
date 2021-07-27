@@ -56,11 +56,15 @@ function selftest()
             $address = $RO->getAddressById( $aid );
             $chainAmount = wk()->balance( $address, $assetId );
 
-            if( $a === 0 && $address === '3MkcWFcRjVjFvmyk1F4LECZcW1nkThUS2ug' ) // last GENERATOR
-                continue;
-
             if( $chainAmount !== $amount )
             {
+                if( $a === 0 &&
+                ( 
+                    $address === '3P3aayN8kE6gXo7jSki7WUJHdTAF4X4S9xA' ||
+                    $address === '3PKbwQQhUSxsTTkrj8FsVFcN3B9YBEiuBJT'
+                ) ) // last GENERATOR
+                continue;
+                
                 wk()->log( $a .': ' . $assetId . ' (' . $asset . ')' );
                 wk()->log( 'e', $address . ': ' . w8io_amount( $chainAmount, $decimals ) . ' !== ' . w8io_amount( $amount, $decimals ) );
                 exit;
