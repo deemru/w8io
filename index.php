@@ -135,7 +135,7 @@ if( $address === 'api' )
                 $d = $call['d'] ?? 3;
 
                 echo '<pre>';
-                w8io_print_transactions( $aid, $where, $uid, 100, $address, false === strpos( $where, 'r5' ), $d );
+                w8io_print_transactions( $aid, $where, $uid, 100, $address, $d );
                 echo '</pre>';
                 return;
             }
@@ -403,7 +403,7 @@ function w8io_sign( $sign )
     return '';
 }
 
-function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam, $d )
+function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
 {
     global $RO;
     global $REST;
@@ -445,6 +445,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam, $
         $amount = $ts[AMOUNT];
         $a = $ts[A];
         $b = $ts[B];
+        $aspam = false;
         unset( $reclen );
         if( $type === TX_SPONSORSHIP && $aid !== false && $a !== $aid )
             continue;
@@ -479,8 +480,8 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam, $
                     $sign = ( $amount < 0 ? -1 : 1 ) * ( $isb ? ( $isa ? 0 : 1 ) : -1 );
 
                 $info = $RO->getAssetInfoById( $asset );
-                if( $spam && !$isa && $info[1] === chr( 1 ) )
-                    continue;
+                if( $info[1] === chr( 1 ) )
+                    $aspam = true;
 
                 $name = substr( $info, 2 );
                 $amount = w8io_amount( $amount, $info[0], 0, false );
@@ -664,7 +665,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam, $
                     $fee = null;
                     $feeasset = null;
                     $feeassetId = null;
-                }                
+                }
 
                 $REST->setTxs( $height, $time, $out, $type, $amount, $asset, $assetId, $address, $fee, $feeasset, $feeassetId );
             }
@@ -674,7 +675,9 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam, $
                 $txkey = '<a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . $date . '</a>';
 
                 if( $type <= ITX_ISSUE )
-                    $fee = ' <small>invoke</small>';
+                    $fee .= ' <small>invoke</small>';
+                if( $aspam )
+                    $fee .= ' <small>spam</small>';
 
                 $outs[] = [
                     $act,
@@ -690,11 +693,18 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $spam, $
         {
             if( isset( $amount[1] ) && $amount[1] === '-' )
                 $amount = ' ' . substr( $amount, 2 );
+
+            $fee = '';
+            if( $type <= ITX_ISSUE )
+                $fee .= ' <small>invoke</small>';
+            if( $aspam )
+                $fee .= ' <small>spam</small>';
+
             echo
                 '<small><a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . date( 'Y.m.d H:i', $RO->getTimestampByHeight( w8k2h( $ts[TXKEY] ) ) ) . '</a>' .
                 ' <a href="' . W8IO_ROOT . 'b/' . $block . '">[' . $block . ']</a></small>' .
                 ' <a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a> ' . w8io_a( $a ) . ' > ' . w8io_a( $b ) .
-                $addon . $amount . $asset . PHP_EOL;
+                $addon . $amount . $asset . $fee . PHP_EOL;
         }
     }
 
@@ -1304,7 +1314,7 @@ else
     if( $aid === false )
     {
         echo '<pre>';
-        w8io_print_transactions( false, $where, false, 100, $address, !( $f === 'f' || $f === 'g' ), $d );
+        w8io_print_transactions( false, $where, false, 100, $address, $d );
         echo '</pre>';
     }
     else
@@ -1565,7 +1575,7 @@ else
             }
         }
         else
-            w8io_print_transactions( $aid, $where, false, 100, $address, !( $f === 'f' ), $d );
+            w8io_print_transactions( $aid, $where, false, 100, $address, $d );
     }
 }
 
@@ -1582,7 +1592,7 @@ echo '<hr><div width="100%" align="right"><pre><small>';
 echo "<a href=\"https://github.com/deemru/w8io\">github/deemru/w8io</a>";
 if( file_exists( '.git/FETCH_HEAD' ) )
 {
-    $rev = file_get_contents( '.git/FETCH_HEAD', null, null, 0, 40 );
+    $rev = file_get_contents( '.git/FETCH_HEAD', false, null, 0, 40 );
     echo "/<a href=\"https://github.com/deemru/w8io/commit/$rev\">" . substr( $rev, 0, 7 ) . '</a> ';
 }
 if( !isset( $showtime ) )
