@@ -491,7 +491,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                 $asset = ' <a href="' . W8IO_ROOT . $address . '/f/' . $asset . '">' . $name . '</a>';
                 $reclen = strlen( $amount ) + mb_strlen( html_entity_decode( $name ), 'UTF-8' );
             }
-            else if( $amount === 0 && $type === TX_INVOKE )
+            else if( $amount === 0 && ( $type === TX_INVOKE || $type === ITX_INVOKE ) )
             {
                 $amount = '';
                 $asset = '';
