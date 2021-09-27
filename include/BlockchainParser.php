@@ -238,7 +238,7 @@ class BlockchainParser
     {
         $id = $this->kvAssets->getKeyByValue( $asset );
         if( $id === false )
-            w8_err( __FUNCTION__ );
+            w8_err( __FUNCTION__ . ': ' . $asset  );
         
         return $id;
     }
