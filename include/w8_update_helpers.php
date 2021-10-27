@@ -28,52 +28,67 @@ function GetHeight_NG()
     if( !isset( $height ) )
         foreach( wk()->json_decode( wk()->fetch( '/activation/status' ) )['features'] as $feature )
             if( $feature['id'] === 2 && $feature['blockchainStatus'] === 'ACTIVATED' )
-                return ( $height = $feature['activationHeight'] + 1 );
+            {
+                $height = $feature['activationHeight'] + 1;
+                break;
+            }
 
     return $height;
 }
 
-function GetHeight_RideV4()
+function GetTxHeight_RideV4()
 {
-    static $height;
+    static $txheight;
 
-    if( !isset( $height ) )
+    if( !isset( $txheight ) )
     {
         foreach( wk()->json_decode( wk()->fetch( '/activation/status' ) )['features'] as $feature )
             if( $feature['id'] === 15 && ( $feature['blockchainStatus'] === 'ACTIVATED' || $feature['blockchainStatus'] === 'APPROVED' ) )
-                return ( $height = $feature['activationHeight'] );
+            {
+                $txheight = $feature['activationHeight'];
+                $txheight = w8h2k( $txheight );
+                break;
+            }
     }
 
-    return $height;
+    return $txheight;
 }
 
-function GetHeight_RideV5()
+function GetTxHeight_RideV5()
 {
-    static $height;
+    static $txheight;
 
-    if( !isset( $height ) )
+    if( !isset( $txheight ) )
     {
         foreach( wk()->json_decode( wk()->fetch( '/activation/status' ) )['features'] as $feature )
             if( $feature['id'] === 16 && ( $feature['blockchainStatus'] === 'ACTIVATED' || $feature['blockchainStatus'] === 'APPROVED' ) )
-                return ( $height = $feature['activationHeight'] );
+            {
+                $txheight = $feature['activationHeight'];
+                $txheight = w8h2k( $txheight );
+                break;
+            }
     }
 
-    return $height;
+    return $txheight;
 }
 
-function GetHeight_Sponsorship()
+function GetTxHeight_Sponsorship()
 {
-    static $height;
+    static $txheight;
 
-    if( !isset( $height ) )
+    if( !isset( $txheight ) )
     {
         $json = wk()->json_decode( wk()->fetch( '/activation/status' ) );
         foreach( $json['features'] as $feature )
             if( $feature['id'] === 7 && $feature['blockchainStatus'] === 'ACTIVATED' )
-                return ( $height = $feature['activationHeight'] + $json['votingInterval'] );
+            {
+                $txheight = $feature['activationHeight'] + $json['votingInterval'];
+                $txheight = w8h2k( $txheight );
+                break;
+            }
     }
 
-    return $height;
+    return $txheight;
 }
 
 function procResetInfo( $parser )

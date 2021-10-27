@@ -28,7 +28,7 @@ $arg4 = $uri[5] ?? false;
 if( empty( $address ) )
     $address = 'GENERATORS';
 
-$light = ( isset( $_COOKIE['light'] ) && (bool)$_COOKIE['light'] ) ? true : false;
+$light = (bool)( $_COOKIE['light'] ?? false );
 if( $address === 'ld' )
 {
     $address = '';

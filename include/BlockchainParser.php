@@ -253,7 +253,7 @@ class BlockchainParser
         }
 
         $afee = $this->getAssetId( $tx['feeAssetId'] );
-        if( w8k2h( $txkey ) >= GetHeight_Sponsorship() )
+        if( $txkey >= GetTxHeight_Sponsorship() )
         {
             $sponsorship = $this->getSponsorship( $afee );
             assert( $sponsorship !== 0 );
@@ -593,7 +593,7 @@ class BlockchainParser
         $fee = $tx['fee'];
         $bafee = isset( $buyer['matcherFeeAssetId'] ) ? $this->getAssetId( $buyer['matcherFeeAssetId'] ) : WAVES_ASSET;
         $safee = isset( $seller['matcherFeeAssetId'] ) ? $this->getAssetId( $seller['matcherFeeAssetId'] ) : WAVES_ASSET;
-        $afee = isset( $tx['feeAssetId'] ) ? $this->getAssetId( $tx['feeAssetId'] ) : 0;
+        $afee = isset( $tx['feeAssetId'] ) ? $this->getAssetId( $tx['feeAssetId'] ) : WAVES_ASSET;
         
         if( $buyer['version'] >= 4 )
             w8io_error();
@@ -702,13 +702,16 @@ class BlockchainParser
 
     private function processTransferTransaction( $txkey, $tx )
     {
+        $asset = $tx['assetId'];
+        $asset = isset( $asset ) ? $this->getAssetId( $asset ) : WAVES_ASSET;
+
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_TRANSFER,
             A =>        $this->getSenderId( $tx['sender'] ),
             B =>        $this->getRecipientId( $tx['recipient'] ),
-            ASSET =>    isset( $tx['assetId'] ) ? $this->getAssetId( $tx['assetId'] ) : WAVES_ASSET,
+            ASSET =>    $asset,
             AMOUNT =>   $tx['amount'],
             FEEASSET => $tx[FEEASSET],
             FEE =>      $tx[FEE],
@@ -719,13 +722,16 @@ class BlockchainParser
 
     private function processInvokeTransferTransaction( $txkey, $tx, $dApp, $group )
     {
+        $asset = $tx['asset'];
+        $asset = isset( $asset ) ? $this->getAssetId( $asset ) : WAVES_ASSET;
+
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     ITX_TRANSFER,
             A =>        $dApp,
             B =>        $this->getRecipientId( $tx['address'] ),
-            ASSET =>    isset( $tx['asset'] ) ? $this->getAssetId( $tx['asset'] ) : WAVES_ASSET,
+            ASSET =>    $asset,
             AMOUNT =>   $tx['amount'],
             FEEASSET => 0,
             FEE =>      0,
@@ -834,7 +840,8 @@ class BlockchainParser
     private function processMassTransferTransaction( $txkey, $tx )
     {
         $a = $this->getSenderId( $tx['sender'] );
-        $asset = isset( $tx['assetId'] ) ? $this->getAssetId( $tx['assetId'] ) : WAVES_ASSET;
+        $asset = $tx['assetId'];
+        $asset = isset( $asset ) ? $this->getAssetId( $asset ) : WAVES_ASSET;
 
         $this->appendTS( [
             UID =>      $this->getNewUid(),
@@ -973,37 +980,46 @@ class BlockchainParser
         $this->appendTS( $ts );
     }
 
+    private function significantStateChanges( $stateChanges )
+    {
+        if( count( $stateChanges['data'] ) !== 0 ) return true;
+        if( count( $stateChanges['transfers'] ) !== 0 ) return true;
+        if( count( $stateChanges['issues'] ) !== 0 ) return true;
+        if( count( $stateChanges['reissues'] ) !== 0 ) return true;
+        if( count( $stateChanges['burns'] ) !== 0 ) return true;
+        if( count( $stateChanges['sponsorFees'] ) !== 0 ) return true;
+        if( count( $stateChanges['leases'] ) !== 0 ) return true;
+        if( count( $stateChanges['leaseCancels'] ) !== 0 ) return true;
+
+        foreach( $stateChanges['invokes'] as $itx )
+        {
+            if( count( $itx['payment'] ) !== 0 ) return true;
+            if( $this->significantStateChanges( $itx['stateChanges'] ) ) return true;
+        }
+
+        return false;
+    }
+
     private function processInvokeTransaction( $txkey, $tx, $dAppToDapp = null )
     {
+        $stateChanges = $tx['stateChanges'];
+        $payments = $tx['payment'];
+        $n = count( $payments );
+
         if( isset( $dAppToDapp ) )
         {
-            if( isset( $tx['payment'][0] ) )
+            if( $n !== 0 )
             {
-                $payments = $tx['payment'];
-                $n = count( $payments );
-
                 $payment = $payments[0];
-                $asset = isset( $payment['assetId'] ) ? $this->getAssetId( $payment['assetId'] ) : WAVES_ASSET;
+                $asset = $payment['assetId'];
+                $asset = isset( $asset ) ? $this->getAssetId( $asset ) : WAVES_ASSET;
                 $amount = $payment['amount'];
-                
-            }
-            else
-            if( isset( $tx['payments'][0] ) )
-            {
-                $payments = $tx['payments'];
-                $n = count( $payments );
-
-                $payment = $payments[0];
-                $asset = isset( $payment['asset'] ) ? $this->getAssetId( $payment['asset'] ) : WAVES_ASSET;
-                $amount = $payment['amount'];
-                
             }
             else
             {
-                $n = 0;
-
                 $asset = WAVES_ASSET;
                 $amount = 0;
+                // if( !$this->significantStateChanges( $stateChanges ) ) return;
             }
 
             $sender = $dAppToDapp;
@@ -1013,19 +1029,15 @@ class BlockchainParser
         }
         else
         {
-            if( isset( $tx['payment'][0] ) )
+            if( $n !== 0 )
             {
-                $payments = $tx['payment'];
-                $n = count( $payments );
-
                 $payment = $payments[0];
-                $asset = isset( $payment['assetId'] ) ? $this->getAssetId( $payment['assetId'] ) : WAVES_ASSET;
+                $asset = $payment['assetId'];
+                $asset = isset( $asset ) ? $this->getAssetId( $asset ) : WAVES_ASSET;
                 $amount = $payment['amount'];
             }
             else
             {
-                $n = 0;
-
                 $asset = WAVES_ASSET;
                 $amount = 0;
             }
@@ -1058,10 +1070,8 @@ class BlockchainParser
         for( $i = 1; $i < $n; ++$i )
         {
             $payment = $payments[$i];
-            if( isset( $dAppToDapp ) )
-                $asset = isset( $payment['asset'] ) ? $this->getAssetId( $payment['asset'] ) : WAVES_ASSET;
-            else
-                $asset = isset( $payment['assetId'] ) ? $this->getAssetId( $payment['assetId'] ) : WAVES_ASSET;
+            $asset = $payment['assetId'];
+            $asset = isset( $asset ) ? $this->getAssetId( $asset ) : WAVES_ASSET;
             $amount = $payment['amount'];
 
             $this->appendTS( [
@@ -1079,9 +1089,7 @@ class BlockchainParser
             ] );
         }
 
-        $stateChanges = $tx['stateChanges'];
-
-        if( w8k2h( $txkey ) >= GetHeight_RideV5() )
+        if( $txkey >= GetTxHeight_RideV5() )
         {
             foreach( $stateChanges['invokes'] as $itx )
                 $this->processInvokeTransaction( $txkey, $itx, $dApp );
@@ -1098,13 +1106,13 @@ class BlockchainParser
             foreach( $stateChanges['transfers'] as $itx )
                 if( $itx['amount'] !== 0 )
                     $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $group );
+            foreach( $stateChanges['leaseCancels'] as $itx )
+                    $this->processInvokeLeaseCancelTransaction( $txkey, $itx, $dApp, $group );
             foreach( $stateChanges['leases'] as $itx )
                 $this->processInvokeLeaseTransaction( $txkey, $itx, $dApp, $group );
-            foreach( $stateChanges['leaseCancels'] as $itx )
-                $this->processInvokeLeaseCancelTransaction( $txkey, $itx, $dApp, $group );
         }
         else
-        if( w8k2h( $txkey ) >= GetHeight_RideV4() )
+        if( $txkey >= GetTxHeight_RideV4() )
         {
             foreach( $stateChanges['issues'] as $itx )
                 $this->processInvokeIssueTransaction( $txkey, $itx, $dApp, $group );

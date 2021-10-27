@@ -33,43 +33,32 @@ function selftest()
         $asset = substr( $info, 2 );
 
         $balances = $RO->db->query( 'SELECT * FROM balances WHERE r2 = ' . $aid );
-        $total = 0;
         $i = 0;
-        wk()->log( $a .': ' . $assetId . ' (' . $asset . ')' );
         foreach( $balances as $balance )
         {
             if( ++$i % 10000 === 0 )
-                wk()->log( "$i / 24055278" );
+                wk()->log( $a .': ' . $assetId . ' (' . $asset . ') ... ' . $i );
 
             $aid = (int)$balance[1];
             if( $aid <= 0 )
                 continue;
 
             $amount = (int)$balance[3];
-            if( $amount < 0 )
-                break;
 
-            if( $amount > 0 )
-                $amount = $amount;
-
-            $total += $amount;
             $address = $RO->getAddressById( $aid );
             $chainAmount = wk()->balance( $address, $assetId );
 
             if( $chainAmount !== $amount )
             {
-                if( $a === 0 &&
-                ( 
-                    $address === '3P3aayN8kE6gXo7jSki7WUJHdTAF4X4S9xA' ||
-                    $address === '3PKbwQQhUSxsTTkrj8FsVFcN3B9YBEiuBJT'
-                ) ) // last GENERATOR
-                continue;
-                
-                wk()->log( $a .': ' . $assetId . ' (' . $asset . ')' );
                 wk()->log( 'e', $address . ': ' . w8io_amount( $chainAmount, $decimals ) . ' !== ' . w8io_amount( $amount, $decimals ) );
+
+                if( $a === 0 )
+                    continue;
                 exit;
             }
         }
+
+        wk()->log( 's', $a .': ' . $assetId . ' (' . $asset . ') ' . $i . ' OK');
     }
     exit( 'done' );
 }

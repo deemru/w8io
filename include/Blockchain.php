@@ -191,13 +191,6 @@ class Blockchain
     {
         $entrance = microtime( true );
 
-        if( 0 ) // CUSTOM ROLLBACK
-        {
-            $this->rollback( 2651414 );
-            exit( 'ok' );
-            return W8IO_STATUS_UPDATED; 
-        }
-
         if( isset( $block ) )
         {
             $header = $block;
@@ -325,9 +318,6 @@ class Blockchain
                         $fixate = $key;
                         unset( $update );
                     }
-
-                    if( $i >= GetHeight_RideV4() && !isset( $tx['applicationStatus'] ) )
-                        w8_err( 'applicationStatus missed' );
 
                     if( $tx['type'] === TX_INVOKE )
                     {

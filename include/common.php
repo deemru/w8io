@@ -40,6 +40,8 @@ define( 'TX_SPONSORSHIP', 14 );
 define( 'TX_SMART_ASSET', 15 );
 define( 'TX_INVOKE', 16 );
 define( 'TX_UPDATE_ASSET_INFO', 17 );
+define( 'TX_EXPRESSION', 18 );
+define( 'TX_TRANSFER_ETH', 19 );
 
 define( 'TX_GENERATOR', 0 );
 define( 'TX_MATCHER', -1 );
