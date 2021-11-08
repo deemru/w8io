@@ -14,7 +14,7 @@ class BlockchainBalances
     {
         $this->db = $db;
         $this->balances = new Triples( $this->db, 'balances', 1,
-            // uid                 | address  | asset    | balance    
+            // uid                 | address  | asset    | balance
             // r0                  | r1       | r2       | r3
             [ 'INTEGER PRIMARY KEY', 'INTEGER', 'INTEGER', 'INTEGER' ],
 //          [ 0,                     1,         1,         0 ] );
@@ -244,6 +244,8 @@ class BlockchainBalances
             case ITX_SPONSORSHIP:
             case TX_SMART_ASSET:
             case TX_UPDATE_ASSET_INFO:
+            case TX_ETHEREUM:
+            case TX_EXPRESSION:
                 $procs_a = [ asset_out( $type ) => 1, $afee => -$fee ];
                 break;
 

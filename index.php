@@ -199,13 +199,13 @@ if( $address === 'api' )
                 {
                     $out .= ", 0";
                 }
-            
+
             $out .= PHP_EOL;
         }
 
         echo $out;
     }
-    
+
     exit;
 }
 
@@ -238,17 +238,11 @@ if( isset( $f[0] ) && $f[0] === 'f' )
 elseif( $arg !== false )
     $arg = (int)$arg;
 
-if( $light )
+function prettyAddress( $address )
 {
-    $bcolor = 'FFFFFF';
-    $tcolor = '202020';
-    $hcolor = '000000';
-}
-else
-{
-    $bcolor = '404840';
-    $tcolor = 'BABECA';
-    $hcolor = 'DADEFA';
+    if( strlen( $address ) === 35 )
+        return substr( $address, 0, 6 ) . '&#183;&#183;&#183;' . substr( $address, -4 );
+    return $address;
 }
 
 if( !$js )
@@ -261,108 +255,25 @@ echo sprintf( '
         <meta name="format-detection" content="date=no">
         <meta name="format-detection" content="address=no">
         <meta name="format-detection" content="email=no">
-        <title>w8io%s</title>
-        <link rel="shortcut icon" href="%sstatic/favicon.ico" type="image/x-icon">
-        <link rel="stylesheet" href="%sstatic/fonts.css">
-        <script type="text/javascript" src="%sstatic/jquery.js" charset="UTF-8"></script>
-<script>
-$(document).ready( function()
-{
-    g_loading = false;
-    g_lazyload = $(".lazyload");
-    if( g_lazyload.length )
-    {
-        $(window).scroll( lazyload );
-        lazyload();
-    }
-} );
-
-function lazyload()
-{
-    if( g_loading )
-        return;
-
-    var wt = typeof this.scrollY !== "undefined" ? this.scrollY : $(window).scrollTop();
-    var wb = wt + this.innerHeight;
-    var ot = g_lazyload.offset().top;
-    var ob = ot + g_lazyload.height();
-
-    if( wt <= ob && wb >= ot )
-    {
-        g_loading = true;
-        $.get( g_lazyload.attr( "url" ), null, function( data )
-        {
-            if( data )
-            {
-                $( data ).insertAfter( g_lazyload );
-                g_lazyload.remove();
-
-                g_lazyload = $(".lazyload");
-                if( g_lazyload.length )
-                {
-                    g_loading = false;
-                    return lazyload();
-                }
-            }
-
-            $(window).off( "scroll", lazyload );
-        } );
-    }
-}
-</script>
-<style>
-    body, table
-    {
-        font-size: 14pt; font-family: Inconsolata, monospace;
-        background-color: #%s;
-        color: #%s;
-        border-collapse: collapse;
-        overflow-y: scroll;%s
-    }
-    pre
-    {
-        font-family: Inconsolata, monospace;
-        font-style: normal;
-        font-weight: 400;
-        font-stretch: 100%%;
-        font-size: 14pt;
-        margin: 0;
-        unicode-bidi: bidi-override;
-    }
-    small
-    {
-        font-size: 10pt;
-    }
-    a
-    {
-        color: #%s;%s
-        text-decoration: none;
-        border-bottom: 1px dotted #606870;
-        
-    }
-    a:hover
-    {
-        border-bottom: 1px solid #%s;
-    }
-    hr
-    {
-        margin: 1em 0 1em 0;
-        height: 1px;
-        border: 0;
-        background-color: #606870;
-    }
-</style>
+        <title>%s</title>
+        <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon">
+        <link rel="stylesheet" href="/static/fonts.css">
+        <link rel="stylesheet" href="/static/static%s.css">
+        <script type="text/javascript" src="/static/jquery.js" charset="UTF-8"></script>
+        <script type="text/javascript" src="/static/static.js" charset="UTF-8"></script>
     </head>
     <body>
         <pre>
-', empty( $address ) ? '' : " / $address", W8IO_ROOT, W8IO_ROOT, W8IO_ROOT,
+', empty( $address ) ? '' : ( 'w8.io &#183; ' . prettyAddress( $address ) ), $light ? '-light' : '' );
+/*
+, W8IO_ROOT, W8IO_ROOT, W8IO_ROOT,
 //isset( $showtime ) ? '0.66vw' : '14pt',
 $bcolor, $hcolor,
 isset( $showtime ) ? 'margin: 1em 2em 1em 2em; filter: brightness(144%);' : '',
 $tcolor,
 isset( $showtime ) ? 'text-decoration: none;' : '',
 $tcolor );
-
+*/
 function w8io_print_distribution( $f, $aid, $info, $n )
 {
     global $RO;
@@ -408,7 +319,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
     global $RO;
     global $REST;
     global $js;
-    
+
     $pts = $RO->getPTSByAddressId( $aid, $where, $count + 1, $uid, $d );
     //$pts = $RO->getPTSAtHeight( 2214328 );
 
@@ -454,7 +365,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
             $b = $a;
             $isa = true;
             $isb = true;
-            
+
             if( $asset === WAVES_ASSET )
             {
                 $amount = '';
@@ -564,7 +475,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                     $group = $RO->getGroupById( $groupId );
                     if( $group === false )
                         w8_err( "getGroupById( $groupId )" );
-                    $pair = explode( '/', substr( $group, 1 ) );
+                    $pair = explode( ':', substr( $group, 1 ) );
                     $buy = $RO->getAssetInfoById( (int)$pair[0] );
                     $sell = $RO->getAssetInfoById( (int)$pair[1] );
 
@@ -612,12 +523,11 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                 $group = $RO->getGroupById( $groupId );
                 if( $group === false )
                     w8_err( "getGroupById( $groupId )" );
-                $pair = explode( '/', substr( $group, 1 ) );
-                $addon = $RO->getFunctionById( (int)$pair[1] ) . '()';
+                $addon = $RO->getFunctionById( (int)explode( ':', $group )[1] );
 
                 $link = ' <a href="' . W8IO_ROOT . 'txs/g/' . $groupId . '">';
                 $linklen = strlen( $link ) + 3;
-                $addon = $link . $addon . '</a>';
+                $addon = $link . $addon . '()</a>';
                 $maxlen2 = max( $maxlen2, strlen( $addon ) - $linklen );
 
                 $tdb[$groupId] = [ $link, $linklen, $addon, $maxlen2 ];
@@ -777,7 +687,7 @@ function htmlfilter( $kv )
                 switch( $k )
                 {
                     case 'id': $v = w8io_txid( $v ); break;
-                    case 'sender': 
+                    case 'sender':
                     case 'recipient':
                     case 'dApp':
                     case 'target': $v = w8io_a( $v ); break;
@@ -854,7 +764,7 @@ function htmlscript( $tx )
         if( !empty( $decompile2 ) )
             $result .= 'Full: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'SideBySide', [ 'context' => \Jfcherng\Diff\Differ::CONTEXT_ALL ], [ 'detailLevel' => 'word' ] );
     }
-    
+
     return $result;
 }
 
@@ -902,7 +812,7 @@ if( $address === 'tx' && isset( $f ) )
             echo json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
             if( isset( $addon ) )
                 echo PHP_EOL . PHP_EOL . $addon;
-        } 
+        }
     }
 }
 else
@@ -951,7 +861,7 @@ if( $address === 'CAP' && isset( $f ) )
             $b = (int)$ts[B];
             $amount = (int)$ts[AMOUNT];
             $price = (int)$ts[ADDON] / 100000000;
-            
+
             if( !isset( $uid[$a] ) )
                 $uid[$a] = (int)$ts[UID];
             if( !isset( $uid[$b] ) )
@@ -1136,7 +1046,7 @@ if( $address === 'GENERATORS' )
             if( !isset( $to ) || $to < $height )
                 $to = $height;
         }
-        
+
         $infos[$generator] = array( 'balance' => $balance, 'pts' => $pts );
     }
 
@@ -1331,7 +1241,7 @@ else
         $heightTime = $RO->getLastHeightTimestamp();
         $time = date( 'Y.m.d H:i', $heightTime[1] );
         $height = $heightTime[0];
-        
+
         if( $js )
             $REST->setHeader( $height, $heightTime[1], $address, $full_address );
         else
@@ -1341,7 +1251,7 @@ else
             echo '<a href="' . W8IO_ROOT . $address . '">' . $address . '</a>' . $full_address . ' <small>&#183; ';
 
             $out = '';
-            for( $t = -16; $t < 17; ++$t )
+            for( $t = -16; $t <= 19; ++$t )
             {
                 $ti = asset_in( $t );
                 $ti = $balance[$ti] ?? 0;

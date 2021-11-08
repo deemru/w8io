@@ -319,7 +319,7 @@ class Blockchain
                         unset( $update );
                     }
 
-                    if( $tx['type'] === TX_INVOKE )
+                    if( in_array( $tx['type'], [ TX_INVOKE, TX_EXPRESSION, TX_ETHEREUM ] ) )
                     {
                         $tx = wk()->getTransactionById( $txid );
                         if( $tx === false || $tx['height'] !== $i )

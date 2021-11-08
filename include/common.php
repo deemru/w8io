@@ -41,7 +41,7 @@ define( 'TX_SMART_ASSET', 15 );
 define( 'TX_INVOKE', 16 );
 define( 'TX_UPDATE_ASSET_INFO', 17 );
 define( 'TX_EXPRESSION', 18 );
-define( 'TX_TRANSFER_ETH', 19 );
+define( 'TX_ETHEREUM', 19 );
 
 define( 'TX_GENERATOR', 0 );
 define( 'TX_MATCHER', -1 );
@@ -62,6 +62,8 @@ define( 'WAVES_LEASE_ASSET', -2 );
 define( 'WAVES_ASSET', 0 );
 
 define( 'FAILED_GROUP', -1 );
+
+define( 'EXPRESSION_FUNCTION', -1 );
 
 function w8k2i( $key ){ return $key & 0xFFFFFFFF; }
 function w8k2h( $key ){ return $key >> 32; }
@@ -105,9 +107,9 @@ function w8io_tx_type( $type )
 {
     switch( $type )
     {
-        case TX_MATCHER: return 'matcher';
-        case TX_GENERATOR: return 'fees';
-        case TX_SPONSOR: return 'sponsor';
+        case -2: return 'sponsor';
+        case -1: return 'matcher';
+        case 0: return 'fees';
         case 1: return 'genesis';
         //case 101: return 'genesis role';
         //case 102: return 'role';
@@ -131,6 +133,8 @@ function w8io_tx_type( $type )
         case 15: return 'smart asset';
         case 16: case -16: return 'invoke';
         case 17: return 'rename';
+        case 18: return 'expression';
+        case 19: return 'ethereum';
         default: return 'unknown';
     }
 }

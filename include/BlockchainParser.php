@@ -21,6 +21,7 @@ class BlockchainParser
     public KV $kvFunctions;
     public KV $sponsorships;
     public KV $leases;
+    public KV $ethereums;
     public Blockchain $blockchain;
     public BlockchainParser $parser;
     public BlockchainBalances $balances;
@@ -56,6 +57,7 @@ class BlockchainParser
 
         $this->sponsorships = new KV;
         $this->leases = new KV;
+        $this->ethereums = new KV;
 
         $this->kvs = [
             $this->kvAddresses,
@@ -71,7 +73,8 @@ class BlockchainParser
         $this->recs = [];
         $this->feerecs = [];
         $this->workheight = -1;
-        $this->resetMTS();
+        $this->resetMTS(); // debug only
+        $this->indexed = $this->uid !== 0;
     }
 
     public function resetMTS()
@@ -144,6 +147,37 @@ class BlockchainParser
         return $tx;
     }
 
+    private function setEthereumInfo( $id, $ethereum )
+    {
+        $this->ethereums->setKeyValue( $id, $ethereum );
+    }
+
+    private function getEthereumInfo( $id )
+    {
+        if( false !== $this->ethereums->getValueByKey( $id ) )
+            return 1;
+
+        if( $this->indexed === false )
+            return 0;
+
+        if( !isset( $this->getEthereum ) )
+        {
+            $this->getEthereum = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r2 = 19 AND r3 = ? ORDER BY r0 DESC LIMIT 1' );
+            if( $this->getEthereum === false )
+                w8_err( __FUNCTION__ );
+        }
+
+        if( $this->getEthereum->execute( [ $id ] ) === false )
+            w8_err( __FUNCTION__ );
+
+        $pts = $this->getEthereum->fetchAll();
+        if( !isset( $pts[0] ) )
+            return 0;
+
+        $this->setEthereumInfo( $id, 1 );
+        return 1;
+    }
+
     public function setHighs()
     {
         $this->setUid();
@@ -175,7 +209,7 @@ class BlockchainParser
             $this->getRecipientId( $address );
             return $this->getSenderId( $address );
         }
-        
+
         return $id;
     }
 
@@ -186,7 +220,7 @@ class BlockchainParser
 
         if( substr( $addressOrAlias, 0, 6 ) !== 'alias:')
             w8io_error( 'unexpected $addressOrAlias = ' . $addressOrAlias );
-        
+
         $id = $this->kvAliases->getKeyByValue( substr( $addressOrAlias, 8 ) );
         if( $id === false )
             w8io_error( 'getRecipientId' );
@@ -194,12 +228,12 @@ class BlockchainParser
         $id = $this->kvAliasInfo->getValueByKey( $id );
         if( $id === false )
             w8io_error( 'getRecipientId' );
-        
+
         return $id;
     }
 
     private function getFunctionId( $function )
-    {       
+    {
         return $this->kvFunctions->getForcedKeyByValue( $function );
     }
 
@@ -207,11 +241,11 @@ class BlockchainParser
     {
         if( $alias[0] !== 'a' )
             return 0;
-        
+
         $id = $this->kvAliases->getKeyByValue( substr( $alias, 8 ) );
         if( $id === false )
             w8_err( __FUNCTION__ );
-        
+
         return $id;
     }
 
@@ -239,7 +273,7 @@ class BlockchainParser
         $id = $this->kvAssets->getKeyByValue( $asset );
         if( $id === false )
             w8_err( __FUNCTION__ . ': ' . $asset  );
-        
+
         return $id;
     }
 
@@ -361,7 +395,7 @@ class BlockchainParser
         $ngfees = [];
         foreach( $pts as $ts )
             $ngfees[$ts[ASSET]] = $ts[ADDON];
-    
+
         return $ngfees;
     }
 
@@ -472,7 +506,7 @@ class BlockchainParser
         ] );
     }
 
-    private function processInvokeIssueTransaction( $txkey, $tx, $dApp, $group )
+    private function processInvokeIssueTransaction( $txkey, $tx, $dApp, $function )
     {
         $this->appendTS( [
             UID =>      $this->getNewUid(),
@@ -485,7 +519,7 @@ class BlockchainParser
             FEEASSET => 0,
             FEE =>      0,
             ADDON =>    0,
-            GROUP =>    $group,
+            GROUP =>    $this->getGroupFunction( $dApp, $function, TX_ISSUE ),
         ] );
     }
 
@@ -506,7 +540,7 @@ class BlockchainParser
         ] );
     }
 
-    private function processInvokeReissueTransaction( $txkey, $tx, $dApp, $group )
+    private function processInvokeReissueTransaction( $txkey, $tx, $dApp, $function )
     {
         $this->appendTS( [
             UID =>      $this->getNewUid(),
@@ -519,7 +553,7 @@ class BlockchainParser
             FEEASSET => 0,
             FEE =>      0,
             ADDON =>    0,
-            GROUP =>    $group,
+            GROUP =>    $this->getGroupFunction( $dApp, $function, TX_REISSUE ),
         ] );
     }
 
@@ -542,7 +576,7 @@ class BlockchainParser
         ] );
     }
 
-    private function processInvokeBurnTransaction( $txkey, $tx, $dApp, $group )
+    private function processInvokeBurnTransaction( $txkey, $tx, $dApp, $function )
     {
         $amount = $tx['amount'] ?? $tx['quantity'];
 
@@ -557,7 +591,7 @@ class BlockchainParser
             FEEASSET => 0,
             FEE =>      0,
             ADDON =>    0,
-            GROUP =>    $group,
+            GROUP =>    $this->getGroupFunction( $dApp, $function, TX_BURN ),
         ] );
     }
 
@@ -594,7 +628,7 @@ class BlockchainParser
         $bafee = isset( $buyer['matcherFeeAssetId'] ) ? $this->getAssetId( $buyer['matcherFeeAssetId'] ) : WAVES_ASSET;
         $safee = isset( $seller['matcherFeeAssetId'] ) ? $this->getAssetId( $seller['matcherFeeAssetId'] ) : WAVES_ASSET;
         $afee = isset( $tx['feeAssetId'] ) ? $this->getAssetId( $tx['feeAssetId'] ) : WAVES_ASSET;
-        
+
         if( $buyer['version'] >= 4 )
             w8io_error();
         if( $seller['version'] >= 4 )
@@ -664,7 +698,6 @@ class BlockchainParser
 
         $amount = $tx['amount'];
         $price = $tx['price'];
-        $group = $this->getGroupExchange( $basset, $sasset, true );
 
         // SELLER -> BUYER
         {
@@ -679,7 +712,7 @@ class BlockchainParser
                 FEEASSET => $safee,
                 FEE =>      $sfee,
                 ADDON =>    $price,
-                GROUP =>    $group,
+                GROUP =>    $this->getGroupExchange( '>', $basset, $sasset ),
             ] );
         }
         // BUYER -> SELLER
@@ -695,7 +728,7 @@ class BlockchainParser
                 FEEASSET => $bafee,
                 FEE =>      $bfee,
                 ADDON =>    $price,
-                GROUP =>    $group,
+                GROUP =>    $this->getGroupExchange( '<', $basset, $sasset ),
             ] );
         }
     }
@@ -720,7 +753,7 @@ class BlockchainParser
         ] );
     }
 
-    private function processInvokeTransferTransaction( $txkey, $tx, $dApp, $group )
+    private function processInvokeTransferTransaction( $txkey, $tx, $dApp, $function )
     {
         $asset = $tx['asset'];
         $asset = isset( $asset ) ? $this->getAssetId( $asset ) : WAVES_ASSET;
@@ -736,7 +769,7 @@ class BlockchainParser
             FEEASSET => 0,
             FEE =>      0,
             ADDON =>    $this->getAliasId( $tx['address'] ),
-            GROUP =>    $group,
+            GROUP =>    $this->getGroupFunction( $dApp, $function, TX_TRANSFER ),
         ] );
     }
 
@@ -759,7 +792,7 @@ class BlockchainParser
         $this->setLeaseInfo( $tx['id'], $tx );
     }
 
-    private function processInvokeLeaseTransaction( $txkey, $tx, $dApp, $group )
+    private function processInvokeLeaseTransaction( $txkey, $tx, $dApp, $function )
     {
         $this->appendTS( [
             UID =>      $this->getNewUid(),
@@ -772,7 +805,7 @@ class BlockchainParser
             FEEASSET => 0,
             FEE =>      0,
             ADDON =>    $this->getAliasId( $tx['recipient'] ),
-            GROUP =>    $group,
+            GROUP =>    $this->getGroupFunction( $dApp, $function, TX_LEASE ),
         ] );
 
         $this->setLeaseInfo( $tx['id'], $tx );
@@ -797,7 +830,7 @@ class BlockchainParser
         ] );
     }
 
-    private function processInvokeLeaseCancelTransaction( $txkey, $tx, $dApp, $group )
+    private function processInvokeLeaseCancelTransaction( $txkey, $tx, $dApp, $function )
     {
         $ltx = $this->getLeaseInfo( $tx['id'] );
 
@@ -812,7 +845,7 @@ class BlockchainParser
             FEEASSET => 0,
             FEE =>      0,
             ADDON =>    0,
-            GROUP =>    $group,
+            GROUP =>    $this->getGroupFunction( $dApp, $function, TX_LEASE_CANCEL ),
         ] );
     }
 
@@ -924,16 +957,15 @@ class BlockchainParser
         ] );
     }
 
-    private function getGroupExchange( $basset, $sasset, $new = false )
+    private function getGroupExchange( $sb, $basset, $sasset )
     {
-        $groupName = 'x' . $basset . '/' . $sasset;
-        return $new ? $this->kvGroups->getForcedKeyByValue( $groupName ) : $this->kvGroups->getKeyByValue( $groupName );
+        $groupName = $sb . $basset . ':' . $sasset;
+        return $this->kvGroups->getForcedKeyByValue( $groupName );
     }
 
-    private function getGroupInvoke( $aid, $function, $new = false )
+    private function getGroupFunction( $dApp, $function, $type )
     {
-        $groupName = 'i' . $aid . '/' . $function;
-        return $new ? $this->kvGroups->getForcedKeyByValue( $groupName ) : $this->kvGroups->getKeyByValue( $groupName );
+        return $this->kvGroups->getForcedKeyByValue( $dApp . ':' . $function . ':' . $type );
     }
 
     private function processSponsorshipTransaction( $txkey, $tx )
@@ -958,7 +990,7 @@ class BlockchainParser
         $this->appendTS( $ts );
     }
 
-    private function processInvokeSponsorshipTransaction( $txkey, $tx, $dApp, $group )
+    private function processInvokeSponsorshipTransaction( $txkey, $tx, $dApp, $function )
     {
         $asset = $this->getAssetId( $tx['assetId'] );
 
@@ -973,7 +1005,7 @@ class BlockchainParser
             FEEASSET => 0,
             FEE =>      0,
             ADDON =>    0,
-            GROUP =>    $group,
+            GROUP =>    $this->getGroupFunction( $dApp, $function, TX_SPONSORSHIP ),
         ];
 
         $this->setSponsorship( $asset, $ts );
@@ -1051,7 +1083,7 @@ class BlockchainParser
         $dApp = $this->getRecipientId( $tx['dApp'] );
         $addon = $this->getAliasId( $tx['dApp'] );
         $function = $this->getFunctionId( $tx['call']['function'] ?? 'default' );
-        $group = $this->getGroupInvoke( $dApp, $function, true );
+        $group = $this->getGroupFunction( $dApp, $function, TX_INVOKE );
 
         $this->appendTS( [
             UID =>      $this->getNewUid(),
@@ -1067,7 +1099,8 @@ class BlockchainParser
             GROUP =>    $group,
         ] );
 
-        for( $i = 1; $i < $n; ++$i )
+        if( $n > 1 )
+        for( $i = 1;; )
         {
             $payment = $payments[$i];
             $asset = $payment['assetId'];
@@ -1087,52 +1120,60 @@ class BlockchainParser
                 ADDON =>    $addon,
                 GROUP =>    $group,
             ] );
+
+            if( ++$i >= $n )
+                break;
         }
 
+        return $this->processStateChanges( $txkey, $stateChanges, $dApp, $function );
+    }
+
+    private function processStateChanges( $txkey, $stateChanges, $dApp, $function )
+    {
         if( $txkey >= GetTxHeight_RideV5() )
         {
             foreach( $stateChanges['invokes'] as $itx )
                 $this->processInvokeTransaction( $txkey, $itx, $dApp );
             foreach( $stateChanges['issues'] as $itx )
-                $this->processInvokeIssueTransaction( $txkey, $itx, $dApp, $group );
+                $this->processInvokeIssueTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['reissues'] as $itx )
                 if( $itx['quantity'] !== 0 )
-                    $this->processInvokeReissueTransaction( $txkey, $itx, $dApp, $group );         
+                    $this->processInvokeReissueTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['burns'] as $itx )
                 if( $itx['quantity'] !== 0 )
-                    $this->processInvokeBurnTransaction( $txkey, $itx, $dApp, $group );
+                    $this->processInvokeBurnTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['sponsorFees'] as $itx )
-                $this->processInvokeSponsorshipTransaction( $txkey, $itx, $dApp, $group );
+                $this->processInvokeSponsorshipTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['transfers'] as $itx )
                 if( $itx['amount'] !== 0 )
-                    $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $group );
+                    $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['leaseCancels'] as $itx )
-                    $this->processInvokeLeaseCancelTransaction( $txkey, $itx, $dApp, $group );
+                    $this->processInvokeLeaseCancelTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['leases'] as $itx )
-                $this->processInvokeLeaseTransaction( $txkey, $itx, $dApp, $group );
+                $this->processInvokeLeaseTransaction( $txkey, $itx, $dApp, $function );
         }
         else
         if( $txkey >= GetTxHeight_RideV4() )
         {
             foreach( $stateChanges['issues'] as $itx )
-                $this->processInvokeIssueTransaction( $txkey, $itx, $dApp, $group );
+                $this->processInvokeIssueTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['reissues'] as $itx )
                 if( $itx['quantity'] !== 0 )
-                    $this->processInvokeReissueTransaction( $txkey, $itx, $dApp, $group );         
+                    $this->processInvokeReissueTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['burns'] as $itx )
                 if( $itx['quantity'] !== 0 )
-                    $this->processInvokeBurnTransaction( $txkey, $itx, $dApp, $group );
+                    $this->processInvokeBurnTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['sponsorFees'] as $itx )
-                $this->processInvokeSponsorshipTransaction( $txkey, $itx, $dApp, $group );
+                $this->processInvokeSponsorshipTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['transfers'] as $itx )
                 if( $itx['amount'] !== 0 )
-                    $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $group );
+                    $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $function );
         }
         else
         {
             foreach( $stateChanges['transfers'] as $itx )
                 if( $itx['amount'] !== 0 )
-                    $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $group );
+                    $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $function );
         }
     }
 
@@ -1151,6 +1192,71 @@ class BlockchainParser
             ADDON =>    0,
             GROUP =>    0,
         ] );
+    }
+
+    private function processEthereumTransaction( $txkey, $tx )
+    {
+        $sender = $this->getSenderId( $tx['sender'], $tx );
+
+        if( 0 === $this->getEthereumInfo( $sender ) )
+        {
+            $this->appendTS( [
+                UID =>      $this->getNewUid(),
+                TXKEY =>    $txkey,
+                TYPE =>     TX_ETHEREUM,
+                A =>        $sender,
+                B =>        SELF,
+                ASSET =>    0,
+                AMOUNT =>   0,
+                FEEASSET => 0,
+                FEE =>      0,
+                ADDON =>    0,
+                GROUP =>    0,
+            ] );
+
+            $this->setEthereumInfo( $sender, 1 );
+        }
+
+        $payload = $tx['payload'];
+        switch( $payload['type'] )
+        {
+            case 'transfer':
+                $tx['recipient'] = $payload['recipient'];
+                $tx['assetId'] = $payload['asset'];
+                $tx['amount'] = $payload['amount'];
+                return $this->processTransferTransaction( $txkey, $tx );
+
+            case 'invocation':
+                $tx['dApp'] = $payload['dApp'];
+                $tx['call'] = $payload['call'];
+                $tx['payment'] = $payload['payment'];
+                $tx['stateChanges'] = $payload['stateChanges'];
+                return $this->processInvokeTransaction( $txkey, $tx );
+
+            default:
+                w8io_error( 'unknown payload type: ' . $payload['type'] );
+        }
+    }
+
+    private function processExpressionTransaction( $txkey, $tx )
+    {
+        $sender = $this->getSenderId( $tx['sender'], $tx );
+
+        $this->appendTS( [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_EXPRESSION,
+            A =>        $sender,
+            B =>        SELF,
+            ASSET =>    0,
+            AMOUNT =>   0,
+            FEEASSET => $tx[FEEASSET],
+            FEE =>      $tx[FEE],
+            ADDON =>    0,
+            GROUP =>    $this->getGroupFunction( $sender, EXPRESSION_FUNCTION, TX_EXPRESSION ),
+        ] );
+
+        return $this->processStateChanges( $txkey, $tx['stateChanges'], $sender, EXPRESSION_FUNCTION );
     }
 
     public function processTransaction( $txkey, $tx )
@@ -1210,7 +1316,11 @@ class BlockchainParser
                 $this->processInvokeTransaction( $txkey, $tx ); break;
             case TX_UPDATE_ASSET_INFO:
                 $this->processUpdateAssetInfoTransaction( $txkey, $tx ); break;
-                
+            case TX_EXPRESSION:
+                $this->processExpressionTransaction( $txkey, $tx ); break;
+            case TX_ETHEREUM:
+                $this->processEthereumTransaction( $txkey, $tx ); break;
+
             default:
                 w8io_error( 'unknown' );
         }
@@ -1241,6 +1351,7 @@ class BlockchainParser
         $this->pts->query( 'DELETE FROM pts WHERE r1 >= '. $txfrom );
         $this->sponsorships->reset();
         $this->leases->reset();
+        $this->ethereums->reset();
         $this->setHighs();
         $this->feerecs = [];
         $this->workheight = -1;
