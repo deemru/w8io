@@ -51,10 +51,6 @@ function selftest()
             if( $chainAmount !== $amount )
             {
                 wk()->log( 'e', $address . ': ' . w8io_amount( $chainAmount, $decimals ) . ' !== ' . w8io_amount( $amount, $decimals ) );
-
-                if( $a === 0 )
-                    continue;
-                exit;
             }
         }
 
