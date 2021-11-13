@@ -34,6 +34,7 @@ function selftest()
 
         $balances = $RO->db->query( 'SELECT * FROM balances WHERE r2 = ' . $aid );
         $i = 0;
+        $e = 0;
         foreach( $balances as $balance )
         {
             if( ++$i % 10000 === 0 )
@@ -50,11 +51,11 @@ function selftest()
 
             if( $chainAmount !== $amount )
             {
-                wk()->log( 'e', $address . ': ' . w8io_amount( $chainAmount, $decimals ) . ' !== ' . w8io_amount( $amount, $decimals ) );
+                wk()->log( 'e', ++$e . ') ' . $address . ': ' . w8io_amount( $chainAmount, $decimals ) . ' !== ' . w8io_amount( $amount, $decimals ) );
             }
         }
 
-        wk()->log( 's', $a .': ' . $assetId . ' (' . $asset . ') ' . $i . ' OK');
+        wk()->log( 's', $a .': ' . $assetId . ' (' . $asset . ') ' . ( $i - $e ) . ' OK' . ( $e > 0 ? ( ' (' . $e . ' ERROR)' ) : '' ) );
     }
     exit( 'done' );
 }

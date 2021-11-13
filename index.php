@@ -800,6 +800,17 @@ if( $address === 'tx' && isset( $f ) )
     $l = strlen( $f );
     if( $l > 40 )
     {
+        require_once 'include/RO.php';
+        $RO = new RO( W8DB );
+        $txid = $RO->getTxKeyByTxId( $f );
+
+        if( $txid !== false )
+        {
+            echo '<pre>';
+            w8io_print_transactions( false, 'r1 = ' . $txid, false, 100, 'txs', 3 );
+            echo '</pre><br>';
+        }
+
         $wk = wk();
         $tx = $wk->getTransactionById( $f );
         if( $tx === false )
