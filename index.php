@@ -12,7 +12,7 @@ else
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = '3ND86XoiA9ytxysBCvhkRQez82R3d6wZBzP/t/16';
+    $uri = 'tx/eekbucus8sk6qp49ynwysszgmqv3qo8zukjdlhesxrbf';
 
 $js = false;
 
@@ -800,23 +800,22 @@ if( $address === 'tx' && isset( $f ) )
     $l = strlen( $f );
     if( $l > 40 )
     {
-        require_once 'include/RO.php';
-        $RO = new RO( W8DB );
-        $txid = $RO->getTxKeyByTxId( $f );
-
-        if( $txid !== false )
-        {
-            echo '<pre>';
-            w8io_print_transactions( false, 'r1 = ' . $txid, false, 100, 'txs', 3 );
-            echo '</pre><br>';
-        }
-
-        $wk = wk();
-        $tx = $wk->getTransactionById( $f );
+        $tx = wk()->getTransactionById( $f );
         if( $tx === false )
             echo json_encode( [ 'error' => "getTransactionById( $f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
         else
         {
+            require_once 'include/RO.php';
+            $RO = new RO( W8DB );
+            $txid = $RO->getTxKeyByTxId( $f );
+
+            if( $txid !== false )
+            {
+                echo '<pre>';
+                w8io_print_transactions( false, 'r1 = ' . $txid, false, 100, 'txs', 3 );
+                echo '</pre><br>';
+            }
+
             if( !empty( $tx['script'] ) )
                 $addon = htmlscript( $tx );
             $tx = htmlfilter( $tx );
