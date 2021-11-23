@@ -264,7 +264,7 @@ echo sprintf( '
     </head>
     <body>
         <pre>
-', empty( $address ) ? '' : ( 'w8.io &#183; ' . prettyAddress( $address ) ), $light ? '-light' : '' );
+', empty( $address ) ? '' : ( 'w8.io &#183; ' . prettyAddress( $address ) ), $light ? '-l' : '-n' );
 /*
 , W8IO_ROOT, W8IO_ROOT, W8IO_ROOT,
 //isset( $showtime ) ? '0.66vw' : '14pt',
@@ -639,9 +639,9 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
         {
             $p1pad = $maxlen1 - $p1pad;
             $p2pad = $maxlen2 - ( $p2pad - $out[4] );
-            $pad2 = $p2pad > 3 ? ( ' ' . str_repeat( '-', $p2pad - 1 ) ) : str_repeat( ' ', $p2pad );
+            $pad2 = $p2pad > 3 ? ( ' <span>' . str_repeat( '—', $p2pad - 1 ) . '</span>' ) : str_repeat( ' ', $p2pad );
         }
-        $pad1 = $p1pad > 3 ? ( ' ' . str_repeat( '-', $p1pad - 1 ) ) : str_repeat( ' ', $p1pad );
+        $pad1 = $p1pad > 3 ? ( ' <span>' . str_repeat( '—', $p1pad - 1 ) . '</span>' ) : str_repeat( ' ', $p1pad );
 
         echo $p1 . $pad1 . $addon . $pad2 . ' ' . $p3 . PHP_EOL;
     }
@@ -1303,7 +1303,7 @@ else
             {
                 echo '<b>' . $amount . ' <a href="' . W8IO_ROOT . 'top/Waves">' . $asset . '</a></b>';
                 echo ' <small><a href="' . W8IO_ROOT . $address . '/fi/Waves">i</a><a href="' . W8IO_ROOT . $address . '/fo/Waves">o</a></small>' . PHP_EOL;
-                echo '<span style="color:#606870">' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
+                echo '<span>' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
             }
             else
             {
@@ -1361,7 +1361,7 @@ else
         {
             echo '<b>' . $frecord['amount'] . ' <a href="' . W8IO_ROOT . 'top/' . $frecord['id'] . '">' . $frecord['asset'] . '</a></b>';
             echo ' <small><a href="' . W8IO_ROOT . $address . '/fi/' . $fasset . '">i</a><a href="' . W8IO_ROOT . $address . '/fo/' . $fasset . '">o</a></small>' . PHP_EOL;
-            echo '<span style="color:#606870">' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
+            echo '<span>' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
         }
 
         arsort( $weights );
@@ -1371,7 +1371,7 @@ else
             if( $weight === 0 && !isset( $zerotrades ) )
             {
                 if( !$js )
-                    echo '<span style="color:#606870">' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
+                    echo '<span>' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
                 $zerotrades = true;
             }
 
@@ -1384,7 +1384,7 @@ else
 
         if( !isset( $zerotrades ) && !$js )
         {
-            echo '<span style="color:#606870">' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
+            echo '<span>' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
             $zerotrades = true;
         }
 
