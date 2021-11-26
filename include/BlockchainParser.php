@@ -450,6 +450,24 @@ class BlockchainParser
                     GROUP =>    FAILED_GROUP,
                 ] );
                 break;
+            case TX_EXCHANGE:
+                // https://docs.waves.tech/en/blockchain/transaction/transaction-validation
+                $fee = $tx['fee'];
+                $afee = isset( $tx['feeAssetId'] ) ? $this->getAssetId( $tx['feeAssetId'] ) : WAVES_ASSET;
+                $this->appendTS( [
+                    UID =>      $this->getNewUid(),
+                    TXKEY =>    $txkey,
+                    TYPE =>     TX_MATCHER,
+                    A =>        MATCHER,
+                    B =>        $this->getRecipientId( $tx['sender'] ),
+                    ASSET =>    $afee,
+                    AMOUNT =>   -$fee,
+                    FEEASSET => $afee,
+                    FEE =>      $fee,
+                    ADDON =>    0,
+                    GROUP =>    FAILED_GROUP,
+                ] );
+                break;
             default:
                 w8_err( 'processFailedTransaction unknown type: ' . $tx['type'] );
         }
