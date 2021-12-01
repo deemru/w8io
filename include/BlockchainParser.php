@@ -1128,7 +1128,7 @@ class BlockchainParser
             $this->appendTS( [
                 UID =>      $this->getNewUid(),
                 TXKEY =>    $txkey,
-                TYPE =>     TX_INVOKE,
+                TYPE =>     $type,
                 A =>        $sender,
                 B =>        $dApp,
                 ASSET =>    $asset,
