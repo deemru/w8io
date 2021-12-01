@@ -693,7 +693,7 @@ function htmlfilter( $kv )
                     case 'target': $v = w8io_a( $v ); break;
                     case 'attachment': $fkv[$k . '-decoded'] = htmlentities( trim( preg_replace( '/\s+/', ' ', wk()->base58Decode( $v ) ) ) );
                     case 'value': if( is_address( $v ) ) $v = w8io_a( $v ); break;
-                    default: $v = htmlentities( $v );
+                    default: $v = isset( $v ) ? htmlentities( $v ) : 'null';
                 }
 
             $fkv[$k] = $v;
