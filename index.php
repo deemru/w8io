@@ -1064,7 +1064,7 @@ if( $address === 'GENERATORS' )
     $totime = $RO->getTimestampByHeight( $to );
 
     $q = $n / $Q;
-    $qb = max( intdiv( $q, 16 ), 5 );
+    $qb = max( intdiv( (int)$q, 16 ), 5 );
 
     $period = $totime - $fromtime;
     $period = round( $period / 3600 );
