@@ -232,14 +232,14 @@ function procWeight( $blockchain, $parser )
     $isWaves = true;
     foreach( $pts as $ts )
     {
-        if( $ts[TYPE] !== '7' )
+        if( $ts[TYPE] !== TX_EXCHANGE )
             continue;
         if( $ts[A] === $ts[B] )
             continue;
 
-        $txkey = (int)$ts[TXKEY];
-        $asset = (int)$ts[ASSET];
-        $amount = (int)$ts[AMOUNT];
+        $txkey = $ts[TXKEY];
+        $asset = $ts[ASSET];
+        $amount = $ts[AMOUNT];
 
         if( $lastTxKey === $txkey )
         {

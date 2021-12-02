@@ -139,26 +139,6 @@ function w8io_tx_type( $type )
     }
 }
 
-function ptsFilter( $pts )
-{
-    $ptsInts = [];
-    foreach( $pts as $ts )
-        $ptsInts[] = [
-            UID => (int)$ts[UID],
-            TXKEY => (int)$ts[TXKEY],
-            TYPE => (int)$ts[TYPE],
-            A => (int)$ts[A],
-            B => (int)$ts[B],
-            ASSET => (int)$ts[ASSET],
-            AMOUNT => (int)$ts[AMOUNT],
-            FEEASSET => (int)$ts[FEEASSET],
-            FEE => (int)$ts[FEE],
-            ADDON => (int)$ts[ADDON],
-            GROUP => (int)$ts[GROUP],
-        ];
-    return $ptsInts;
-}
-
 function isAliasType( $type )
 {
     switch( $type )

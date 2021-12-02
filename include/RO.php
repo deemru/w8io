@@ -379,7 +379,7 @@ class RO
             $query = 'SELECT * FROM ( SELECT * FROM pts WHERE r3 = ' . $id . $where . ' ORDER BY r0 DESC LIMIT ' . $limit . ' ) UNION
                                       SELECT * FROM pts WHERE r4 = ' . $id . $where . ' ORDER BY r0 DESC LIMIT ' . $limit;
         
-        return ptsFilter( $this->db->query( $query )->fetchAll() );
+        return $this->db->query( $query )->fetchAll();
     }
 
     public function getPTSAtHeight( $height )
@@ -396,7 +396,7 @@ class RO
 
         $pts = $this->getPTSAtHeight->fetchAll();
         if( isset( $pts[0] ) )
-            return ptsFilter( $pts );
+            return $pts;
 
         return false;
     }

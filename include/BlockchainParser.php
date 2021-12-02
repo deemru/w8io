@@ -117,7 +117,7 @@ class BlockchainParser
         if( $this->getSponsorship->execute( [ $asset ] ) === false )
             w8_err( __FUNCTION__ );
 
-        $pts = ptsFilter( $this->getSponsorship->fetchAll() );
+        $pts = $this->getSponsorship->fetchAll();
         if( isset( $pts[0] ) && $pts[0][AMOUNT] !== 0 )
             $sponsorship = $pts[0];
         else
@@ -328,7 +328,7 @@ class BlockchainParser
         if( $this->q_getPTS->execute( [ $from, $to ] ) === false )
             w8_err( __FUNCTION__ );
 
-        return ptsFilter( $this->q_getPTS->fetchAll() );
+        return $this->q_getPTS->fetchAll();
     }
 
     private function getFeesAt( $height, $reward )
@@ -388,7 +388,7 @@ class BlockchainParser
         if( $this->q_getNGFeesAt->execute( [ w8h2kg( $height ) ] ) === false )
             w8io_error( 'getNGFeesAt' );
 
-        $pts = ptsFilter( $this->q_getNGFeesAt->fetchAll() );
+        $pts = $this->q_getNGFeesAt->fetchAll();
         if( count( $pts ) < 1 )
             w8_err( "unexpected getNGFeesAt( $height )" );
 
