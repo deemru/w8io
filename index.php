@@ -715,6 +715,8 @@ function htmlscript( $tx )
     require_once 'include/RO.php';
     $RO = new RO( W8DB );
     $a = $RO->getAddressIdByAddress( $tx['sender'] );
+    if( $a === false )
+        return;
     $txkey = $RO->getTxKeyByTxId( $tx['id'] );
     if( $tx['type'] === 15 )
     {
