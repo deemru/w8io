@@ -12,7 +12,7 @@ else
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'tx/eekbucus8sk6qp49ynwysszgmqv3qo8zukjdlhesxrbf';
+    $uri = 'j13/10';
 
 $js = false;
 
@@ -24,6 +24,28 @@ $arg = $uri[2] ?? false;
 $arg2 = $uri[3] ?? false;
 $arg3 = $uri[4] ?? false;
 $arg4 = $uri[5] ?? false;
+
+if( $address === 'j13' )
+{
+    require_once 'include/RO.php';
+    $RO = new RO( W8DB );
+    $q = $RO->db->query( 'SELECT * FROM pts WHERE r2 = 13 ORDER BY r0 DESC LIMIT 100' );
+    $n = 0;
+    $json = [];
+    $max = 100;
+    if( $f !== false )
+        $max = min( (int)$f, $max );
+    foreach( $q as $r )
+    {
+        $txkey = $r[1];
+        $txid = $RO->getTxIdByTxKey( $txkey );
+        $json[] = $txid;
+        if( ++$n >= $max )
+            break;
+    }
+
+    exit( json_encode( $json ) );
+}
 
 if( empty( $address ) )
     $address = 'GENERATORS';
