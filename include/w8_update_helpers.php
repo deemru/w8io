@@ -324,7 +324,7 @@ function procWeight( $blockchain, $parser )
         if( $info === false )
             w8_err();
         
-        if( $info[1] !== chr( 1 ) )
+        if( $num !== 2 || $info[1] !== chr( 1 ) )
             $info[1] = $weight;
 
         $assetInfo->setKeyValue( $asset, $info );
