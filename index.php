@@ -165,68 +165,6 @@ if( $address === 'api' )
 
         exit( $wk->log( 'e', 'bad API call' ) );
     }
-    if( $f === 'chart' )
-    {
-        require_once './include/w8io_base.php';
-        require_once './include/w8io_api.php';
-        $api = new w8io_api();
-
-        $from = (int)$arg;
-        $to = (int)$arg2;
-
-        if( $from > $to )
-            exit;
-
-        $height = $api->get_height();
-        $to = min( $height, $to );
-        $Q = 1;
-
-        while( ( $to - $from ) / $Q > 1000 && $Q < 10000 )
-            $Q *= 10;
-
-        $from -= $from % $Q;
-        $dataset = $api->get_dataset( $Q, $from, $to );
-
-        $out = 'block';
-        $total = $dataset['totals']['txs'];
-        $out .= ", total ($total)";
-
-        $types = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, W8IO_TYPE_INVOKE_DATA, W8IO_TYPE_INVOKE_TRANSFER ];
-        $etypes = [];
-        foreach( $types as $i )
-        {
-            $name = w8io_tx_type( $i );
-            if( isset( $dataset['totals'][$i] ) )
-            {
-                $total = $dataset['totals'][$i];
-                $out .= ", $name ($total)";
-                $etypes[] = $i;
-            }
-        }
-        $types = $etypes;
-
-        $out .= PHP_EOL;
-
-        foreach( $dataset['txs'] as $key => $value )
-        {
-            $tvalue = $value;
-            $out .= "$key, $tvalue";
-            foreach( $types as $i )
-                if( isset( $dataset[$i][$key] ) )
-                {
-                    $tvalue = $dataset[$i][$key];
-                    $out .= ", $tvalue";
-                }
-                else
-                {
-                    $out .= ", 0";
-                }
-
-            $out .= PHP_EOL;
-        }
-
-        echo $out;
-    }
 
     exit;
 }
@@ -565,7 +503,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
             }
         }
 
-        $wtype = w8io_tx_type( $type );
+        $wtype = TYPE_STRINGS[$type];
         $reclen += strlen( $wtype );
         $maxlen1 = max( $maxlen1, $reclen );
         $block = w8k2h( $ts[TXKEY] );
@@ -1295,7 +1233,7 @@ else
                 {
                     if( $out !== '' )
                         $out .= ' &#183; ';
-                    $out .= '<a href="' . W8IO_ROOT . $address . '/t/' . $t . '">' . w8io_tx_type( $t ) . '</a>&#183;';
+                    $out .= '<a href="' . W8IO_ROOT . $address . '/t/' . $t . '">' . TYPE_STRINGS[$t] . '</a>&#183;';
                     if( $ti > 0 )
                         $out .= '<a href="' . W8IO_ROOT . $address . '/ti/' . $t . '">i' . $ti . '</a>';
                     if( $to > 0 )

@@ -4,66 +4,101 @@ namespace w8io;
 
 use deemru\ABCode;
 
-define( 'UID', 0 );
-define( 'TXKEY', 1 );
-define( 'TYPE', 2 );
-define( 'A', 3 );
-define( 'B', 4 );
-define( 'ASSET', 5 );
-define( 'AMOUNT', 6 );
-define( 'FEEASSET', 7 );
-define( 'FEE', 8 );
-define( 'ADDON', 9 );
-define( 'GROUP', 10 );
+const UID = 0;
+const TXKEY = 1;
+const TYPE = 2;
+const A = 3;
+const B = 4;
+const ASSET = 5;
+const AMOUNT = 6;
+const FEEASSET = 7;
+const FEE = 8;
+const ADDON = 9;
+const GROUP = 10;
 
-define( 'GENESIS', 0 );
-define( 'GENERATOR', -1 );
-define( 'MATCHER', -2 );
-define( 'SELF', -3 );
-define( 'SPONSOR', -4 );
-define( 'MASS', -5 );
+const GENESIS = 0;
+const GENERATOR = -1;
+const MATCHER = -2;
+const SELF = -3;
+const SPONSOR = -4;
+const MASS = -5;
 
-define( 'TX_GENESIS', 1 );
-define( 'TX_PAYMENT', 2 );
-define( 'TX_ISSUE', 3 );
-define( 'TX_TRANSFER', 4 );
-define( 'TX_REISSUE', 5 );
-define( 'TX_BURN', 6 );
-define( 'TX_EXCHANGE', 7 );
-define( 'TX_LEASE', 8 );
-define( 'TX_LEASE_CANCEL', 9 );
-define( 'TX_ALIAS', 10 );
-define( 'TX_MASS_TRANSFER', 11 );
-define( 'TX_DATA', 12 );
-define( 'TX_SMART_ACCOUNT', 13 );
-define( 'TX_SPONSORSHIP', 14 );
-define( 'TX_SMART_ASSET', 15 );
-define( 'TX_INVOKE', 16 );
-define( 'TX_UPDATE_ASSET_INFO', 17 );
-define( 'TX_EXPRESSION', 18 );
-define( 'TX_ETHEREUM', 19 );
+const TX_GENESIS = 1;
+const TX_PAYMENT = 2;
+const TX_ISSUE = 3;
+const TX_TRANSFER = 4;
+const TX_REISSUE = 5;
+const TX_BURN = 6;
+const TX_EXCHANGE = 7;
+const TX_LEASE = 8;
+const TX_LEASE_CANCEL = 9;
+const TX_ALIAS = 10;
+const TX_MASS_TRANSFER = 11;
+const TX_DATA = 12;
+const TX_SMART_ACCOUNT = 13;
+const TX_SPONSORSHIP = 14;
+const TX_SMART_ASSET = 15;
+const TX_INVOKE = 16;
+const TX_UPDATE_ASSET_INFO = 17;
+const TX_ETHEREUM = 18;
+const TX_EXPRESSION = 19;
 
-define( 'TX_GENERATOR', 0 );
-define( 'TX_MATCHER', -1 );
-define( 'TX_SPONSOR', -2 );
+const TX_GENERATOR = 0;
+const TX_MATCHER = -1;
+const TX_SPONSOR = -2;
 
-define( 'ITX_ISSUE', -TX_ISSUE );
-define( 'ITX_TRANSFER', -TX_TRANSFER );
-define( 'ITX_REISSUE', -TX_REISSUE );
-define( 'ITX_BURN', -TX_BURN );
-define( 'ITX_LEASE', -TX_LEASE );
-define( 'ITX_LEASE_CANCEL', -TX_LEASE_CANCEL );
-define( 'ITX_SPONSORSHIP', -TX_SPONSORSHIP );
-define( 'ITX_INVOKE', -TX_INVOKE );
+const ITX_ISSUE = -TX_ISSUE;
+const ITX_TRANSFER = -TX_TRANSFER;
+const ITX_REISSUE = -TX_REISSUE;
+const ITX_BURN = -TX_BURN;
+const ITX_LEASE = -TX_LEASE;
+const ITX_LEASE_CANCEL = -TX_LEASE_CANCEL;
+const ITX_SPONSORSHIP = -TX_SPONSORSHIP;
+const ITX_INVOKE = -TX_INVOKE;
 
-define( 'SPONSOR_ASSET', -3 );
-define( 'WAVES_LEASE_ASSET', -2 );
-//define( 'INVOKE_ASSET', -1 );
-define( 'WAVES_ASSET', 0 );
+const TYPE_STRINGS =
+[
+    TX_SPONSOR => 'sponsor',
+    TX_MATCHER => 'matcher',
+    TX_GENERATOR => 'fees',
 
-define( 'FAILED_GROUP', -1 );
+    TX_GENESIS => 'genesis',
+    TX_PAYMENT => 'payment',
+    TX_ISSUE => 'issue',
+    ITX_ISSUE => 'issue',
+    TX_TRANSFER => 'transfer',
+    ITX_TRANSFER => 'transfer',
+    TX_REISSUE => 'reissue',
+    ITX_REISSUE => 'reissue',
+    TX_BURN => 'burn',
+    ITX_BURN => 'burn',
+    TX_EXCHANGE => 'exchange',
+    TX_LEASE => 'lease',
+    ITX_LEASE => 'lease',
+    TX_LEASE_CANCEL => 'unlease',
+    ITX_LEASE_CANCEL => 'unlease',
+    TX_ALIAS => 'alias',
+    TX_MASS_TRANSFER => 'mass',
+    TX_DATA => 'data',
+    TX_SMART_ACCOUNT => 'smart account',
+    TX_SPONSORSHIP => 'sponsorship',
+    ITX_SPONSORSHIP => 'sponsorship',
+    TX_SMART_ASSET => 'smart asset',
+    TX_INVOKE => 'invoke',
+    ITX_INVOKE => 'invoke',
+    TX_UPDATE_ASSET_INFO => 'rename',
+    TX_ETHEREUM => 'ethereum',
+    TX_EXPRESSION => 'expression',
+];
 
-define( 'EXPRESSION_FUNCTION', -1 );
+const SPONSOR_ASSET = -3;
+const WAVES_LEASE_ASSET = -2;
+//const INVOKE_ASSET = -1;
+const WAVES_ASSET = 0;
+
+const FAILED_GROUP = -1;
+
+const EXPRESSION_FUNCTION = -1;
 
 function w8k2i( $key ){ return $key & 0xFFFFFFFF; }
 function w8k2h( $key ){ return $key >> 32; }
@@ -74,8 +109,8 @@ function e58( $data ){ return ABCode::base58()->encode( $data ); }
 function json_unpack( $data ){ return json_decode( gzinflate( $data ), true, 512, JSON_BIGINT_AS_STRING ); }
 function json_pack( $data ){ return gzdeflate( json_encode( $data ), 9 ); }
 
-define( 'TX_ASSET_IN', -10000 );
-define( 'TX_ASSET_OUT', -20000 );
+const TX_ASSET_IN = -10000;
+const TX_ASSET_OUT = -20000;
 function asset_in( $type ){ return TX_ASSET_IN - $type; }
 function asset_out( $type ){ return TX_ASSET_OUT - $type; }
 
@@ -101,42 +136,6 @@ function w8io_amount( $amount, $decimals, $pad = 20, $setSign = true )
 
     $amount = $sign . $amount;
     return $pad ? str_pad( $amount, $pad, ' ', STR_PAD_LEFT ) : $amount;
-}
-
-function w8io_tx_type( $type )
-{
-    switch( $type )
-    {
-        case -2: return 'sponsor';
-        case -1: return 'matcher';
-        case 0: return 'fees';
-        case 1: return 'genesis';
-        //case 101: return 'genesis role';
-        //case 102: return 'role';
-        //case 110: return 'genesis unknown';
-        //case 105: return 'data unknown';
-        //case 106: return 'invoke 1 unknown';
-        //case 107: return 'invoke 2 unknown';
-        case 2: return 'payment';
-        case 3: case -3: return 'issue';
-        case 4: case -4: return 'transfer';
-        case 5: case -5: return 'reissue';
-        case 6: case -6: return 'burn';
-        case 7: return 'exchange';
-        case 8: case -8: return 'lease';
-        case 9: case -9: return 'unlease';
-        case 10: return 'alias';
-        case 11: return 'mass';
-        case 12: return 'data';
-        case 13: return 'smart account';
-        case 14: case -14: return 'sponsorship';
-        case 15: return 'smart asset';
-        case 16: case -16: return 'invoke';
-        case 17: return 'rename';
-        case 18: return 'expression';
-        case 19: return 'ethereum';
-        default: return 'unknown';
-    }
 }
 
 function isAliasType( $type )
