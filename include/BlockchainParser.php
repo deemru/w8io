@@ -21,7 +21,6 @@ class BlockchainParser
     public KV $kvFunctions;
     public KV $sponsorships;
     public KV $leases;
-    public KV $ethereums;
     public Blockchain $blockchain;
     public BlockchainParser $parser;
     public BlockchainBalances $balances;
@@ -57,7 +56,6 @@ class BlockchainParser
 
         $this->sponsorships = new KV;
         $this->leases = new KV;
-        $this->ethereums = new KV;
 
         $this->kvs = [
             $this->kvAddresses,
@@ -145,37 +143,6 @@ class BlockchainParser
         }
 
         return $tx;
-    }
-
-    private function setEthereumInfo( $id, $ethereum )
-    {
-        $this->ethereums->setKeyValue( $id, $ethereum );
-    }
-
-    private function getEthereumInfo( $id )
-    {
-        if( false !== $this->ethereums->getValueByKey( $id ) )
-            return 1;
-
-        if( $this->indexed === false )
-            return 0;
-
-        if( !isset( $this->getEthereum ) )
-        {
-            $this->getEthereum = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r2 = 19 AND r3 = ? ORDER BY r0 DESC LIMIT 1' );
-            if( $this->getEthereum === false )
-                w8_err( __FUNCTION__ );
-        }
-
-        if( $this->getEthereum->execute( [ $id ] ) === false )
-            w8_err( __FUNCTION__ );
-
-        $pts = $this->getEthereum->fetchAll();
-        if( !isset( $pts[0] ) )
-            return 0;
-
-        $this->setEthereumInfo( $id, 1 );
-        return 1;
     }
 
     public function setHighs()
@@ -514,7 +481,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_ISSUE,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    $this->getNewAssetId( $tx ),
             AMOUNT =>   $tx['quantity'],
             FEEASSET => $tx[FEEASSET],
@@ -531,7 +498,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     ITX_ISSUE,
             A =>        $dApp,
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    $this->getNewAssetId( $tx ),
             AMOUNT =>   $tx['quantity'],
             FEEASSET => 0,
@@ -548,7 +515,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_REISSUE,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    $this->getAssetId( $tx['assetId'] ),
             AMOUNT =>   $tx['quantity'],
             FEEASSET => $tx[FEEASSET],
@@ -565,7 +532,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     ITX_REISSUE,
             A =>        $dApp,
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    $this->getAssetId( $tx['assetId'] ),
             AMOUNT =>   $tx['quantity'],
             FEEASSET => 0,
@@ -584,7 +551,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_BURN,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    $this->getAssetId( $tx['assetId'] ),
             AMOUNT =>   $amount,
             FEEASSET => $tx[FEEASSET],
@@ -603,7 +570,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     ITX_BURN,
             A =>        $dApp,
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    $this->getAssetId( $tx['assetId'] ),
             AMOUNT =>   $amount,
             FEEASSET => 0,
@@ -771,6 +738,43 @@ class BlockchainParser
         ] );
     }
 
+    private function processEthereumTransferTransaction( $txkey, $tx )
+    {
+        $asset = $tx['assetId'];
+        $asset = isset( $asset ) ? $this->getAssetId( $asset ) : WAVES_ASSET;
+        
+        $sender = $this->getSenderId( $tx['sender'] );
+        $recipient = $this->getRecipientId( $tx['recipient'] );
+
+        $this->appendTS( [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_ETHEREUM,
+            A =>        $sender,
+            B =>        $recipient,
+            ASSET =>    0,
+            AMOUNT =>   0,
+            FEEASSET => 0,
+            FEE =>      0,
+            ADDON =>    0,
+            GROUP =>    ETHEREUM_TRANSFER_GROUP,
+        ] );
+
+        $this->appendTS( [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_TRANSFER,
+            A =>        $sender,
+            B =>        $recipient,
+            ASSET =>    $asset,
+            AMOUNT =>   $tx['amount'],
+            FEEASSET => $tx[FEEASSET],
+            FEE =>      $tx[FEE],
+            ADDON =>    $this->getAliasId( $tx['recipient'] ),
+            GROUP =>    0,
+        ] );
+    }
+
     private function processInvokeTransferTransaction( $txkey, $tx, $dApp, $function )
     {
         $asset = $tx['asset'];
@@ -878,7 +882,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_ALIAS,
             A =>        $a,
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    0,
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
@@ -931,7 +935,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_DATA,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    0,
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
@@ -948,7 +952,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_SMART_ACCOUNT,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    0,
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
@@ -965,7 +969,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_SMART_ASSET,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    $this->getAssetId( $tx['assetId'] ),
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
@@ -1050,7 +1054,7 @@ class BlockchainParser
         return false;
     }
 
-    private function processInvokeTransaction( $txkey, $tx, $dAppToDapp = null )
+    private function processInvokeTransaction( $txkey, $tx, $dAppToDapp = null, $ethereum = false )
     {
         $stateChanges = $tx['stateChanges'];
         $payments = $tx['payment'];
@@ -1102,6 +1106,23 @@ class BlockchainParser
         $addon = $this->getAliasId( $tx['dApp'] );
         $function = $this->getFunctionId( $tx['call']['function'] ?? 'default' );
         $group = $this->getGroupFunction( $dApp, $function, TX_INVOKE );
+
+        if( $ethereum )
+        {
+            $this->appendTS( [
+                UID =>      $this->getNewUid(),
+                TXKEY =>    $txkey,
+                TYPE =>     TX_ETHEREUM,
+                A =>        $sender,
+                B =>        $dApp,
+                ASSET =>    0,
+                AMOUNT =>   0,
+                FEEASSET => 0,
+                FEE =>      0,
+                ADDON =>    0,
+                GROUP =>    $group,
+            ] );
+        }
 
         $this->appendTS( [
             UID =>      $this->getNewUid(),
@@ -1202,7 +1223,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_UPDATE_ASSET_INFO,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    $this->getUpdatedAssetId( $tx ),
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
@@ -1214,27 +1235,6 @@ class BlockchainParser
 
     private function processEthereumTransaction( $txkey, $tx )
     {
-        $sender = $this->getSenderId( $tx['sender'], $tx );
-
-        if( 0 === $this->getEthereumInfo( $sender ) )
-        {
-            $this->appendTS( [
-                UID =>      $this->getNewUid(),
-                TXKEY =>    $txkey,
-                TYPE =>     TX_ETHEREUM,
-                A =>        $sender,
-                B =>        SELF,
-                ASSET =>    0,
-                AMOUNT =>   0,
-                FEEASSET => 0,
-                FEE =>      0,
-                ADDON =>    0,
-                GROUP =>    0,
-            ] );
-
-            $this->setEthereumInfo( $sender, 1 );
-        }
-
         $payload = $tx['payload'];
         switch( $payload['type'] )
         {
@@ -1242,14 +1242,14 @@ class BlockchainParser
                 $tx['recipient'] = $payload['recipient'];
                 $tx['assetId'] = $payload['asset'];
                 $tx['amount'] = $payload['amount'];
-                return $this->processTransferTransaction( $txkey, $tx );
+                return $this->processEthereumTransferTransaction( $txkey, $tx );
 
             case 'invocation':
                 $tx['dApp'] = $payload['dApp'];
                 $tx['call'] = $payload['call'];
                 $tx['payment'] = $payload['payment'];
                 $tx['stateChanges'] = $payload['stateChanges'];
-                return $this->processInvokeTransaction( $txkey, $tx );
+                return $this->processInvokeTransaction( $txkey, $tx, null, true );
 
             default:
                 w8io_error( 'unknown payload type: ' . $payload['type'] );
@@ -1258,14 +1258,14 @@ class BlockchainParser
 
     private function processExpressionTransaction( $txkey, $tx )
     {
-        $sender = $this->getSenderId( $tx['sender'], $tx );
+        $sender = $this->getSenderId( $tx['sender'] );
 
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_EXPRESSION,
             A =>        $sender,
-            B =>        SELF,
+            B =>        MYSELF,
             ASSET =>    0,
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
@@ -1369,7 +1369,6 @@ class BlockchainParser
         $this->pts->query( 'DELETE FROM pts WHERE r1 >= '. $txfrom );
         $this->sponsorships->reset();
         $this->leases->reset();
-        $this->ethereums->reset();
         $this->setHighs();
         $this->feerecs = [];
         $this->workheight = -1;

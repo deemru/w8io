@@ -320,7 +320,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
         unset( $reclen );
         if( $type === TX_SPONSORSHIP && $aid !== false && $a !== $aid )
             continue;
-        if( $aid !== false && $b === SELF )
+        if( $aid !== false && $b === MYSELF )
         {
             $b = $a;
             $isa = true;
@@ -362,7 +362,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                 $asset = ' <a href="' . W8IO_ROOT . $address . '/f/' . $asset . '">' . $name . '</a>';
                 $reclen = strlen( $amount ) + mb_strlen( html_entity_decode( $name ), 'UTF-8' );
             }
-            else if( $amount === 0 && ( $type === TX_INVOKE || $type === ITX_INVOKE ) )
+            else if( $amount === 0 && ( $type === TX_INVOKE || $type === ITX_INVOKE || $type === TX_ETHEREUM ) )
             {
                 $amount = '';
                 $asset = '';
@@ -468,7 +468,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                 $addon = '';
         }
 
-        if( $type === TX_INVOKE || $type <= ITX_ISSUE )
+        if( $type === TX_INVOKE || $type <= TX_ETHEREUM || $type <= ITX_ISSUE )
         {
             $groupId = $ts[GROUP];
 
@@ -492,11 +492,18 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
 
                 $tdb[$groupId] = [ $link, $linklen, $addon, $maxlen2 ];
             }
-            else if( $groupId === FAILED_GROUP )
+            else if( $groupId !== 0 )
             {
+                if( $groupId === FAILED_GROUP )
+                    $addon = '(failed)';
+                else if( $groupId === ETHEREUM_TRANSFER_GROUP )
+                    $addon = '(transfer)';
+                else
+                    w8_err( "unknown $groupId" );
+
                 $link = ' <a href="' . W8IO_ROOT . 'txs/g/' . $groupId . '">';
                 $linklen = strlen( $link ) + 3;
-                $addon = $link . ':failed:</a>';
+                $addon = $link . $addon . '</a>';
                 $maxlen2 = max( $maxlen2, strlen( $addon ) - $linklen );
 
                 $tdb[$groupId] = [ $link, $linklen, $addon, $maxlen2 ];

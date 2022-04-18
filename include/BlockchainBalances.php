@@ -192,6 +192,7 @@ class BlockchainBalances
             case TX_MATCHER:
             case TX_INVOKE:
             case ITX_INVOKE:
+            case TX_ETHEREUM:
                 if( $asset === $afee )
                     $procs_a = [ asset_out( $type ) => 1, $asset => -$amount -$fee ];
                 else
@@ -244,7 +245,6 @@ class BlockchainBalances
             case ITX_SPONSORSHIP:
             case TX_SMART_ASSET:
             case TX_UPDATE_ASSET_INFO:
-            case TX_ETHEREUM:
             case TX_EXPRESSION:
                 $procs_a = [ asset_out( $type ) => 1, $afee => -$fee ];
                 break;

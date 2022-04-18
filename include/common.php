@@ -19,7 +19,7 @@ const GROUP = 10;
 const GENESIS = 0;
 const GENERATOR = -1;
 const MATCHER = -2;
-const SELF = -3;
+const MYSELF = -3;
 const SPONSOR = -4;
 const MASS = -5;
 
@@ -97,6 +97,7 @@ const WAVES_LEASE_ASSET = -2;
 const WAVES_ASSET = 0;
 
 const FAILED_GROUP = -1;
+const ETHEREUM_TRANSFER_GROUP = -2;
 
 const EXPRESSION_FUNCTION = -1;
 
