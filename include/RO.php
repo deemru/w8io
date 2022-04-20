@@ -196,7 +196,7 @@ class RO
     {
         if( !isset( $this->getFirstAliasById ) )
         {
-            $this->getFirstAliasById = $this->db->db->prepare( 'SELECT r1 FROM aliases WHERE r0 = ( SELECT r9 FROM pts WHERE r3 = ? AND r2 = 10 ORDER BY r0 ASC LIMIT 1 ) LIMIT 1' );
+            $this->getFirstAliasById = $this->db->db->prepare( 'SELECT r1 FROM aliases WHERE r0 = ( SELECT r9 FROM pts WHERE r3 = ? AND r2 = 10 ORDER BY r0 DESC LIMIT 1 ) LIMIT 1' );
             if( $this->getFirstAliasById === false )
                 w8_err();
         }

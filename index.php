@@ -2,8 +2,6 @@
 
 namespace w8io;
 
-use w8io_api;
-
 if( file_exists( 'config.php' ) )
     require_once 'config.php';
 else
@@ -135,10 +133,12 @@ if( $address === 'GENERATORS' )
 else
 if( $address === 'api' )
 {
+    require_once 'include/RO.php';
+
     if( strlen( $f ) > 20 )
     {
         $wk = wk();
-        if( false === ( $f = $wk->base58Decode( $f ) ) ||
+        if( false === ( $f = w8dec( $f ) ) ||
             false === ( $call = $wk->decryptash( $f ) ) ||
             false === ( $call = $wk->json_decode( $call ) ) )
             exit( $wk->log( 'e', 'bad API call' ) );
@@ -147,7 +147,6 @@ if( $address === 'api' )
         {
             case 't':
             {
-                require_once 'include/RO.php';
                 $RO = new RO( W8DB );
 
                 $aid = $call['i'];
@@ -238,7 +237,7 @@ function w8io_print_distribution( $f, $aid, $info, $n )
 {
     global $RO;
 
-    $decimals = (int)$info[0];
+    $decimals = ( $decimals = $info[0] ) === 'N' ? 0 : (int)$decimals;
     $asset = substr( $info, 2 );
 
     $balances = $RO->db->query( 'SELECT * FROM balances WHERE r2 = ' . $aid . ' ORDER BY r3 DESC LIMIT ' . $n );
@@ -304,7 +303,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                 'a' => $address,
                 'd' => $d,
             ];
-            $call = W8IO_ROOT . 'api/' . $wk->base58Encode( $wk->encryptash( json_encode( $call ) ) );
+            $call = W8IO_ROOT . 'api/' . w8enc( $wk->encryptash( json_encode( $call ) ) );
             $lazy = '</pre><pre class="lazyload" url="' . $call . '">...';
             if( $js )
                 $REST->setTxsPagination( $call );
@@ -355,7 +354,8 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                     $aspam = true;
 
                 $name = substr( $info, 2 );
-                $amount = w8io_amount( $amount, $info[0], 0, false );
+                $decimals = ( $decimals = $info[0] ) === 'N' ? 0 : (int)$decimals;
+                $amount = w8io_amount( $amount, $decimals, 0, false );
                 $amount = ' ' . w8io_sign( $sign ) . $amount;
                 $assetname = $name;
                 $assetId = $asset;
@@ -396,8 +396,8 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
             {
                 $info = $RO->getAssetInfoById( $afee );
                 $feename = substr( $info, 2 );
-                $feeamount = w8io_amount( $fee, $info[0], 0 );
-                $fee = ' <small>' . w8io_amount( $fee, $info[0], 0 ) . ' <a href="' . W8IO_ROOT . $address . '/f/' . $afee . '">' . substr( $info, 2 ) . '</a></small>';
+                $feeamount = w8io_amount( $fee, $decimals, 0 );
+                $fee = ' <small>' . w8io_amount( $fee, $decimals, 0 ) . ' <a href="' . W8IO_ROOT . $address . '/f/' . $afee . '">' . $feename . '</a></small>';
             }
             else
             {
@@ -439,9 +439,9 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                     $buy = $RO->getAssetInfoById( (int)$pair[0] );
                     $sell = $RO->getAssetInfoById( (int)$pair[1] );
 
-                    $bdecimals = (int)$buy[0];
+                    $bdecimals = ( $bdecimals = $buy[0] ) === 'N' ? 0 : (int)$bdecimals;
                     $bname = substr( $buy, 2 );
-                    $sdecimals = (int)$sell[0];
+                    $sdecimals = ( $sdecimals = $sell[0] ) === 'N' ? 0 : (int)$sdecimals;
                     $sname = substr( $sell, 2 );
 
                     $link = ' <a href="' . W8IO_ROOT . 'txs/g/' . $groupId . '">';
@@ -468,7 +468,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                 $addon = '';
         }
 
-        if( $type === TX_INVOKE || $type <= TX_ETHEREUM || $type <= ITX_ISSUE )
+        if( $type === TX_INVOKE || $type === TX_ETHEREUM || $type <= ITX_ISSUE )
         {
             $groupId = $ts[GROUP];
 
@@ -728,10 +728,10 @@ function htmlscript( $tx )
     }
     else
     {
-        $result .= '<style>' . file_get_contents( 'vendor/jfcherng/php-diff/example/diff-table.css' ) . '</style>';
-        $result .= 'Diff: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'SideBySide', [], [ 'detailLevel' => 'word' ] ) . PHP_EOL;
+        $result .= '<style>' . \Jfcherng\Diff\DiffHelper::getStyleSheet() . '</style>';
+        $result .= 'Diff: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'Inline', [], [ 'detailLevel' => 'word' ] ) . PHP_EOL;
         if( !empty( $decompile2 ) )
-            $result .= 'Full: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'SideBySide', [ 'context' => \Jfcherng\Diff\Differ::CONTEXT_ALL ], [ 'detailLevel' => 'word' ] );
+            $result .= 'Full: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'Inline', [ 'context' => \Jfcherng\Diff\Differ::CONTEXT_ALL ], [ 'detailLevel' => 'word' ] );
     }
 
     return $result;
@@ -1303,12 +1303,15 @@ else
             if( $asset > 0 )
             {
                 $info = $RO->getAssetInfoById( $asset );
-                if( $info[1] === chr( 1 ) && $arg !== $asset )
+                $weight = ord( $info[1] );
+                if( $weight === 1 && $arg !== $asset )
                     continue;
 
                 $id = $asset;
                 $b = $asset === $arg && $filter === 1;
-                $decimals = (int)$info[0];
+                $decimals = ( $decimals = $info[0] ) === 'N' ? 0 : (int)$decimals;
+                if( $info[0] === 'N' )
+                    $weight = -1;
                 $asset = substr( $info, 2 );
                 $amount = w8io_amount( $amount, $decimals );
 
@@ -1320,7 +1323,9 @@ else
                     $frecord = $record;
                 else
                 {
-                    $weights[$id] = ord( $info[1] );
+                    if( $weight === -1 )
+                        continue;
+                    $weights[$id] = $weight;
                     $prints[$id] = $record;
                 }
             }

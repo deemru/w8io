@@ -159,3 +159,13 @@ function isAliasType( $type )
             return false;
     }
 }
+
+function w8enc( $data )
+{
+    return str_replace( [ 'i', '+', '/', '=' ], [ 'io', 'ip', 'is', ''], base64_encode( $data ) );
+}
+
+function w8dec( $data )
+{
+    return base64_decode( str_replace( 'io', 'i', str_replace( [ 'ip', 'is' ], [ '+', '/' ], $data ) ) );
+}

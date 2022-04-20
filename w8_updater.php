@@ -29,7 +29,7 @@ function selftest()
         $aid = $assetId === 'WAVES' ? 0 : $RO->getIdByAsset( $assetId );
         $info = $RO->getAssetInfoById( $aid );
 
-        $decimals = (int)$info[0];
+        $decimals = ( $decimals = $info[0] ) === 'N' ? 0 : (int)$decimals;
         $asset = substr( $info, 2 );
 
         $balances = $RO->db->query( 'SELECT * FROM balances WHERE r2 = ' . $aid );

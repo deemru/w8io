@@ -220,7 +220,12 @@ class BlockchainParser
     {
         $id = $this->kvAssets->getForcedKeyByValue( $tx['assetId'] );
         $name = htmlentities( trim( preg_replace( '/\s+/', ' ', $tx['name'] ) ) );
-        $this->kvAssetInfo->setKeyValue( $id, $tx['decimals'] . chr( 0 ) . $name );
+        $decimals = $tx['decimals'];
+        $isNFT =
+            true !== ( $tx['reissuable'] ?? $tx['isReissuable'] ) &&
+            $tx['quantity'] === 1 &&
+            $decimals === 0;
+        $this->kvAssetInfo->setKeyValue( $id, ( $isNFT ? 'N' : $tx['decimals'] ) . chr( 0 ) . $name );
         return $id;
     }
 
