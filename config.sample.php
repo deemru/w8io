@@ -7,7 +7,7 @@ use deemru\WavesKit;
 if( PHP_INT_SIZE < 8 )
     exit( 'ERROR: 64-bit required' );
 
-date_default_timezone_set( 'Europe/Moscow' );
+date_default_timezone_set( 'UTC' );
 
 function wk( $full = true ) : WavesKit
 {

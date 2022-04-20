@@ -7,6 +7,8 @@ if( file_exists( 'config.php' ) )
 else
     require_once 'config.sample.php';
 
+$z = (int)( $_COOKIE['z'] ?? 180 ); // TIMEZONE
+
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
@@ -22,6 +24,43 @@ $arg = $uri[2] ?? false;
 $arg2 = $uri[3] ?? false;
 $arg3 = $uri[4] ?? false;
 $arg4 = $uri[5] ?? false;
+
+if( $address === 'api' )
+{
+    require_once 'include/RO.php';
+
+    if( strlen( $f ) > 20 )
+    {
+        $wk = wk();
+        if( false === ( $f = w8dec( $f ) ) ||
+            false === ( $call = $wk->decryptash( $f ) ) ||
+            false === ( $call = $wk->json_decode( $call ) ) )
+            exit( $wk->log( 'e', 'bad API call' ) );
+
+        switch( $call['f'] )
+        {
+            case 't':
+            {
+                $RO = new RO( W8DB );
+
+                $aid = $call['i'];
+                $where = $call['w'];
+                $uid = $call['u'];
+                $address = $call['a'];
+                $d = $call['d'] ?? 3;
+
+                echo '<pre>';
+                w8io_print_transactions( $aid, $where, $uid, 100, $address, $d );
+                echo '</pre>';
+                return;
+            }
+        }
+
+        exit( $wk->log( 'e', 'bad API call' ) );
+    }
+
+    exit;
+}
 
 if( $address === 'j13' )
 {
@@ -48,14 +87,6 @@ if( $address === 'j13' )
 if( empty( $address ) )
     $address = 'GENERATORS';
 
-$light = (bool)( $_COOKIE['light'] ?? false );
-if( $address === 'ld' )
-{
-    $address = '';
-    $light = !$light;
-    setcookie( 'light', $light, 0x7FFFFFFF, '/' );
-}
-else
 if( $address === 'tx' && is_numeric( $f ) )
 {
     require_once 'include/RO.php';
@@ -131,43 +162,6 @@ if( $address === 'GENERATORS' )
     }
 }
 else
-if( $address === 'api' )
-{
-    require_once 'include/RO.php';
-
-    if( strlen( $f ) > 20 )
-    {
-        $wk = wk();
-        if( false === ( $f = w8dec( $f ) ) ||
-            false === ( $call = $wk->decryptash( $f ) ) ||
-            false === ( $call = $wk->json_decode( $call ) ) )
-            exit( $wk->log( 'e', 'bad API call' ) );
-
-        switch( $call['f'] )
-        {
-            case 't':
-            {
-                $RO = new RO( W8DB );
-
-                $aid = $call['i'];
-                $where = $call['w'];
-                $uid = $call['u'];
-                $address = $call['a'];
-                $d = $call['d'] ?? 3;
-
-                echo '<pre>';
-                w8io_print_transactions( $aid, $where, $uid, 100, $address, $d );
-                echo '</pre>';
-                return;
-            }
-        }
-
-        exit( $wk->log( 'e', 'bad API call' ) );
-    }
-
-    exit;
-}
-
 if( isset( $f[0] ) && $f[0] === 'f' )
 {
     if( $arg === 'Waves' )
@@ -204,8 +198,16 @@ function prettyAddress( $address )
     return $address;
 }
 
+if( strlen( $address ) > 35 )
+{
+    $f = $address;
+    $address = 'tx';
+}
+
 if( !$js )
-echo sprintf( '
+{
+    $L = (int)( $_COOKIE['L'] ?? 0 ) === 1;
+    echo sprintf( '
 <!DOCTYPE html>
 <html>
     <head>
@@ -223,18 +225,12 @@ echo sprintf( '
     </head>
     <body>
         <pre>
-', empty( $address ) ? '' : ( 'w8.io &#183; ' . prettyAddress( $address ) ), $light ? '-l' : '-n' );
-/*
-, W8IO_ROOT, W8IO_ROOT, W8IO_ROOT,
-//isset( $showtime ) ? '0.66vw' : '14pt',
-$bcolor, $hcolor,
-isset( $showtime ) ? 'margin: 1em 2em 1em 2em; filter: brightness(144%);' : '',
-$tcolor,
-isset( $showtime ) ? 'text-decoration: none;' : '',
-$tcolor );
-*/
+', empty( $address ) ? '' : ( 'w8.io &#183; ' . prettyAddress( $address ) ), $L ? '-l' : '-n' );
+}
+
 function w8io_print_distribution( $f, $aid, $info, $n )
 {
+    global $z;
     global $RO;
 
     $decimals = ( $decimals = $info[0] ) === 'N' ? 0 : (int)$decimals;
@@ -256,7 +252,7 @@ function w8io_print_distribution( $f, $aid, $info, $n )
     }
 
     $heightTime = $RO->getLastHeightTimestamp();
-    $time = date( 'Y.m.d H:i', $heightTime[1] );
+    $time = date( 'Y.m.d H:i', $heightTime[1] + $z );
     $height = $heightTime[0];
 
     echo 'Top ' . $n . ' (' . $asset .') @ ' . $height . ' <small>(' . $time . ')</small>'. PHP_EOL . PHP_EOL;
@@ -278,6 +274,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
     global $RO;
     global $REST;
     global $js;
+    global $z;
 
     $pts = $RO->getPTSByAddressId( $aid, $where, $count + 1, $uid, $d );
     //$pts = $RO->getPTSAtHeight( 2214328 );
@@ -288,6 +285,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
     $maxlen2 = 0;
     $outs = [];
     $tdb = [];
+    $lastblock = 0;
 
     $n = 0;
     foreach( $pts as $ts )
@@ -396,6 +394,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
             {
                 $info = $RO->getAssetInfoById( $afee );
                 $feename = substr( $info, 2 );
+                $decimals = ( $decimals = $info[0] ) === 'N' ? 0 : (int)$decimals;
                 $feeamount = w8io_amount( $fee, $decimals, 0 );
                 $fee = ' <small>' . w8io_amount( $fee, $decimals, 0 ) . ' <a href="' . W8IO_ROOT . $address . '/f/' . $afee . '">' . $feename . '</a></small>';
             }
@@ -515,6 +514,12 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
         $maxlen1 = max( $maxlen1, $reclen );
         $block = w8k2h( $ts[TXKEY] );
 
+        if( $lastblock !== $block )
+        {
+            $lastblock = $block;
+            $date = date( 'Y.m.d H:i', $RO->getTimestampByHeight( $block ) + $z * 60 );
+        }
+
         if( $aid )
         {
             $act = $isa ? '&#183; ' : '&nbsp; ';
@@ -548,7 +553,6 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
             }
             else
             {
-                $date = date( 'Y.m.d H:i', $RO->getTimestampByHeight( w8k2h( $ts[TXKEY] ) ) );
                 $txkey = '<a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . $date . '</a>';
 
                 if( $type <= ITX_ISSUE )
@@ -578,7 +582,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                 $fee .= ' <small>spam</small>';
 
             echo
-                '<small><a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . date( 'Y.m.d H:i', $RO->getTimestampByHeight( w8k2h( $ts[TXKEY] ) ) ) . '</a>' .
+                '<small><a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . $date . '</a>' .
                 ' <a href="' . W8IO_ROOT . 'b/' . $block . '">[' . $block . ']</a></small>' .
                 ' <a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a> ' . w8io_a( $a ) . ' > ' . w8io_a( $b ) .
                 $addon . $amount . $asset . $fee . PHP_EOL;
@@ -737,226 +741,36 @@ function htmlscript( $tx )
     return $result;
 }
 
-if( $address === 'CHARTS' )
-{/*
-    $height = $api->get_height();
-
-    $from = $f ? (int)$f : 0;
-    $to = $arg ? (int)$arg : $height;
-
-    if( $from > $to )
-        exit;
-
-    $to = min( $height, $to );
-    $Q = 1;
-
-    while( ( $to - $from ) / $Q > 2500 && $Q < 1000 )
-        $Q *= 10;
-
-    $from -= $from % $Q;
-    $froms = max( 1, $from );
-    $title = "Waves " . ( W8IO_NETWORK == 'W' ? "MAINNET" : "TESTNET" );
-
-    require_once './include/w8io_charts.php';
-    $s = isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] === 'on';
-    $s |= isset( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https';
-    $hostroot = 'http' . ( $s ? 's' : '' ) . '://' . $_SERVER['HTTP_HOST'] . W8IO_ROOT;
-    echo w8io_chart( $title, "$froms .. $to", $hostroot . "api/chart/$from/$to" );
-*/}
-else
 if( $address === 'tx' && isset( $f ) )
 {
     $l = strlen( $f );
-    if( $l > 40 )
+    if( $l > 35 && $l <= 44 )
     {
-        $tx = wk()->getTransactionById( $f );
-        if( $tx === false )
-            echo json_encode( [ 'error' => "getTransactionById( $f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        require_once 'include/RO.php';
+        $RO = new RO( W8DB );
+        $txid = $RO->getTxKeyByTxId( $f );
+        if( $txid === false )
+            echo json_encode( [ 'error' => "getTxKeyByTxId( $f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
         else
         {
-            require_once 'include/RO.php';
-            $RO = new RO( W8DB );
-            $txid = $RO->getTxKeyByTxId( $f );
-
-            if( $txid !== false )
+            $tx = wk()->getTransactionById( $f );
+            if( $tx === false )
+                echo json_encode( [ 'error' => "getTransactionById( $f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+            else
             {
                 echo '<pre>';
                 w8io_print_transactions( false, 'r1 = ' . $txid, false, 100, 'txs', 3 );
                 echo '</pre><br>';
-            }
 
-            if( !empty( $tx['script'] ) )
-                $addon = htmlscript( $tx );
-            $tx = htmlfilter( $tx );
-            echo json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
-            if( isset( $addon ) )
-                echo PHP_EOL . PHP_EOL . $addon;
+                if( !empty( $tx['script'] ) )
+                    $addon = htmlscript( $tx );
+                $tx = htmlfilter( $tx );
+                echo json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+                if( isset( $addon ) )
+                    echo PHP_EOL . PHP_EOL . $addon;
+            }
         }
     }
-}
-else
-if( $address === 'CAP' && isset( $f ) )
-{
-    require_once 'include/RO.php';
-    $RO = new RO( W8DB );
-
-    $group = (int)$f;
-    $height = $RO->getLastHeightTimestamp()[0] - 1500;
-    $gs = explode( '/', substr( $RO->getGroupById( $group ), 1 ) );
-
-    echo '<table><tr>';
-    for( $i = 0; $i < 1; $i++ )
-    {
-        $adds = [];
-        $addsv = [];
-        $addsp = [];
-        $exchanges = $RO->db->query( 'SELECT * FROM pts WHERE r1 > ' . w8h2k( $height ) );
-        $n = 0;
-        $txs = [];
-        foreach( $exchanges as $ts )
-        {
-            $type = (int)$ts[TYPE];
-            if( $type !== ( !$i ? 7 : 4 ) )
-                continue;
-
-            $a = (int)$ts[A];
-            if( $a <= 0 )
-                continue;
-
-            if( $group !== (int)$ts[GROUP] )
-                continue;
-
-            $txs[(int)$ts[UID]] = $ts;
-        }
-
-        krsort( $txs );
-
-        $bots = [];
-
-        $uid = [];
-        foreach( $txs as $ts )
-        {
-            $a = (int)$ts[A];
-            $b = (int)$ts[B];
-            $amount = (int)$ts[AMOUNT];
-            $price = (int)$ts[ADDON] / 100000000;
-
-            if( !isset( $uid[$a] ) )
-                $uid[$a] = (int)$ts[UID];
-            if( !isset( $uid[$b] ) )
-                $uid[$b] = (int)$ts[UID];
-            if( !isset( $adds[$a] ) )
-                $adds[$a] = 0;
-            if( !isset( $adds[$b] ) )
-                $adds[$b] = 0;
-            if( !isset( $addsv[$a] ) )
-                $addsv[$a] = 0;
-            if( !isset( $addsv[$b] ) )
-                $addsv[$b] = 0;
-            if( !isset( $addsp[$a] ) )
-                $addsp[$a] = [ 10000000000, 0, 0, $price ];
-            if( !isset( $addsp[$b] ) )
-                $addsp[$b] = [ 10000000000, 0, 0, $price ];
-
-            $adds[$a] -= $amount;
-            $adds[$b] += $amount;
-
-            $addsv[$a] += $amount;
-            $addsv[$b] += $amount;
-
-            $addsp[$a][0] = min( $addsp[$a][0], $price );
-            $addsp[$b][0] = min( $addsp[$b][0], $price );
-            $addsp[$a][1] = max( $addsp[$a][1], $price );
-            $addsp[$b][1] = max( $addsp[$b][1], $price );
-            $addsp[$a][2]++;
-            $addsp[$b][2]++;
-            //$addsp[$a][3] = ( $addsp[$a][3] * ( $addsp[$a][2] - 1 ) + $price ) / $addsp[$a][2];
-            //$addsp[$b][3] = ( $addsp[$b][3] * ( $addsp[$b][2] - 1 ) + $price ) / $addsp[$b][2];
-
-            //if( (int)$tx['timestamp'] >= 1575275064 && (int)$tx['timestamp'] <= 1575290274 )
-            {
-                //$bots[$api->get_address( $a )] = true;
-                //$bots[$api->get_address( $b )] = true;
-            }
-        }
-
-        //$bots = array_keys( $bots );
-        //file_put_contents( 'bots.txt', json_encode( $bots, JSON_PRETTY_PRINT ) );
-        $bots = wk()->json_decode( file_get_contents( 'bots.txt' ) );
-
-        //$adds = array_reverse( $adds, true );
-        arsort( $uid );
-
-        echo '<td valign=top>';
-        foreach( $uid as $address => $t )
-        {
-            $amount = $adds[$address];
-            $address = $RO->getAddressById( $address );
-            if( in_array( $address, $bots ) )
-                echo '<b>';
-            echo w8io_a( $address ) . ' = ' . w8io_amount( $amount, 8, 0 ) . '&nbsp;<br>';
-            if( in_array( $address, $bots ) )
-                echo '</b>';
-        }
-        echo '</td>';
-
-        echo '<td valign=top>';
-        foreach( $uid as $address => $t )
-        {
-            $volume = $addsv[$address];
-            if( $volume === $adds[$address] )
-                echo '<b>';
-            echo '('. w8io_amount( $volume, 8, 0 ) . ') ('.$addsp[$address][2].')&nbsp;<br>';
-            if( $volume === $adds[$address] )
-                echo '</b>';
-        }
-        echo '</td>';
-
-        echo '<td valign=top>';
-        foreach( $uid as $address => $t )
-        {
-            if( $addsp[$address][3] < 0.0001 )
-            {
-                echo '&nbsp;<br>';
-                continue;
-            }
-            $price_min = sprintf( '%0.4f', $addsp[$address][0] );
-            $price_max = sprintf( '%0.4f', $addsp[$address][1] );
-            $price_med = sprintf( '%0.4f', $addsp[$address][3] );
-            echo '['. $price_min. ', '.$price_med.', '.$price_max.']&nbsp;<br>';
-        }
-        echo '</td>';
-
-        echo '<td valign=top>';
-        foreach( $uid as $address => $t )
-        {
-            $balance = $RO->getBalanceByAddressId( $address );
-            echo str_pad( '(' . w8io_amount( $balance[(int)$gs[0]], 8, 0 ) . ')', 20 ) . '(' . w8io_amount( $balance[(int)$gs[1]], 8, 0 ) . ')&nbsp;&nbsp;&nbsp;<br>';
-        }
-        echo '</td>';
-
-        arsort( $addsv );
-
-        echo '<td valign=top>';
-        foreach( $addsv as $address => $amount )
-        {
-            $volume = $adds[$address];
-            $address = $RO->getAddressById( $address );
-            echo w8io_a( $address ) . ' = ' . w8io_amount( $amount, 8, 0 ) . ' ('. w8io_amount( $volume, 8, 0 ) .')&nbsp;<br>';
-        }
-        echo '</td>';
-
-        echo '<td valign=top>';
-        foreach( $addsv as $address => $amount )
-        {
-            $price_min = sprintf( '%0.4f', $addsp[$address][0] );
-            $price_max = sprintf( '%0.4f', $addsp[$address][1] );
-            $price_med = sprintf( '%0.4f', $addsp[$address][3] );
-            echo '['. $price_min. ', '.$price_med.', '.$price_max.'] &nbsp;<br>';
-        }
-        echo '</td>';
-    }
-    echo '</tr></table>';
 }
 else
 if( $address === 'b' )
@@ -1492,17 +1306,14 @@ if( file_exists( '.git/FETCH_HEAD' ) )
 if( !isset( $showtime ) )
 {
     echo PHP_EOL . sprintf( '%.02f ms ', 1000 * ( microtime( true ) - $_SERVER['REQUEST_TIME_FLOAT'] ) );
-    $light = $light ? '&#9680' : '&#9681;';
-    echo '<a href="'. W8IO_ROOT . "ld\" style=\"text-decoration: none;\">$light</a> ";
+    echo '<a id="L" href="" style="text-decoration: none;">' . ( $L ? '&#9680' : '&#9681' ) . '</a> ';
     if( defined( 'W8IO_ANALYTICS' ) )
         echo PHP_EOL . PHP_EOL . W8IO_ANALYTICS . ' ';
 }
-echo '</small></pre></div>';
-echo '
-        </pre>
+echo '</small></pre></div>
+</pre>
     </body>
 </html>';
-
 if( isset( $showtime ) )
 {
     file_put_contents( $showfile, ob_get_contents() );

@@ -1,5 +1,17 @@
 $(document).ready( function()
 {
+    console.log( document.cookie )
+    var z = new Date().getTimezoneOffset();
+    if( z % 1 === 0 )
+    {
+        var cookie = "z=" + ( -z ) + "m";
+        if( document.cookie.indexOf( cookie ) === -1 )
+        {
+            document.cookie = cookie + "; max-age=31536000; path=/";
+            document.location.replace( document.location.href );
+        }
+    }
+
     g_loading = false;
     g_lazyload = $(".lazyload");
     if( g_lazyload.length )
@@ -7,6 +19,17 @@ $(document).ready( function()
         $(window).scroll( lazyload );
         lazyload();
     }
+
+    $("a#L").click( function( e )
+    {
+        e.preventDefault();
+        if( document.cookie.indexOf( "L=1" ) === -1 )
+            document.cookie = "L=1; max-age=31536000; path=/";
+        else
+            document.cookie = "L=0; max-age=31536000; path=/";
+        document.location.replace( document.location.href );
+        return false;
+    } );
 } );
 
 function lazyload()
