@@ -315,8 +315,12 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
         $b = $ts[B];
         $aspam = false;
         unset( $reclen );
-        if( $type === TX_SPONSORSHIP && $aid !== false && $a !== $aid )
-            continue;
+        if( $type === TX_SPONSORSHIP )
+        {
+            if( $aid !== false && $a !== $aid )
+                continue;
+            $b = MYSELF;
+        }
         if( $aid !== false && $b === MYSELF )
         {
             $b = $a;
@@ -1123,9 +1127,16 @@ else
 
                 $id = $asset;
                 $b = $asset === $arg && $filter === 1;
-                $decimals = ( $decimals = $info[0] ) === 'N' ? 0 : (int)$decimals;
-                if( $info[0] === 'N' )
+                $decimals = $info[0];
+                if( $decimals === 'N' )
+                {
+                    $decimals = 0;
                     $weight = -1;
+                }
+                else
+                {
+                    $decimals = (int)$decimals;
+                }
                 $asset = substr( $info, 2 );
                 $amount = w8io_amount( $amount, $decimals );
 
@@ -1137,8 +1148,8 @@ else
                     $frecord = $record;
                 else
                 {
-                    if( $weight === -1 )
-                        continue;
+                    //if( $weight === -1 )
+                        //continue;
                     $weights[$id] = $weight;
                     $prints[$id] = $record;
                 }
@@ -1156,7 +1167,7 @@ else
 
         foreach( $weights as $asset => $weight )
         {
-            if( $weight === 0 && !isset( $zerotrades ) )
+            if( $weight <= 0 && !isset( $zerotrades ) )
             {
                 if( !$js )
                     echo '<span>' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
