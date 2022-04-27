@@ -162,6 +162,38 @@ switch( $argv[1] )
         w8_upstats( $upstats );
         break;
     }
+    case 'wipe':
+    {
+        if( file_exists( W8IO_DB_PATH ) )
+        {
+            wk()->log( 'w', W8IO_DB_PATH );
+            wk()->log( 'w', 'DATABASE WILL BE DESTROYED after 10 seconds...' );
+            sleep( 10 );
+        }
+
+        $db = W8IO_DB_PATH;
+        $db_shm = "$db-shm";
+        $db_wal = "$db-wal";
+        $files = [ $db, $db_shm, $db_wal,
+            W8IO_DB_DIR . 'upstats.json',
+            W8IO_DB_DIR . 'weights.txt',
+            W8IO_DB_DIR . 'scams.txt',
+        ];
+
+        foreach( $files as $file )
+        {
+            if( file_exists( $file ) )
+            {
+                $result = unlink( $file );
+                wk()->log( $result ? 's' : 'e', "$file was " . ( $result ? '' : 'NOT ' ) . 'deleted' );
+            }
+            else
+            {
+                wk()->log( "$file not exists" );
+            }
+        }
+        break;
+    }
     default:
     {
         exit( wk()->log( 'e', 'unknown command:' . $argv[1] ) );
