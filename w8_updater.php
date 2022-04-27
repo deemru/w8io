@@ -61,16 +61,33 @@ function selftest()
 }
 
 singleton();
-if( !isset( $argv[1] ) )
-    $argv[1] = 'updater';
+$upstats = w8_upstats();
 
+if( !isset( $argv[1] ) )
+{
+    if( !$upstats['firstrun'] )
+        $argv[1] = 'firstrun';
+    else if( !$upstats['onbreak'] )
+        $argv[1] = 'onbreak';
+    else if( !$upstats['updater'] )
+        $argv[1] = 'updater';
+    else if( !$upstats['indexer'] )
+        $argv[1] = 'indexer';
+    else
+        $argv[1] = 'updater';
+    wk()->log( 'run as "' . $argv[1] . '"' );
+}
+
+wk()->log( $argv[1] );
 switch( $argv[1] )
 {
     case 'updater':
+    case 'firstrun':
     {
-        wk()->log( 'w8_updater' );
         wk()->setBestNode();
         wk()->log( wk()->getNodeAddress() );
+        $upstats['firstrun'] = true;
+        w8_upstats( $upstats );
         updater();
         break;
     }
@@ -86,7 +103,6 @@ switch( $argv[1] )
     }
     case 'selftest':
     {
-        wk()->log( 'w8_selftest' );
         wk()->setBestNode();
         wk()->log( wk()->getNodeAddress() );
         selftest();
@@ -94,7 +110,6 @@ switch( $argv[1] )
     }
     case 'indexer':
     {
-        wk()->log( 'w8_indexer' );
         $db = W8IO_DB_PATH;
         $cmds = 
         [
@@ -122,17 +137,18 @@ switch( $argv[1] )
             wk()->log( sprintf( '%.00f seconds', ( microtime( true ) - $tt ) ) );
         }
         wk()->log( 'done' );
+        $upstats['indexer'] = true;
+        w8_upstats( $upstats );
         break;
     }
     case 'onbreak':
     {
-        wk()->log( 'w8_indexer' );
         $db = W8IO_DB_PATH;
-        $cmds = 
+        $cmds =
         [
             'CREATE INDEX IF NOT EXISTS pts_r4_r2_index ON pts( r4, r2 )',
         ];
-        
+
         foreach( $cmds as $cmd )
         {
             $tt = microtime( true );
@@ -142,6 +158,8 @@ switch( $argv[1] )
             wk()->log( sprintf( '%.00f seconds', ( microtime( true ) - $tt ) ) );
         }
         wk()->log( 'done' );
+        $upstats['onbreak'] = true;
+        w8_upstats( $upstats );
         break;
     }
     default:
@@ -164,6 +182,26 @@ function singleton()
     return false;
 }
 
+function w8_upstats( $upstats = null )
+{
+    $upstats_file = W8IO_DB_DIR . 'upstats.json';
+    if( !file_exists( $upstats_file ) || isset( $upstats ) )
+    {
+        if( !isset( $upstats ) )
+            $upstats =
+            [
+                'firstrun' => false,
+                'onbreak' => false,
+                'indexer' => false,
+                'updater' => false,
+            ];
+
+        file_put_contents( $upstats_file, json_encode( $upstats, JSON_PRETTY_PRINT ) );
+    }
+
+    return wk()->json_decode( file_get_contents( $upstats_file ) );
+}
+
 function rollback( $block )
 {
     require_once __DIR__ . '/include/Blockchain.php';
@@ -184,6 +222,7 @@ function updater()
 
     $procs = defined( 'W8IO_UPDATE_PROCS' ) && W8IO_UPDATE_PROCS;
     $sleep = defined( 'W8IO_UPDATE_DELAY') ? W8IO_UPDATE_DELAY : 17;
+    $break = w8_upstats()['updater'] === false;
 
     for( ;; )
     {
@@ -205,6 +244,15 @@ function updater()
             if( W8IO_NETWORK === 'W' )
                 procScam( $blockchain->parser );
             procWeight( $blockchain, $blockchain->parser );
+        }
+
+        if( $break )
+        {
+            $upstats = w8_upstats();
+            $upstats['updater'] = true;
+            w8_upstats( $upstats );
+            wk()->log( 's', 'first updater done' );
+            break;
         }
 
         sleep( $sleep );
