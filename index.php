@@ -14,8 +14,6 @@ if( isset( $_SERVER['REQUEST_URI'] ) )
 else
     $uri = 'j13/10';
 
-$js = false;
-
 $uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $uri . chr( 0 ) ) );
 
 $address = $uri[0];
@@ -204,7 +202,7 @@ if( strlen( $address ) > 35 )
     $address = 'tx';
 }
 
-if( !$js )
+// base prolog
 {
     $L = (int)( $_COOKIE['L'] ?? 0 ) === 1;
     echo sprintf( '
@@ -272,8 +270,6 @@ function w8io_sign( $sign )
 function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
 {
     global $RO;
-    global $REST;
-    global $js;
     global $z;
 
     $pts = $RO->getPTSByAddressId( $aid, $where, $count + 1, $uid, $d );
@@ -303,8 +299,6 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
             ];
             $call = W8IO_ROOT . 'api/' . w8enc( $wk->encryptash( json_encode( $call ) ) );
             $lazy = '</pre><pre class="lazyload" url="' . $call . '">...';
-            if( $js )
-                $REST->setTxsPagination( $call );
             break;
         }
 
@@ -529,33 +523,6 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
             $act = $isa ? '&#183; ' : '&nbsp; ';
             $tar = $isa ? ( $isb ? '<>' : w8io_a( $b ) ) : w8io_a( $a );
 
-            if( $js )
-            {
-                // $height, $time, $out, $type, $amount, $asset, $assetId, $address, $fee, $feeasset, $feeassetId
-                $height = w8k2h( $ts[TXKEY] );
-                $time = $RO->getTimestampByHeight( $height );
-                $out = $isa ? 1 : 0;
-                $type = $type;
-                $amount = trim( $amount );
-                $asset = $assetname;
-                $assetId = $ts[ASSET];
-                $address = $isa ? ( $isb ? '<>' : $b ) : $a;
-                if( $isa && $fee )
-                {
-                    $fee = $feeamount;
-                    $feeasset = $feename;
-                    $feeassetId = $ts[FEEASSET];
-                }
-                else
-                {
-                    $fee = null;
-                    $feeasset = null;
-                    $feeassetId = null;
-                }
-
-                $REST->setTxs( $height, $time, $out, $type, $amount, $asset, $assetId, $address, $fee, $feeasset, $feeassetId );
-            }
-            else
             {
                 $txkey = '<a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . $date . '</a>';
 
@@ -592,9 +559,6 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                 $addon . $amount . $asset . $fee . PHP_EOL;
         }
     }
-
-    if( $js )
-        return;
 
     foreach( $outs as $out )
     {
@@ -963,12 +927,6 @@ else
         $RO = new RO( W8DB );
     }
 
-    if( $js )
-    {
-        require_once 'include/REST.php';
-        $REST = new REST( $RO );
-    }
-
     $aid = $RO->getAddressIdByString( $address );
 
     $where = false;
@@ -1039,9 +997,6 @@ else
         $time = date( 'Y.m.d H:i', $heightTime[1] );
         $height = $heightTime[0];
 
-        if( $js )
-            $REST->setHeader( $height, $heightTime[1], $address, $full_address );
-        else
         {
             $full_address = $full_address !== $address ? ( ' / <a href="' . W8IO_ROOT . $full_address . '">' . $full_address . '</a>' ) : '';
             //echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height <small>($time) ";
@@ -1144,7 +1099,7 @@ else
 
                 $record = [ 'id' => $id, 'asset' => $asset, 'amount' => $amount, 'furl' => $furl ];
 
-                if( $b && !$js )
+                if( $b )
                     $frecord = $record;
                 else
                 {
@@ -1169,26 +1124,21 @@ else
         {
             if( $weight <= 0 && !isset( $zerotrades ) )
             {
-                if( !$js )
-                    echo '<span>' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
+                echo '<span>' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
                 $zerotrades = true;
             }
 
             $record = $prints[$asset];
-            if( $js )
-                $REST->setBalance( $asset, $weight, trim( $record['amount'] ), $record['asset'] );
-            else
-                echo $record['amount'] . ' <a href="' . $record['furl'] . '">' . $record['asset'] . '</a>' . PHP_EOL;
+            echo $record['amount'] . ' <a href="' . $record['furl'] . '">' . $record['asset'] . '</a>' . PHP_EOL;
         }
 
-        if( !isset( $zerotrades ) && !$js )
+        if( !isset( $zerotrades ) )
         {
             echo '<span>' . str_repeat( '—', 39 ) . '&nbsp;</span>' .  PHP_EOL;
             $zerotrades = true;
         }
 
-        if( !$js )
-            echo '</pre></td><td valign="top"><pre>';
+        echo '</pre></td><td valign="top"><pre>';
 
         if( $f === 'pay' )
         {
@@ -1296,14 +1246,6 @@ else
         else
             w8io_print_transactions( $aid, $where, false, 100, $address, $d );
     }
-}
-
-if( $js )
-{
-    header( 'Access-Control-Allow-Origin: *' );
-    header( 'Access-Control-Allow-Methods: GET' );
-    header( 'Access-Control-Allow-Headers: X-Requested-With' );
-    exit( json_encode( $REST->j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
 }
 
 echo '</pre></td></tr></table>';
