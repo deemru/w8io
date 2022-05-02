@@ -107,12 +107,14 @@ class BlockchainParser
 
         if( !isset( $this->getSponsorship ) )
         {
-            $this->getSponsorship = $this->pts->db->prepare( 'SELECT * FROM pts WHERE r2 = 14 AND r4 = ? ORDER BY r0 DESC LIMIT 1' );
+            $this->getSponsorship = $this->pts->db->prepare(
+                'SELECT * FROM ( SELECT * FROM pts WHERE r2 =  14 AND r4 = ? ORDER BY r0 DESC LIMIT 1 ) UNION
+                                 SELECT * FROM pts WHERE r2 = -14 AND r4 = ? ORDER BY r0 DESC LIMIT 1' );
             if( $this->getSponsorship === false )
                 w8_err( __FUNCTION__ );
         }
 
-        if( $this->getSponsorship->execute( [ $asset ] ) === false )
+        if( $this->getSponsorship->execute( [ $asset, $asset ] ) === false )
             w8_err( __FUNCTION__ );
 
         $pts = $this->getSponsorship->fetchAll();
@@ -1004,7 +1006,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     TX_SPONSORSHIP,
             A =>        $this->getSenderId( $tx['sender'] ),
-            B =>        MYSELF,
+            B =>        $asset, // for serach by index tx + b
             ASSET =>    $asset,
             AMOUNT =>   $tx['minSponsoredAssetFee'] ?? 0,
             FEEASSET => $tx[FEEASSET],
@@ -1026,7 +1028,7 @@ class BlockchainParser
             TXKEY =>    $txkey,
             TYPE =>     ITX_SPONSORSHIP,
             A =>        $dApp,
-            B =>        MYSELF,
+            B =>        $asset, // for serach by index tx + b
             ASSET =>    $asset,
             AMOUNT =>   $tx['minSponsoredAssetFee'] ?? 0,
             FEEASSET => 0,
