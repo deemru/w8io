@@ -592,20 +592,22 @@ class BlockchainParser
     {
         switch( $this->kvAssetInfo->getValueByKey( $asset )[0] )
         {
-            case '0': $qp = 10000000000000000; break;
-            case '1': $qp = 1000000000000000; break;
-            case '2': $qp = 100000000000000; break;
-            case '3': $qp = 10000000000000; break;
-            case '4': $qp = 1000000000000; break;
-            case '5': $qp = 100000000000; break;
-            case '6': $qp = 10000000000; break;
-            case '7': $qp = 1000000000; break;
-            case '8': $qp = 100000000; break;
+            case 'N':
+            case '0': $qp = 100000000; break;
+            case '1': $qp = 10000000; break;
+            case '2': $qp = 1000000; break;
+            case '3': $qp = 100000; break;
+            case '4': $qp = 10000; break;
+            case '5': $qp = 1000; break;
+            case '6': $qp = 100; break;
+            case '7': $qp = 10; break;
+            case '8': $qp = 1; break;
             default:
                 w8io_error();
         }
-        $this->qps[$asset] = $qp;
-        return $qp;
+        $qps = [ 100000000 * $qp, $qp ];
+        $this->qps[$asset] = $qps;
+        return $qps;
     }
 
     private function processExchangeTransaction( $txkey, $tx )
@@ -689,12 +691,13 @@ class BlockchainParser
         }
 
         if( $tx['version'] >= 3 )
-            $qp = $this->qps[$sasset] ?? $this->getQPrice( $sasset );
+            $qps = $this->qps[$sasset] ?? $this->getQPrice( $sasset );
         else
-            $qp = 100000000;
+            $qps = [ 100000000 , 1 ];
 
         $amount = $tx['amount'];
         $price = $tx['price'];
+        $addon = intdiv( $price, $qps[1] );
 
         // SELLER -> BUYER
         {
@@ -708,7 +711,7 @@ class BlockchainParser
                 AMOUNT =>   $amount,
                 FEEASSET => $safee,
                 FEE =>      $sfee,
-                ADDON =>    $price,
+                ADDON =>    $addon,
                 GROUP =>    $this->getGroupExchange( '>', $basset, $sasset ),
             ] );
         }
@@ -721,10 +724,10 @@ class BlockchainParser
                 A =>        $ba,
                 B =>        $sa,
                 ASSET =>    $sasset,
-                AMOUNT =>   gmp_intval( gmp_div( gmp_mul( $price, $amount ), $qp ) ),
+                AMOUNT =>   gmp_intval( gmp_div( gmp_mul( $price, $amount ), $qps[0] ) ),
                 FEEASSET => $bafee,
                 FEE =>      $bfee,
-                ADDON =>    $price,
+                ADDON =>    $addon,
                 GROUP =>    $this->getGroupExchange( '<', $basset, $sasset ),
             ] );
         }

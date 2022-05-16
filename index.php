@@ -447,16 +447,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                     $tdb[$groupId] = [ $bdecimals, $bname, $sdecimals, $sname, $link, $linklen ];
                 }
 
-                $price = $addon;
-                if( $bdecimals !== 8 )
-                    $price = substr( $price, 0, -8 + $bdecimals );
-
-                if( $sdecimals )
-                {
-                    if( strlen( $price ) <= $sdecimals )
-                        $price = str_pad( $price, $sdecimals + 1, '0', STR_PAD_LEFT );
-                    $price = substr_replace( $price, '.', -$sdecimals, 0 );
-                }
+                $price = w8io_amount( $addon, $sdecimals, 0 );
 
                 $addon = ' ' . $price . $link . $bname . '/' . $sname . '</a>';
                 $maxlen2 = max( $maxlen2, strlen( $addon ) - $linklen );
