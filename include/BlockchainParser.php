@@ -691,13 +691,26 @@ class BlockchainParser
         }
 
         if( $tx['version'] >= 3 )
-            $qps = $this->qps[$sasset] ?? $this->getQPrice( $sasset );
-        else
-            $qps = [ 100000000 , 1 ];
+        {
+            $qa = $this->qps[$basset] ?? $this->getQPrice( $basset );
+            $qp = $this->qps[$sasset] ?? $this->getQPrice( $sasset );
 
-        $amount = $tx['amount'];
-        $price = $tx['price'];
-        $addon = intdiv( $price, $qps[1] );
+            $bamount = $tx['amount'];
+            $price = $tx['price'];
+            $samount = gmp_intval( gmp_div( gmp_mul( $price, $bamount ), $qp[0] ) );
+            $addon = intdiv( intdiv( $price, $qa[1] ), $qp[1] );
+        }
+        else
+        {
+            $qa = $this->qps[$basset] ?? $this->getQPrice( $basset );
+
+            $bamount = $tx['amount'];
+            $price = $tx['price'];
+            $samount = gmp_intval( gmp_div( gmp_mul( $price, $bamount ), 100000000 ) );
+            $addon = intdiv( $price, $qa[1] );
+        }
+
+        
 
         // SELLER -> BUYER
         {
@@ -708,7 +721,7 @@ class BlockchainParser
                 A =>        $sa,
                 B =>        $ba,
                 ASSET =>    $basset,
-                AMOUNT =>   $amount,
+                AMOUNT =>   $bamount,
                 FEEASSET => $safee,
                 FEE =>      $sfee,
                 ADDON =>    $addon,
@@ -724,7 +737,7 @@ class BlockchainParser
                 A =>        $ba,
                 B =>        $sa,
                 ASSET =>    $sasset,
-                AMOUNT =>   gmp_intval( gmp_div( gmp_mul( $price, $amount ), $qps[0] ) ),
+                AMOUNT =>   $samount,
                 FEEASSET => $bafee,
                 FEE =>      $bfee,
                 ADDON =>    $addon,
