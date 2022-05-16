@@ -615,9 +615,6 @@ class BlockchainParser
 
     private function processExchangeTransaction( $txkey, $tx )
     {
-        if( $tx['version'] >= 4 )
-            w8io_error();
-
         if( isset( $tx['feeAssetId'] ) )
             w8io_error();
 
@@ -646,11 +643,6 @@ class BlockchainParser
         $bafee = isset( $buyer['matcherFeeAssetId'] ) ? $this->getAssetId( $buyer['matcherFeeAssetId'] ) : WAVES_ASSET;
         $safee = isset( $seller['matcherFeeAssetId'] ) ? $this->getAssetId( $seller['matcherFeeAssetId'] ) : WAVES_ASSET;
         $afee = isset( $tx['feeAssetId'] ) ? $this->getAssetId( $tx['feeAssetId'] ) : WAVES_ASSET;
-
-        if( $buyer['version'] >= 4 )
-            w8io_error();
-        if( $seller['version'] >= 4 )
-            w8io_error();
 
         // MATCHER;
         $diff = [];
