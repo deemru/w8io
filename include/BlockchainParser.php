@@ -590,7 +590,7 @@ class BlockchainParser
 
     private function getQPrice( $asset )
     {
-        switch( $this->kvAssetInfo->getValueByKey( $sasset )[0] )
+        switch( $this->kvAssetInfo->getValueByKey( $asset )[0] )
         {
             case '0': $qp = 10000000000000000; break;
             case '1': $qp = 1000000000000000; break;
