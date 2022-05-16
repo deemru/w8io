@@ -692,13 +692,12 @@ class BlockchainParser
 
         if( $tx['version'] >= 3 )
         {
-            $qa = $this->qps[$basset] ?? $this->getQPrice( $basset );
             $qp = $this->qps[$sasset] ?? $this->getQPrice( $sasset );
 
             $bamount = $tx['amount'];
             $price = $tx['price'];
             $samount = gmp_intval( gmp_div( gmp_mul( $price, $bamount ), $qp[0] ) );
-            $addon = intdiv( intdiv( $price, $qa[1] ), $qp[1] );
+            $addon = intdiv( $price, $qp[1] );
         }
         else
         {
