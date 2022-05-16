@@ -73,6 +73,7 @@ class BlockchainParser
         $this->workheight = -1;
         $this->resetMTS(); // debug only
         $this->indexed = $this->uid !== 0;
+        $this->qps = []; // version 3 exchange price multipliers
     }
 
     public function resetMTS()
@@ -587,6 +588,26 @@ class BlockchainParser
         ] );
     }
 
+    private function getQPrice( $asset )
+    {
+        switch( $this->kvAssetInfo->getValueByKey( $sasset )[0] )
+        {
+            case '0': $qp = 10000000000000000; break;
+            case '1': $qp = 1000000000000000; break;
+            case '2': $qp = 100000000000000; break;
+            case '3': $qp = 10000000000000; break;
+            case '4': $qp = 1000000000000; break;
+            case '5': $qp = 100000000000; break;
+            case '6': $qp = 10000000000; break;
+            case '7': $qp = 1000000000; break;
+            case '8': $qp = 100000000; break;
+            default:
+                w8io_error();
+        }
+        $this->qps[$asset] = $qp;
+        return $qp;
+    }
+
     private function processExchangeTransaction( $txkey, $tx )
     {
         if( $tx['version'] >= 4 )
@@ -667,26 +688,10 @@ class BlockchainParser
             }
         }
 
-        // price + group
-        {
-            /*
-            $bdecimals = (int)$this->kvAssetInfo->getValueByKey( $basset )[0];
-            $sdecimals = (int)$this->kvAssetInfo->getValueByKey( $sasset )[0];
-
-            $price = (string)$tx['price'];
-            if( $bdecimals !== 8 )
-                $price = substr( $price, 0, -8 + $bdecimals );
-
-            if( $sdecimals )
-            {
-                if( strlen( $price ) <= $sdecimals )
-                    $price = str_pad( $price, $sdecimals + 1, '0', STR_PAD_LEFT );
-                $price = substr_replace( $price, '.', -$sdecimals, 0 );
-            }
-            $price = $price . ' ' . $bname . '/' . $sname;
-            $wtx['data'] = [ 'p' => $this->get_dataid( $price, true ) ];
-            */
-        }
+        if( $tx['version'] >= 3 )
+            $qp = $this->qps[$sasset] ?? $this->getQPrice( $sasset );
+        else
+            $qp = 100000000;
 
         $amount = $tx['amount'];
         $price = $tx['price'];
@@ -716,7 +721,7 @@ class BlockchainParser
                 A =>        $ba,
                 B =>        $sa,
                 ASSET =>    $sasset,
-                AMOUNT =>   gmp_intval( gmp_div( gmp_mul( $price, $amount ), 100000000 ) ),
+                AMOUNT =>   gmp_intval( gmp_div( gmp_mul( $price, $amount ), $qp ) ),
                 FEEASSET => $bafee,
                 FEE =>      $bfee,
                 ADDON =>    $price,
