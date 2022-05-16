@@ -590,6 +590,9 @@ class BlockchainParser
 
     private function getQPrice( $asset )
     {
+        if( $asset === 0 )
+            $qp = 1;
+        else
         switch( $this->kvAssetInfo->getValueByKey( $asset )[0] )
         {
             case 'N':
