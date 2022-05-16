@@ -8,12 +8,12 @@ else
     require_once __DIR__ . '/config.sample.php';
 require_once __DIR__ . '/include/w8_update_helpers.php';
 
-function selftest()
+function selftest( $start )
 {
     require_once 'include/RO.php';
     $RO = new RO( W8DB );
 
-    for( $a = 0;; ++$a )
+    for( $a = $start;; ++$a )
     {
         if( $a === 0 )
         {
@@ -25,7 +25,7 @@ function selftest()
             if( $assetId === false )
                 break;
         }
-        
+
         $aid = $assetId === 'WAVES' ? 0 : $RO->getIdByAsset( $assetId );
         $info = $RO->getAssetInfoById( $aid );
 
@@ -103,9 +103,10 @@ switch( $argv[1] )
     }
     case 'selftest':
     {
+        $start = $argv[2] ?? 0;
         wk()->setBestNode();
         wk()->log( wk()->getNodeAddress() );
-        selftest();
+        selftest( $start );
         break;
     }
     case 'indexer':
