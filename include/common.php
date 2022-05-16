@@ -91,10 +91,10 @@ const TYPE_STRINGS =
     TX_EXPRESSION => 'expression',
 ];
 
-const SPONSOR_ASSET = -3;
-const WAVES_LEASE_ASSET = -2;
-//const INVOKE_ASSET = -1;
 const WAVES_ASSET = 0;
+const NO_ASSET = -1;
+const WAVES_LEASE_ASSET = -2;
+const SPONSOR_ASSET = -3;
 
 const FAILED_GROUP = -1;
 const ETHEREUM_TRANSFER_GROUP = -2;
