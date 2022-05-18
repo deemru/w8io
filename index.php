@@ -215,7 +215,7 @@ if( strlen( $address ) > 35 )
         <meta name="format-detection" content="address=no">
         <meta name="format-detection" content="email=no">
         <title>%s</title>
-        <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon">
+        <link rel="shortcut icon" href="/static/favicon8.ico" type="image/x-icon">
         <link rel="stylesheet" href="/static/fonts.css">
         <link rel="stylesheet" href="/static/static%s.css">
         <script type="text/javascript" src="/static/jquery.js" charset="UTF-8"></script>
@@ -223,7 +223,7 @@ if( strlen( $address ) > 35 )
     </head>
     <body>
         <pre>
-', empty( $address ) ? '' : ( 'w8.io &#183; ' . prettyAddress( $address ) ), $L ? '-l' : '-n' );
+', empty( $address ) ? '' : ( 'w8 &#183; ' . prettyAddress( $address ) ), $L ? '-l' : '-n' );
 }
 
 function w8io_print_distribution( $f, $aid, $info, $n )
