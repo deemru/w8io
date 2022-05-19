@@ -172,6 +172,11 @@ class BlockchainParser
             if( !isset( $tx ) )
                 w8_err( __FUNCTION__ );
 
+            if( isset( $tx['assetPair'] ) )
+            {
+                // workaround
+            }
+            else
             if( !isset( $tx['stateChanges']['transfers'][0]['address'] ) ||
                 $address !== $tx['stateChanges']['transfers'][0]['address'] )
                 w8_err( __FUNCTION__ );
@@ -629,8 +634,8 @@ class BlockchainParser
             $seller = $tx['order1'];
         }
 
-        $ba = $this->getSenderId( $buyer['sender'] );
-        $sa = $this->getSenderId( $seller['sender'] );
+        $ba = $this->getSenderId( $buyer['sender'], $buyer );
+        $sa = $this->getSenderId( $seller['sender'], $seller );
 
         $basset = $buyer['assetPair']['amountAsset'];
         $basset = isset( $basset ) ? $this->getAssetId( $basset ) : WAVES_ASSET;
