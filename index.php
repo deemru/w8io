@@ -320,7 +320,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
             $isa = true;
             $isb = true;
 
-            if( $asset === WAVES_ASSET )
+            if( $asset === NO_ASSET )
             {
                 $amount = '';
                 $asset = '';
