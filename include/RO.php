@@ -18,6 +18,8 @@ class RO
     public function getTxKeyByTxId( $txid )
     {
         $txid = d58( $txid );
+        if( $txid === false )
+            return false;
         $bucket = unpack( 'J1', $txid )[1];
         $txpart = substr( $txid, 8 );
 
