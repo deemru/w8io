@@ -249,6 +249,25 @@ class RO
         return false;
     }
 
+    public function getGroupByName( $name )
+    {
+        if( !isset( $this->getGroupByName ) )
+        {
+            $this->getGroupByName = $this->db->db->prepare( 'SELECT r0 FROM groups WHERE r1 = ? LIMIT 1' );
+            if( $this->getGroupByName === false )
+                w8_err();
+        }
+
+        if( false === $this->getGroupByName->execute( [ $name ] ) )
+            w8_err();
+
+        $r = $this->getGroupByName->fetchAll();
+        if( isset( $r[0] ) )
+            return $r[0][0];
+
+        return false;
+    }
+
     public function getBalanceByAddressId( $id )
     {
         if( !isset( $this->q_getBalanceByAddressId ) )
@@ -306,6 +325,25 @@ class RO
             w8_err();
 
         $r = $this->getFunctionById->fetchAll();
+        if( isset( $r[0] ) )
+            return $r[0][0];
+
+        return false;
+    }
+
+    public function getFunctionByName( $name )
+    {
+        if( !isset( $this->getFunctionByName ) )
+        {
+            $this->getFunctionByName = $this->db->db->prepare( 'SELECT r0 FROM functions WHERE r1 = ?' );
+            if( $this->getFunctionByName === false )
+                w8_err();
+        }
+
+        if( false === $this->getFunctionByName->execute( [ $name ] ) )
+            w8_err();
+
+        $r = $this->getFunctionByName->fetchAll();
         if( isset( $r[0] ) )
             return $r[0][0];
 

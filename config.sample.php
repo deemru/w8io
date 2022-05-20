@@ -4,9 +4,6 @@ require_once __DIR__ . '/include/w8_error_handler.php';
 require_once __DIR__ . '/vendor/autoload.php';
 use deemru\WavesKit;
 
-if( PHP_INT_SIZE < 8 )
-    exit( 'ERROR: 64-bit required' );
-
 date_default_timezone_set( 'UTC' );
 
 function wk( $full = true ) : WavesKit
@@ -24,7 +21,7 @@ function wk( $full = true ) : WavesKit
             $wk->setCryptash( 'SECRET_STRING_SET_YOURS_HERE' );
         }
     }
-    
+
     return $wk;
 }
 
@@ -39,7 +36,7 @@ define( 'W8IO_DB_DIR', __DIR__ . '/var/db/' );
 define( 'W8IO_DB_PATH', W8IO_DB_DIR . 'blockchain.sqlite3' );
 define( 'W8DB', 'sqlite:' . W8IO_DB_PATH );
 
-define( 'W8IO_NODES', 'http://127.0.0.1:6869|https://gamenode.tradisys.com' );
+define( 'W8IO_NODES', 'http://127.0.0.1:6869|https://nodes.wavesexplorer.com' );
 define( 'W8IO_NETWORK', 'W' ); // 'W' -- mainnet, 'T' -- testnet
 define( 'W8IO_ROOT', '/' );
 define( 'W8IO_MAX_UPDATE_BATCH', 1 ); // set more on when on a local node

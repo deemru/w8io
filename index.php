@@ -1,11 +1,7 @@
 <?php
 
 namespace w8io;
-
-if( file_exists( 'config.php' ) )
-    require_once 'config.php';
-else
-    require_once 'config.sample.php';
+require_once 'config.php';
 
 $z = (int)( $_COOKIE['z'] ?? 180 ); // TIMEZONE
 
@@ -172,7 +168,7 @@ if( isset( $f[0] ) && $f[0] === 'f' )
 
         $arg = $RO->getAssetById( $arg );
         if( $arg === false )
-            w8io_error( 'unknown asset' );
+            exit( 'unknown asset' );
         exit( header( 'location: ' . W8IO_ROOT . $address . '/f/' . $arg ) );
     }
     else
@@ -183,10 +179,10 @@ if( isset( $f[0] ) && $f[0] === 'f' )
         $fasset = $arg;
         $arg = $RO->getIdByAsset( $arg );
         if( $arg === false )
-            w8io_error( 'unknown asset' );
+            exit( 'unknown asset' );
     }
 }
-elseif( $arg !== false )
+elseif( $arg !== false && $f !== 'g' )
     $arg = (int)$arg;
 
 function prettyAddress( $address )
@@ -202,8 +198,11 @@ if( strlen( $address ) > 35 )
     $address = 'tx';
 }
 
-// base prolog
+function prolog()
 {
+    global $address;
+    global $L;
+
     $L = (int)( $_COOKIE['L'] ?? 0 ) === 1;
     echo sprintf( '
 <!DOCTYPE html>
@@ -705,6 +704,7 @@ if( $address === 'tx' && isset( $f ) )
     $l = strlen( $f );
     if( $l > 35 && $l <= 44 )
     {
+        prolog();
         require_once 'include/RO.php';
         $RO = new RO( W8DB );
         $txid = $RO->getTxKeyByTxId( $f );
@@ -734,6 +734,7 @@ if( $address === 'tx' && isset( $f ) )
 else
 if( $address === 'b' )
 {
+    prolog();
     $height = (int)$f;
     $block = wk()->getBlockAt( $height );
 
@@ -763,6 +764,7 @@ if( $address === 'b' )
 else
 if( $address === 'top' && isset( $info ) )
 {
+    prolog();
     echo '<pre>';
     w8io_print_distribution( $f, $aid, $info, $arg );
     echo '</pre>';
@@ -770,6 +772,7 @@ if( $address === 'top' && isset( $info ) )
 else
 if( $address === 'GENERATORS' )
 {
+    prolog();
     $arg = isset( $showtime ) && $arg !== false ? intval( $arg ) : null;
 
     require_once 'include/RO.php';
@@ -964,9 +967,90 @@ else
             }
         }
         else if( $aid === false && $f === 'g' )
+        {
+            if( is_numeric( $arg ) )
+            {
+                $arg = $RO->getGroupById( (int)$arg );
+                if( $arg === false )
+                    exit( 'unknown group' );
+                $first = $arg[0];
+                if( $first === '>' || $first === '<' )
+                {
+                    $sep = strpos( $arg, ':' );
+                    $asset1 = (int)substr( $arg, 1, $sep - 1 );
+                    $asset2 = (int)substr( $arg, $sep + 1 );
+                    $asset1 = $asset1 === WAVES_ASSET ? 'WAVES' : $RO->getAssetById( $asset1 );
+                    $asset2 = $asset2 === WAVES_ASSET ? 'WAVES' : $RO->getAssetById( $asset2 );
+                    $arg = ( $first === '>' ? '1_' : '2_' ) . $asset1 . '_' . $asset2;
+                }
+                else
+                {
+                    $args = explode( ':', $arg );
+                    $dapp = $RO->getAddressById( $args[0] );
+                    $function = $RO->getFunctionById( $args[1] );
+                    $arg = $dapp . '_' . $function . '_' . $args[2];
+                }
+                exit( header( 'location: ' . W8IO_ROOT . 'txs/g/' . $arg ) );
+            }
+
+            $args = explode( '_', $arg );
+            $group = $args[0];
+            if( $group === '1' || $group === '2' )
+            {
+                if( !isset( $args[1] ) || !isset( $args[2] ) )
+                    exit( 'not enough assets' );
+
+                if( $args[1] === 'WAVES' )
+                {
+                    $asset1 = WAVES_ASSET;
+                }
+                else
+                {
+                    $asset1 = $RO->getIdByAsset( $args[1] );
+                    if( $asset1 === false )
+                        exit( 'unknown asset1' );
+                }
+
+                if( $args[2] === 'WAVES' )
+                {
+                    $asset2 = WAVES_ASSET;
+                }
+                else
+                {
+                    $asset2 = $RO->getIdByAsset( $args[2] );
+                    if( $asset2 === false )
+                        exit( 'unknown asset2' );
+                }
+
+                $group = ( $group === '1' ? '>' : '<' ) . $asset1 . ':' . $asset2; // getGroupExchange
+            }
+            else
+            {
+                $dapp = $RO->getAddressIdByString( $group );
+                if( $dapp === false )
+                    exit( 'unknown dapp' );
+
+                $type = end( $args );
+                if( !is_numeric( $type ) )
+                    exit( 'bad type' );
+
+                $function = substr( $arg, strlen( $group ) + 1, -1 - strlen( $type ) );
+                $function = $RO->getFunctionByName( $function );
+                if( $function === false )
+                    exit( 'unknown function' );
+
+                $group = $dapp . ':' . $function . ':' . $type; // getGroupFunction
+            }
+
+            $arg = $RO->getGroupByName( $group );
+            if( $arg === false )
+                exit( 'unknown group' );
+
             $where = "r10 = $arg";
+        }
     }
 
+    prolog();
     if( $aid === false )
     {
         echo '<pre>';
