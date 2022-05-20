@@ -1323,6 +1323,11 @@ else
     }
 }
 
+if( !isset( $L ) )
+{
+    prolog();
+}
+
 echo '</pre></td></tr></table>';
 echo '<hr><div width="100%" align="right"><pre><small>';
 echo "<a href=\"https://github.com/deemru/w8io\">github/deemru/w8io</a>";
