@@ -702,7 +702,7 @@ function htmlscript( $tx )
 if( $address === 'tx' && isset( $f ) )
 {
     $l = strlen( $f );
-    if( $l > 35 && $l <= 44 )
+    if( $l > 35 )
     {
         prolog();
         require_once 'include/RO.php';
