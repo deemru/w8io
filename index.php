@@ -249,7 +249,7 @@ function w8io_print_distribution( $f, $aid, $info, $n )
     }
 
     $heightTime = $RO->getLastHeightTimestamp();
-    $time = date( 'Y.m.d H:i', $heightTime[1] + $z );
+    $time = date( 'Y.m.d H:i', $heightTime[1] + $z * 60 );
     $height = $heightTime[0];
 
     echo 'Top ' . $n . ' (' . $asset .') @ ' . $height . ' <small>(' . $time . ')</small>'. PHP_EOL . PHP_EOL;
@@ -818,7 +818,7 @@ if( $address === 'GENERATORS' )
     else
         $period = round( $period / 24 ) . ' d';
 
-    $totime = date( 'Y.m.d H:i', $totime );
+    $totime = date( 'Y.m.d H:i', $totime + $z * 60 );
 
     if( isset( $showtime ) )
     {
@@ -1069,7 +1069,7 @@ else
             $balance = [ 0 => 0 ];
 
         $heightTime = $RO->getLastHeightTimestamp();
-        $time = date( 'Y.m.d H:i', $heightTime[1] );
+        $time = date( 'Y.m.d H:i', $heightTime[1] + $z * 60 );
         $height = $heightTime[0];
 
         {
