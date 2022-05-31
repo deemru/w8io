@@ -156,7 +156,7 @@ if( $address === 'GENERATORS' )
     }
 }
 else
-if( isset( $f[0] ) && $f[0] === 'f' )
+if( is_string( $f ) && strlen( $f ) <= 2 && $f[0] === 'f' )
 {
     if( $arg === 'Waves' )
         $arg = 0;
