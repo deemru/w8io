@@ -155,35 +155,6 @@ if( $address === 'GENERATORS' )
         ob_start();
     }
 }
-else
-if( is_string( $f ) && strlen( $f ) <= 2 && $f[0] === 'f' )
-{
-    if( $arg === 'Waves' )
-        $arg = 0;
-    else
-    if( is_numeric( $arg ) )
-    {
-        require_once 'include/RO.php';
-        $RO = new RO( W8DB );
-
-        $arg = $RO->getAssetById( $arg );
-        if( $arg === false )
-            exit( 'unknown asset' );
-        exit( header( 'location: ' . W8IO_ROOT . $address . '/f/' . $arg ) );
-    }
-    else
-    {
-        require_once 'include/RO.php';
-        $RO = new RO( W8DB );
-
-        $fasset = $arg;
-        $arg = $RO->getIdByAsset( $arg );
-        if( $arg === false )
-            exit( 'unknown asset' );
-    }
-}
-elseif( $arg !== false && $f !== 'g' )
-    $arg = (int)$arg;
 
 function prettyAddress( $address )
 {
@@ -766,7 +737,7 @@ if( $address === 'top' && isset( $info ) )
 {
     prolog();
     echo '<pre>';
-    w8io_print_distribution( $f, $aid, $info, $arg );
+    w8io_print_distribution( $f, $aid, $info, (int)$arg );
     echo '</pre>';
 }
 else
@@ -931,6 +902,26 @@ else
     {
         if( $f[0] === 'f' )
         {
+            {
+                if( $arg === 'Waves' )
+                    $arg = 0;
+                else
+                if( is_numeric( $arg ) )
+                {
+                    $arg = $RO->getAssetById( $arg );
+                    if( $arg === false )
+                        exit( 'unknown asset' );
+                    exit( header( 'location: ' . W8IO_ROOT . $address . '/f/' . $arg ) );
+                }
+                else
+                {
+                    $fasset = $arg;
+                    $arg = $RO->getIdByAsset( $arg );
+                    if( $arg === false )
+                        exit( 'unknown asset' );
+                }
+            }
+
             $filter = 1;
             $where = "r5 = $arg";
 
