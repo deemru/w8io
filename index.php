@@ -961,76 +961,92 @@ else
         {
             if( is_numeric( $arg ) )
             {
-                $arg = $RO->getGroupById( (int)$arg );
-                if( $arg === false )
-                    exit( 'unknown group' );
-                $first = $arg[0];
-                if( $first === '>' || $first === '<' )
-                {
-                    $sep = strpos( $arg, ':' );
-                    $asset1 = (int)substr( $arg, 1, $sep - 1 );
-                    $asset2 = (int)substr( $arg, $sep + 1 );
-                    $asset1 = $asset1 === WAVES_ASSET ? 'WAVES' : $RO->getAssetById( $asset1 );
-                    $asset2 = $asset2 === WAVES_ASSET ? 'WAVES' : $RO->getAssetById( $asset2 );
-                    $arg = ( $first === '>' ? '1_' : '2_' ) . $asset1 . '_' . $asset2;
-                }
+                if( $arg === '-1' )
+                    $arg = 'failed';
+                else
+                if( $arg === '-2' )
+                    $arg = 'ethereum_transfer';
                 else
                 {
-                    $args = explode( ':', $arg );
-                    $dapp = $RO->getAddressById( $args[0] );
-                    $function = $RO->getFunctionById( $args[1] );
-                    $arg = $dapp . '_' . $function . '_' . $args[2];
+                    $arg = $RO->getGroupById( (int)$arg );
+                    if( $arg === false )
+                        exit( 'unknown group' );
+                    $first = $arg[0];
+                    if( $first === '>' || $first === '<' )
+                    {
+                        $sep = strpos( $arg, ':' );
+                        $asset1 = (int)substr( $arg, 1, $sep - 1 );
+                        $asset2 = (int)substr( $arg, $sep + 1 );
+                        $asset1 = $asset1 === WAVES_ASSET ? 'WAVES' : $RO->getAssetById( $asset1 );
+                        $asset2 = $asset2 === WAVES_ASSET ? 'WAVES' : $RO->getAssetById( $asset2 );
+                        $arg = ( $first === '>' ? '1_' : '2_' ) . $asset1 . '_' . $asset2;
+                    }
+                    else
+                    {
+                        $args = explode( ':', $arg );
+                        $dapp = $RO->getAddressById( $args[0] );
+                        $function = $RO->getFunctionById( $args[1] );
+                        $arg = $dapp . '_' . $function . '_' . $args[2];
+                    }
                 }
                 exit( header( 'location: ' . W8IO_ROOT . 'txs/g/' . $arg ) );
             }
 
-            $args = explode( '_', $arg );
-            $group = $args[0];
-            if( $group === '1' || $group === '2' )
-            {
-                if( !isset( $args[1] ) || !isset( $args[2] ) )
-                    exit( 'not enough assets' );
-
-                if( $args[1] === 'WAVES' )
-                {
-                    $asset1 = WAVES_ASSET;
-                }
-                else
-                {
-                    $asset1 = $RO->getIdByAsset( $args[1] );
-                    if( $asset1 === false )
-                        exit( 'unknown asset1' );
-                }
-
-                if( $args[2] === 'WAVES' )
-                {
-                    $asset2 = WAVES_ASSET;
-                }
-                else
-                {
-                    $asset2 = $RO->getIdByAsset( $args[2] );
-                    if( $asset2 === false )
-                        exit( 'unknown asset2' );
-                }
-
-                $group = ( $group === '1' ? '>' : '<' ) . $asset1 . ':' . $asset2; // getGroupExchange
-            }
+            if( $arg === 'failed' )
+                $group = FAILED_GROUP;
+            else
+            if( $arg === 'ethereum_transfer' )
+                $group = ETHEREUM_TRANSFER_GROUP;
             else
             {
-                $dapp = $RO->getAddressIdByString( $group );
-                if( $dapp === false )
-                    exit( 'unknown dapp' );
+                $args = explode( '_', $arg );
+                $group = $args[0];
+                if( $group === '1' || $group === '2' )
+                {
+                    if( !isset( $args[1] ) || !isset( $args[2] ) )
+                        exit( 'not enough assets' );
 
-                $type = end( $args );
-                if( !is_numeric( $type ) )
-                    exit( 'bad type' );
+                    if( $args[1] === 'WAVES' )
+                    {
+                        $asset1 = WAVES_ASSET;
+                    }
+                    else
+                    {
+                        $asset1 = $RO->getIdByAsset( $args[1] );
+                        if( $asset1 === false )
+                            exit( 'unknown asset1' );
+                    }
 
-                $function = substr( $arg, strlen( $group ) + 1, -1 - strlen( $type ) );
-                $function = $RO->getFunctionByName( $function );
-                if( $function === false )
-                    exit( 'unknown function' );
+                    if( $args[2] === 'WAVES' )
+                    {
+                        $asset2 = WAVES_ASSET;
+                    }
+                    else
+                    {
+                        $asset2 = $RO->getIdByAsset( $args[2] );
+                        if( $asset2 === false )
+                            exit( 'unknown asset2' );
+                    }
 
-                $group = $dapp . ':' . $function . ':' . $type; // getGroupFunction
+                    $group = ( $group === '1' ? '>' : '<' ) . $asset1 . ':' . $asset2; // getGroupExchange
+                }
+                else
+                {
+                    $dapp = $RO->getAddressIdByString( $group );
+                    if( $dapp === false )
+                        exit( 'unknown dapp' );
+
+                    $type = end( $args );
+                    if( !is_numeric( $type ) )
+                        exit( 'bad type' );
+
+                    $function = substr( $arg, strlen( $group ) + 1, -1 - strlen( $type ) );
+                    $function = $RO->getFunctionByName( $function );
+                    if( $function === false )
+                        exit( 'unknown function' );
+
+                    $group = $dapp . ':' . $function . ':' . $type; // getGroupFunction
+                }
             }
 
             $arg = $RO->getGroupByName( $group );
