@@ -993,10 +993,10 @@ else
             }
 
             if( $arg === 'failed' )
-                $group = FAILED_GROUP;
+                $arg = FAILED_GROUP;
             else
             if( $arg === 'ethereum_transfer' )
-                $group = ETHEREUM_TRANSFER_GROUP;
+                $arg = ETHEREUM_TRANSFER_GROUP;
             else
             {
                 $args = explode( '_', $arg );
@@ -1047,11 +1047,11 @@ else
 
                     $group = $dapp . ':' . $function . ':' . $type; // getGroupFunction
                 }
-            }
 
-            $arg = $RO->getGroupByName( $group );
-            if( $arg === false )
-                exit( 'unknown group' );
+                $arg = $RO->getGroupByName( $group );
+                if( $arg === false )
+                    exit( 'unknown group' );
+            }
 
             $where = "r10 = $arg";
         }
