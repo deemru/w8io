@@ -941,8 +941,11 @@ else
         else
         if( $f[0] === 't' )
         {
+            if( !is_numeric( $arg ) )
+                exit( 'unknown type' );
+
             $filter = 2;
-            $where = "r2 = $arg";
+            $where = 'r2 = ' . $arg;
 
             if( isset( $f[1] ) )
             {
