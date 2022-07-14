@@ -430,6 +430,21 @@ class BlockchainParser
                     GROUP =>    FAILED_GROUP,
                 ] );
                 break;
+            case TX_ETHEREUM:
+                $this->appendTS( [
+                    UID =>      $this->getNewUid(),
+                    TXKEY =>    $txkey,
+                    TYPE =>     TX_ETHEREUM,
+                    A =>        $this->getSenderId( $tx['sender'] ),
+                    B =>        MYSELF,
+                    ASSET =>    NO_ASSET,
+                    AMOUNT =>   0,
+                    FEEASSET => $tx[FEEASSET],
+                    FEE =>      $tx[FEE],
+                    ADDON =>    0,
+                    GROUP =>    FAILED_GROUP,
+                ] );
+                break;
             case TX_EXCHANGE:
                 // https://docs.waves.tech/en/blockchain/transaction/transaction-validation
                 $fee = $tx['fee'];
