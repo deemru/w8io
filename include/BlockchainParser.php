@@ -431,19 +431,28 @@ class BlockchainParser
                 ] );
                 break;
             case TX_ETHEREUM:
-                $this->appendTS( [
-                    UID =>      $this->getNewUid(),
-                    TXKEY =>    $txkey,
-                    TYPE =>     TX_ETHEREUM,
-                    A =>        $this->getSenderId( $tx['sender'] ),
-                    B =>        MYSELF,
-                    ASSET =>    NO_ASSET,
-                    AMOUNT =>   0,
-                    FEEASSET => $tx[FEEASSET],
-                    FEE =>      $tx[FEE],
-                    ADDON =>    0,
-                    GROUP =>    FAILED_GROUP,
-                ] );
+                $payload = $tx['payload'];
+                switch( $payload['type'] )
+                {
+                    case 'invocation':
+                        $this->appendTS( [
+                            UID =>      $this->getNewUid(),
+                            TXKEY =>    $txkey,
+                            TYPE =>     TX_ETHEREUM,
+                            A =>        $this->getSenderId( $tx['sender'] ),
+                            B =>        $this->getRecipientId( $payload['dApp'] ),
+                            ASSET =>    NO_ASSET,
+                            AMOUNT =>   0,
+                            FEEASSET => $tx[FEEASSET],
+                            FEE =>      $tx[FEE],
+                            ADDON =>    0,
+                            GROUP =>    FAILED_GROUP,
+                        ] );
+                        break;
+
+                    default:
+                        w8io_error( 'unknown failed payload type: ' . $payload['type'] );
+                }
                 break;
             case TX_EXCHANGE:
                 // https://docs.waves.tech/en/blockchain/transaction/transaction-validation
