@@ -926,6 +926,8 @@ else if( $f === 'data' )
         $regexp = '?matches=.*' . preg_quote( $arg ) . '.*' . preg_quote( $arg2 ) . '.*';
     else if( $arg !== false )
         $regexp = '?matches=.*' . preg_quote( $arg ) . '.*';
+
+    wk()->curlTimeout = 30;
     $data = wk()->fetch( '/addresses/data/' . $address . $regexp );
 
     prolog();
