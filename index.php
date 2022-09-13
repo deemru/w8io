@@ -919,14 +919,27 @@ if( $address === 'GENERATORS' )
 }
 else if( $f === 'data' )
 {
-    $regexp = '';
-    if( $arg3 !== false )
-        $regexp = '?matches=.*' . preg_quote( $arg ) . '.*' . preg_quote( $arg2 ) . '.*' . preg_quote( $arg3 ) . '.*';
-    else if( $arg2 !== false )
-        $regexp = '?matches=.*' . preg_quote( $arg ) . '.*' . preg_quote( $arg2 ) . '.*';
-    else if( $arg !== false )
-        $regexp = '?matches=.*' . preg_quote( $arg ) . '.*';
-    $data = wk()->fetch( '/addresses/data/' . $address . $regexp );
+    $data = false;
+    if( $arg !== false && $arg2 === false )
+    {
+        $data = wk()->fetch( '/addresses/data/' . $address . '/' . $arg );
+        if( $data !== false )
+            $data = [ wk()->json_decode( $data ) ];
+    }
+
+    if( $data === false )
+    {
+        $regexp = '';
+        if( $arg3 !== false )
+            $regexp = '?matches=.*' . preg_quote( $arg ) . '.*' . preg_quote( $arg2 ) . '.*' . preg_quote( $arg3 ) . '.*';
+        else if( $arg2 !== false )
+            $regexp = '?matches=.*' . preg_quote( $arg ) . '.*' . preg_quote( $arg2 ) . '.*';
+        else if( $arg !== false )
+            $regexp = '?matches=.*' . preg_quote( $arg ) . '.*';
+        $data = wk()->fetch( '/addresses/data/' . $address . $regexp );
+        if( $data !== false )
+            $data = wk()->json_decode( $data );
+    }
 
     prolog();
     $datauri = '<a href="' . W8IO_ROOT . $address . '/data/';
@@ -938,8 +951,7 @@ else if( $f === 'data' )
     if( $arg3 !== false )
         echo ' &#183; ' . $datauri . $arg3 . '">' . $arg3 . '</a>';
     echo '<br><br><pre>';
-    if( $data !== false )
-        $data = wk()->json_decode( $data );
+
     if( $data === false )
     {
         if( strpos( wk()->lastLog, 'timed out' ) )
