@@ -926,8 +926,6 @@ else if( $f === 'data' )
         $regexp = '?matches=.*' . preg_quote( $arg ) . '.*' . preg_quote( $arg2 ) . '.*';
     else if( $arg !== false )
         $regexp = '?matches=.*' . preg_quote( $arg ) . '.*';
-
-    wk()->curlTimeout = 30;
     $data = wk()->fetch( '/addresses/data/' . $address . $regexp );
 
     prolog();
@@ -942,7 +940,14 @@ else if( $f === 'data' )
     echo '<br><br><pre>';
     if( $data !== false )
         $data = wk()->json_decode( $data );
-    if( $data === false || count( $data ) === 0 )
+    if( $data === false )
+    {
+        if( strpos( wk()->lastLog, 'timed out' ) )
+            echo 'timed out';
+        else
+            echo 'error';
+    }
+    else if( count( $data ) === 0 )
         echo 'not found';
     else
     {
@@ -1183,10 +1188,7 @@ else
                 {
                     if( $out !== '' )
                         $out .= ' &#183; ';
-                    if( $t === 12 && $f === 't' && $arg === '12' )
-                        $out .= '<a href="' . W8IO_ROOT . $full_address . '/data">data</a>&#183;';
-                    else
-                        $out .= '<a href="' . W8IO_ROOT . $address . '/t/' . $t . '">' . TYPE_STRINGS[$t] . '</a>&#183;';
+                    $out .= '<a href="' . W8IO_ROOT . $address . '/t/' . $t . '">' . TYPE_STRINGS[$t] . '</a>&#183;';
                     if( $ti > 0 )
                         $out .= '<a href="' . W8IO_ROOT . $address . '/ti/' . $t . '">i' . $ti . '</a>';
                     if( $to > 0 )
