@@ -1166,9 +1166,9 @@ else
         //$height = $heightTime[0];
 
         {
-            $full_address = $full_address !== $address ? ( ' / <a href="' . W8IO_ROOT . $full_address . '">' . $full_address . '</a>' ) : '';
+            $full_address_html = $full_address !== $address ? ( ' / <a href="' . W8IO_ROOT . $full_address . '">' . $full_address . '</a>' ) : '';
             //echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height <small>($time) ";
-            echo '<a href="' . W8IO_ROOT . $address . '">' . $address . '</a>' . $full_address . ' <small>&#183; ';
+            echo '<a href="' . W8IO_ROOT . $address . '">' . $address . '</a>' . $full_address_html . ' <small>&#183; ';
 
             $out = '';
             for( $t = -16; $t <= 19; ++$t )
