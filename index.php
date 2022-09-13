@@ -6,11 +6,11 @@ require_once 'config.php';
 $z = (int)( $_COOKIE['z'] ?? 180 ); // TIMEZONE
 
 if( isset( $_SERVER['REQUEST_URI'] ) )
-    $uri = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
+    $urio = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $uri = 'j13/10';
+    $urio = '';
 
-$uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $uri . chr( 0 ) ) );
+$uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $urio . chr( 0 ) ) );
 
 $address = $uri[0];
 if( !empty( $uri[1] ) )
@@ -919,6 +919,10 @@ if( $address === 'GENERATORS' )
 }
 else if( $f === 'data' )
 {
+    $urio = explode( '/', $urio );
+    $arg = $arg === false ? false : $urio[2];
+    $arg2 = $arg2 === false ? false : $urio[3];
+    $arg3 = $arg3 === false ? false : $urio[4];
     $data = false;
     if( $arg !== false && $arg2 === false )
     {
@@ -931,11 +935,11 @@ else if( $f === 'data' )
     {
         $regexp = '';
         if( $arg3 !== false )
-            $regexp = '?matches=.*' . preg_quote( $arg ) . '.*' . preg_quote( $arg2 ) . '.*' . preg_quote( $arg3 ) . '.*';
+            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg2 ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg3 ) ) ) . '.*';
         else if( $arg2 !== false )
-            $regexp = '?matches=.*' . preg_quote( $arg ) . '.*' . preg_quote( $arg2 ) . '.*';
+            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg2 ) ) ) . '.*';
         else if( $arg !== false )
-            $regexp = '?matches=.*' . preg_quote( $arg ) . '.*';
+            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*';
         $data = wk()->fetch( '/addresses/data/' . $address . $regexp );
         if( $data !== false )
             $data = wk()->json_decode( $data );
@@ -945,11 +949,11 @@ else if( $f === 'data' )
     $datauri = '<a href="' . W8IO_ROOT . $address . '/data/';
     echo '<a href="' . W8IO_ROOT . $address . '">' . $address . '</a> &#183; ' . $datauri . '">data</a>';
     if( $arg !== false )
-        echo ' &#183; ' . $datauri . $arg . '">' . $arg . '</a>';
+        echo ' &#183; ' . $datauri . $arg . '">' . htmlentities( urldecode( $arg ) ) . '</a>';
     if( $arg2 !== false )
-        echo ' &#183; ' . $datauri . $arg2 . '">' . $arg2 . '</a>';
+        echo ' &#183; ' . $datauri . $arg2 . '">' . htmlentities( urldecode( $arg2 ) ) . '</a>';
     if( $arg3 !== false )
-        echo ' &#183; ' . $datauri . $arg3 . '">' . $arg3 . '</a>';
+        echo ' &#183; ' . $datauri . $arg3 . '">' . htmlentities( urldecode( $arg3 ) ) . '</a>';
     echo '<br><br><pre>';
 
     if( $data === false )
@@ -979,7 +983,7 @@ else if( $f === 'data' )
                 $v = $r['value'];
             if( ++$n > 1 )
                 echo ',';
-            echo '<br>    "' . $datauri . $k . '">' . $k . '</a>": ' . $v;
+            echo '<br>    "' . $datauri . urlencode( $k ) . '">' . $k . '</a>": ' . $v;
         }
         echo '<br>}';
     }
