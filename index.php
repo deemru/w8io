@@ -13,11 +13,44 @@ else
 $uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $uri . chr( 0 ) ) );
 
 $address = $uri[0];
-$f = $uri[1] ?? false;
-$arg = $uri[2] ?? false;
-$arg2 = $uri[3] ?? false;
-$arg3 = $uri[4] ?? false;
-$arg4 = $uri[5] ?? false;
+if( !empty( $uri[1] ) )
+{
+    $f = $uri[1];
+    if( !empty( $uri[2] ) )
+    {
+        $arg = $uri[2];
+        if( !empty( $uri[3] ) )
+        {
+            $arg2 = $uri[3];
+            if( !empty( $uri[4] ) )
+            {
+                $arg3 = $uri[4];
+            }
+            else
+            {
+                $arg3 = false;
+            }
+        }
+        else
+        {
+            $arg2 = false;
+            $arg3 = false;
+        }
+    }
+    else
+    {
+        $arg = false;
+        $arg2 = false;
+        $arg3 = false;
+    }
+}
+else
+{
+    $f = false;
+    $arg = false;
+    $arg2 = false;
+    $arg3 = false;
+}
 
 if( $address === 'api' )
 {
@@ -884,6 +917,56 @@ if( $address === 'GENERATORS' )
         for( $i = $n; $i <= 64; $i++ )
             echo PHP_EOL;
 }
+else if( $f === 'data' )
+{
+    $regexp = '';
+    if( $arg3 !== false )
+        $regexp = '?matches=.*' . preg_quote( $arg ) . '.*' . preg_quote( $arg2 ) . '.*' . preg_quote( $arg3 ) . '.*';
+    else if( $arg2 !== false )
+        $regexp = '?matches=.*' . preg_quote( $arg ) . '.*' . preg_quote( $arg2 ) . '.*';
+    else if( $arg !== false )
+        $regexp = '?matches=.*' . preg_quote( $arg ) . '.*';
+    $data = wk()->fetch( '/addresses/data/' . $address . $regexp );
+
+    prolog();
+    $datauri = '<a href="' . W8IO_ROOT . $address . '/data/';
+    echo '<a href="' . W8IO_ROOT . $address . '">' . $address . '</a> &#183; ' . $datauri . '">data</a>';
+    if( $arg !== false )
+        echo ' &#183; ' . $datauri . $arg . '">' . $arg . '</a>';
+    if( $arg2 !== false )
+        echo ' &#183; ' . $datauri . $arg2 . '">' . $arg2 . '</a>';
+    if( $arg3 !== false )
+        echo ' &#183; ' . $datauri . $arg3 . '">' . $arg3 . '</a>';
+    echo '<br><br><pre>';
+    if( $data !== false )
+        $data = wk()->json_decode( $data );
+    if( $data === false || count( $data ) === 0 )
+        echo 'not found';
+    else
+    {
+        echo '{';
+        $n = 0;
+        foreach( $data as $r )
+        {
+            $k = htmlentities( $r['key'] );
+            $t = $r['type'];
+            if( $t === 'string' )
+                $v = '"' . htmlentities( $r['value'] ) . '"';
+            else if( $t === 'binary' )
+                $v = '"' . $r['value'] . '"';
+            else if( $t === 'boolean' )
+                $v = $r['value'] ? 'true' : 'false';
+            else
+                $v = $r['value'];
+            if( ++$n > 1 )
+                echo ',';
+            echo '<br>    "' . $datauri . $k . '">' . $k . '</a>": ' . $v;
+        }
+        echo '<br>}';
+    }
+
+    echo '</pre>';
+}
 else
 {
     if( !isset( $RO ) )
@@ -1078,9 +1161,9 @@ else
         if( $balance === false )
             $balance = [ 0 => 0 ];
 
-        $heightTime = $RO->getLastHeightTimestamp();
-        $time = date( 'Y.m.d H:i', $heightTime[1] + $z * 60 );
-        $height = $heightTime[0];
+        //$heightTime = $RO->getLastHeightTimestamp();
+        //$time = date( 'Y.m.d H:i', $heightTime[1] + $z * 60 );
+        //$height = $heightTime[0];
 
         {
             $full_address = $full_address !== $address ? ( ' / <a href="' . W8IO_ROOT . $full_address . '">' . $full_address . '</a>' ) : '';
@@ -1098,7 +1181,10 @@ else
                 {
                     if( $out !== '' )
                         $out .= ' &#183; ';
-                    $out .= '<a href="' . W8IO_ROOT . $address . '/t/' . $t . '">' . TYPE_STRINGS[$t] . '</a>&#183;';
+                    if( $t === 12 && $f === 't' && $arg === '12' )
+                        $out .= '<a href="' . W8IO_ROOT . $full_address . '/data">data</a>&#183;';
+                    else
+                        $out .= '<a href="' . W8IO_ROOT . $address . '/t/' . $t . '">' . TYPE_STRINGS[$t] . '</a>&#183;';
                     if( $ti > 0 )
                         $out .= '<a href="' . W8IO_ROOT . $address . '/ti/' . $t . '">i' . $ti . '</a>';
                     if( $to > 0 )
