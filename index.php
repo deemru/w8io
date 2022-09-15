@@ -11,9 +11,14 @@ else
     $urio = '';
 
 $uri = preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $urio . chr( 0 ) );
-if( $uri[strlen($uri) - 1] === '/' )
-    $uri = substr( $uri, 0, -1 );
-$uri = explode( '/', $uri );
+if( $uri === '' )
+    $uri = [ 'GENERATORS' ];
+else
+{
+    if( $uri[strlen($uri) - 1] === '/' )
+        $uri = substr( $uri, 0, -1 );
+    $uri = explode( '/', $uri );
+}
 
 $address = $uri[0];
 if( isset( $uri[1] ) )
@@ -109,9 +114,6 @@ if( $address === 'j13' )
 
     exit( json_encode( $json ) );
 }
-
-if( empty( $address ) )
-    $address = 'GENERATORS';
 
 if( $address === 'tx' && is_numeric( $f ) )
 {
