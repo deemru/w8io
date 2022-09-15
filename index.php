@@ -10,26 +10,25 @@ if( isset( $_SERVER['REQUEST_URI'] ) )
 else
     $urio = '';
 
-$uri = explode( '/', preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $urio . chr( 0 ) ) );
+$uri = preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $urio . chr( 0 ) );
+if( $uri[strlen($uri) - 1] === '/' )
+    $uri = substr( $uri, 0, -1 );
+$uri = explode( '/', $uri );
 
 $address = $uri[0];
-if( !empty( $uri[1] ) )
+if( isset( $uri[1] ) )
 {
     $f = $uri[1];
-    if( !empty( $uri[2] ) )
+    if( isset( $uri[2] ) )
     {
         $arg = $uri[2];
-        if( !empty( $uri[3] ) )
+        if( isset( $uri[3] ) )
         {
             $arg2 = $uri[3];
-            if( !empty( $uri[4] ) )
-            {
+            if( isset( $uri[4] ) )
                 $arg3 = $uri[4];
-            }
             else
-            {
                 $arg3 = false;
-            }
         }
         else
         {
