@@ -37,6 +37,7 @@ define( 'W8IO_DB_PATH', W8IO_DB_DIR . 'blockchain.sqlite3' );
 define( 'W8DB', 'sqlite:' . W8IO_DB_PATH );
 
 define( 'W8IO_NODES', 'http://127.0.0.1:6869|https://nodes.wavesexplorer.com' );
+define( 'W8IO_MATCHER', 'https://matcher.waves.exchange' );
 define( 'W8IO_NETWORK', 'W' ); // 'W' -- mainnet, 'T' -- testnet
 define( 'W8IO_ROOT', '/' );
 define( 'W8IO_MAX_UPDATE_BATCH', 1 ); // set more on when on a local node

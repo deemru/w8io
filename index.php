@@ -741,7 +741,7 @@ if( $address === 'o' && isset( $f ) )
     if( $l > 35 )
     {
         prolog();
-        wk()->setNodeAddress( 'https://matcher.waves.exchange' );
+        wk()->setNodeAddress( W8IO_MATCHER );
         $json = wk()->fetch( '/matcher/transactions/' . $f );
         if( $json === false || false === ( $json = wk()->json_decode( $json ) ) )
             echo json_encode( [ 'error' => "fetch( /matcher/transactions/$f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
