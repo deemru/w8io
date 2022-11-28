@@ -602,9 +602,9 @@ function w8io_height( $height )
     return '<a href=' . W8IO_ROOT . 'b/' . $height . '>' . $height . '</a>';
 }
 
-function w8io_txid( $txid )
+function w8io_txid( $txid, $tx )
 {
-    return '<a href=' . W8IO_ROOT . 'tx/' . $txid . '>' . $txid . '</a>';
+    return '<a href=' . W8IO_ROOT . ( isset( $tx['assetPair'] ) ? 'o/' : 'tx/' ) . $txid . '>' . $txid . '</a>';
 }
 
 function htmlfilter( $kv )
@@ -620,7 +620,7 @@ function htmlfilter( $kv )
             if( is_string( $k ) )
                 switch( $k )
                 {
-                    case 'id': $v = w8io_txid( $v ); break;
+                    case 'id': $v = w8io_txid( $v, $kv ); break;
                     case 'sender':
                     case 'recipient':
                     case 'dApp':
@@ -673,7 +673,7 @@ function htmlscript( $tx )
     {
         $tx = $RO->getTxIdByTxKey( $r[0][1] );
         $tx = wk()->getTransactionById( $tx );
-        $result = 'Previous script: ' . w8io_txid( $tx['id'] ) . PHP_EOL . PHP_EOL;
+        $result = 'Previous script: ' . w8io_txid( $tx['id'], $tx ) . PHP_EOL . PHP_EOL;
 
         if( empty( $tx['script'] ) )
             $decompile2 = '';
@@ -722,17 +722,45 @@ if( $address === 'tx' && isset( $f ) )
                 echo json_encode( [ 'error' => "getTransactionById( $f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
             else
             {
-                echo '<pre>';
                 w8io_print_transactions( false, 'r1 = ' . $txid, false, 100, 'txs', 3 );
-                echo '</pre><br>';
 
                 if( !empty( $tx['script'] ) )
                     $addon = htmlscript( $tx );
                 $tx = htmlfilter( $tx );
-                echo json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+                echo '<br>' . json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
                 if( isset( $addon ) )
                     echo PHP_EOL . PHP_EOL . $addon;
             }
+        }
+    }
+}
+else
+if( $address === 'o' && isset( $f ) )
+{
+    $l = strlen( $f );
+    if( $l > 35 )
+    {
+        prolog();
+        wk()->setNodeAddress( 'https://matcher.waves.exchange' );
+        $json = wk()->fetch( '/matcher/transactions/' . $f );
+        if( $json === false || false === ( $json = wk()->json_decode( $json ) ) )
+            echo json_encode( [ 'error' => "fetch( /matcher/transactions/$f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        else
+        {
+            require_once 'include/RO.php';
+            $RO = new RO( W8DB );
+            foreach( (array)$json as $tx )
+            {
+                $id = $tx['id'];
+                $txid = $RO->getTxKeyByTxId( $id );
+                if( $txid === false )
+                    echo json_encode( [ 'error' => "getTxKeyByTxId( $id ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL;
+                else
+                    w8io_print_transactions( false, 'r1 = ' . $txid, false, 100, 'txs', 3 );
+            }
+
+            $json = htmlfilter( $json );
+            echo '<br>' . json_encode( $json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
         }
     }
 }
