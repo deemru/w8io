@@ -722,7 +722,7 @@ if( $address === 'tx' && isset( $f ) )
                 echo json_encode( [ 'error' => "getTransactionById( $f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
             else
             {
-                w8io_print_transactions( false, 'r1 = ' . $txid, false, 100, 'txs', 3 );
+                w8io_print_transactions( false, 'r1 = ' . $txid, false, 1000, 'txs', 3 );
 
                 if( !empty( $tx['script'] ) )
                     $addon = htmlscript( $tx );
@@ -756,7 +756,7 @@ if( $address === 'o' && isset( $f ) )
                 if( $txid === false )
                     echo json_encode( [ 'error' => "getTxKeyByTxId( $id ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL;
                 else
-                    w8io_print_transactions( false, 'r1 = ' . $txid, false, 100, 'txs', 3 );
+                    w8io_print_transactions( false, 'r1 = ' . $txid, false, 1000, 'txs', 3 );
             }
 
             $json = htmlfilter( $json );
