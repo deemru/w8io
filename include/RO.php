@@ -426,7 +426,7 @@ class RO
     {
         if( !isset( $this->getPTSAtHeight ) )
         {
-            $this->getPTSAtHeight = $this->db->db->prepare( 'SELECT * FROM pts WHERE r1 >= ? AND r1 <= ? ORDER BY r0 DESC LIMIT 1000' );
+            $this->getPTSAtHeight = $this->db->db->prepare( 'SELECT * FROM pts WHERE r1 >= ? AND r1 <= ?' );
             if( $this->getPTSAtHeight === false )
                 w8_err();
         }
