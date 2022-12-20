@@ -128,7 +128,7 @@ if( $address === 'tx' && is_numeric( $f ) )
         exit( header( 'location: ' . W8IO_ROOT . 'tx/' . $txid ) );
 }
 else
-if( $address === 'tk' )
+if( $address === 'tk' && $f !== false && strlen( $f ) >= 32 )
 {
     require_once 'include/RO.php';
     $RO = new RO( W8DB );
@@ -624,10 +624,19 @@ function htmlfilter( $kv )
                     case 'sender':
                     case 'recipient':
                     case 'dApp':
+                    case 'address':
                     case 'target': $v = w8io_a( $v ); break;
                     case 'attachment': $fkv[$k . '-decoded'] = htmlentities( trim( preg_replace( '/\s+/', ' ', wk()->base58Decode( $v ) ) ) );
-                    case 'value': if( is_address( $v ) ) $v = w8io_a( $v ); break;
-                    default: $v = isset( $v ) ? ( is_int( $v ) ? $v : ( is_bool( $v ) ? $v : htmlentities( $v ) ) ) : null;
+                    default:
+                        if( !isset( $v ) )
+                            $v = null;
+                        else
+                        if( is_string( $v ) )
+                        {
+                            $v = htmlentities( $v );
+                            if( is_address( $v ) )
+                                $v = w8io_a( $v );
+                        }
                 }
 
             $fkv[$k] = $v;
@@ -704,10 +713,9 @@ function htmlscript( $tx )
     return $result;
 }
 
-if( $address === 'tx' && isset( $f ) )
+if( $address === 'tx' && $f !== false )
 {
-    $l = strlen( $f );
-    if( $l > 35 )
+    if( strlen( $f ) >= 32 )
     {
         prolog();
         require_once 'include/RO.php';
@@ -735,10 +743,9 @@ if( $address === 'tx' && isset( $f ) )
     }
 }
 else
-if( $address === 'o' && isset( $f ) )
+if( $address === 'o' && $f !== false )
 {
-    $l = strlen( $f );
-    if( $l > 35 )
+    if( strlen( $f ) >= 32 )
     {
         prolog();
         wk()->setNodeAddress( W8IO_MATCHER );
