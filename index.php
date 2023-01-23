@@ -682,7 +682,7 @@ function htmlscript( $tx )
     {
         $tx = $RO->getTxIdByTxKey( $r[0][1] );
         $tx = wk()->getTransactionById( $tx );
-        $result = 'Previous script: ' . w8io_txid( $tx['id'], $tx ) . PHP_EOL . PHP_EOL;
+        $result = 'Previous script: ' . ( $tx === false ? 'ERROR' : w8io_txid( $tx['id'], $tx ) ) . PHP_EOL . PHP_EOL );
 
         if( empty( $tx['script'] ) )
             $decompile2 = '';
