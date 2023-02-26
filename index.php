@@ -962,7 +962,7 @@ else if( $f === 'data' )
     $data = false;
     if( $arg !== false && $arg2 === false )
     {
-        $data = wk()->fetch( '/addresses/data/' . $address . '/' . $arg );
+        $data = wk()->fetch( '/addresses/data/' . $address . '/' . $arg, false, null, [ 404 ] );
         if( $data !== false )
             $data = [ wk()->json_decode( $data ) ];
     }
