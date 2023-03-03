@@ -86,7 +86,22 @@ class RO
 
     public function getGenerators( $blocks, $start = null )
     {
-        $start = isset( $start ) ? "AND block <= $start" : ''; // AND asset = 0
+        if( isset( $start ) )
+        {
+            $query = $this->db->db->prepare( 'SELECT * FROM pts WHERE r1 = ?' );
+            if( $query !== false )
+            {
+                $generators = [];
+                for( $i = 0; $i < $blocks; ++$i )
+                {
+                    $query->execute( [ w8h2kg( $start + $i ) ] );
+                    foreach( $query as $ts )
+                        $generators[(int)$ts[B]][w8k2h((int)$ts[TXKEY])] = $ts;
+                }
+
+                return $generators;
+            }
+        }
 
         $pts = $this->db->query( 'SELECT * FROM pts WHERE r2 = 0 ORDER BY r0 DESC LIMIT ' . $blocks );
 

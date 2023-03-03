@@ -813,7 +813,7 @@ else
 if( $address === 'GENERATORS' )
 {
     prolog();
-    $arg = isset( $showtime ) && $arg !== false ? intval( $arg ) : null;
+    $arg = $arg !== false ? intval( $arg ) : null;
 
     require_once 'include/RO.php';
     $RO = new RO( W8DB );
@@ -830,8 +830,8 @@ if( $address === 'GENERATORS' )
     {
         $balance = $RO->getBalanceByAddressId( $generator );
         $balance = ( isset( $balance[0] ) ? $balance[0] : 0 ) + ( isset( $balance[WAVES_LEASE_ASSET] ) ? $balance[WAVES_LEASE_ASSET] : 0 );
-        if( isset( $arg ) )
-            $balance = $api->correct_balance( $generator, $arg, $arg > WAVES_LEASE_ASSET ? $balance : null );
+        //if( isset( $arg ) )
+            //$balance = $api->correct_balance( $generator, $arg, $arg > WAVES_LEASE_ASSET ? $balance : null );
         $gentotal += $balance;
 
         foreach( $pts as $height => $ts )
