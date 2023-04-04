@@ -12,6 +12,12 @@ function selftest( $start )
 {
     require_once 'include/RO.php';
     $RO = new RO( W8DB );
+    $height = wk()->height() - 1;
+    $local_height = $RO->getLastHeightTimestamp()[0];
+    if( $local_height < $height )
+        exit( wk()->log( 'e', $local_height . ' < ' . $height . ' (needs update)' ) );
+    if( $local_height !== $height )
+        exit( wk()->log( 'e', $local_height . ' !== ' . $height . ' (needs rollback ' . $height . ')' ) );
 
     for( $a = $start;; ++$a )
     {
@@ -32,9 +38,31 @@ function selftest( $start )
         $decimals = ( $decimals = $info[0] ) === 'N' ? 0 : (int)$decimals;
         $asset = substr( $info, 2 );
 
+        $node_items = [];
+        $after = '';
+        $i = 0;
+        for( ;; )
+        {
+            $data = wk()->fetch( '/assets/' . $assetId . '/distribution/' . $height . '/limit/1000' . $after );
+            $data = wk()->json_decode( $data );
+            $node_items = array_merge( $node_items, $data['items'] );
+            $i += count( $data['items'] );
+            if( $i % 10000 === 0 )
+                wk()->log( $a .': ' . $assetId . ' (' . $asset . ') ... ' . $i );
+            if( $data['hasNext'] === false )
+            {
+                if( $i > 10000 )
+                    wk()->log( 's', $a .': ' . $assetId . ' (' . $asset . ') ... ' . $i );
+                break;
+            }
+            $lastItem = $data['lastItem'];
+            $after = '?after=' . $lastItem;
+        }
+
         $balances = $RO->db->query( 'SELECT * FROM balances WHERE r2 = ' . $aid );
         $i = 0;
         $e = 0;
+        $checked_items = [];
         foreach( $balances as $balance )
         {
             if( ++$i % 10000 === 0 )
@@ -47,13 +75,16 @@ function selftest( $start )
             $amount = (int)$balance[3];
 
             $address = $RO->getAddressById( $aid );
-            $chainAmount = wk()->balance( $address, $assetId );
+            $chainAmount = $node_items[$address] ?? 0;
 
             if( $chainAmount !== $amount )
-            {
                 wk()->log( 'e', ++$e . ') ' . $address . ': ' . w8io_amount( $chainAmount, $decimals ) . ' !== ' . w8io_amount( $amount, $decimals ) );
-            }
+            else
+                unset( $node_items[$address] );
         }
+
+        foreach( $node_items as $address => $chainAmount )
+            wk()->log( 'e', ++$e . ') ' . $address . ': ' . w8io_amount( $chainAmount, $decimals ) . ' !== ' . w8io_amount( 0, $decimals ) );
 
         wk()->log( 's', $a .': ' . $assetId . ' (' . $asset . ') ' . ( $i - $e ) . ' OK' . ( $e > 0 ? ( ' (' . $e . ' ERROR)' ) : '' ) );
     }
@@ -242,7 +273,7 @@ function rollback( $block )
     require_once __DIR__ . '/include/BlockchainBalances.php';
 
     $blockchain = new Blockchain( W8DB );
-    $blockchain->rollback( $block );
+    $blockchain->rollback( $block + 1 );
 }
 
 function updater()
