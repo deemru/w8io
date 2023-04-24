@@ -10,6 +10,10 @@ class BlockchainBalances
     public Triples $balances;
     public KV $uids;
 
+    private Triples $db;
+    private $uid;
+    private $parser;
+
     public function __construct( $db )
     {
         $this->db = $db;
@@ -59,21 +63,6 @@ class BlockchainBalances
         $this->parser = $parser;
     }
 
-    public function get_distribution( $aid )
-    {
-        if( !isset( $this->query_get_distribution ) )
-        {
-            $this->query_get_distribution = $this->checkpoint->db()->prepare( 'SELECT address, amount FROM balances WHERE asset = :aid ORDER BY amount DESC' );
-            if( !is_object( $this->query_get_distribution ) )
-                return false;
-        }
-
-        if( false === $this->query_get_distribution->execute( [ 'aid' => $aid ] ) )
-            return false;
-
-        return $this->query_get_distribution;
-    }
-
     private function finalizeChanges( $aid, $temp_procs, &$procs )
     {
         foreach( $temp_procs as $asset => $amount )
@@ -84,6 +73,8 @@ class BlockchainBalances
             $procs[$aid][$asset] = $amount + ( $procs[$aid][$asset] ?? 0 );
         }
     }
+
+    private $q_getUid;
 
     private function getUid( $address, $asset )
     {
@@ -118,6 +109,8 @@ class BlockchainBalances
         return [ $uid, $update ];
     }
 
+    private $q_insertBalance;
+
     private function insertBalance( $uid, $address, $asset, $amount )
     {
         if( !isset( $this->q_insertBalance ) )
@@ -130,6 +123,8 @@ class BlockchainBalances
         if( false === $this->q_insertBalance->execute( [ $uid, $address, $asset, $amount ] ) )
             w8io_error( 'insertBalance' );
     }
+
+    private $q_updateBalance;
 
     private function updateBalance( $uid, $amount )
     {

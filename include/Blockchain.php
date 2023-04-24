@@ -16,6 +16,13 @@ class Blockchain
     public Triples $hs;
     public BlockchainParser $parser;
 
+    private Triples $db;
+    private $lastUp;
+    private $height;
+    private $txheight;
+    private $lastBlock;
+    private $q_getTxIdsFromTo;
+
     public function __construct( $db )
     {
         $this->ts = new Triples( $db, 'ts', 1, ['INTEGER PRIMARY KEY', 'INTEGER', 'TEXT'], [0, 1] );

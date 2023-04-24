@@ -25,6 +25,15 @@ class BlockchainParser
     public BlockchainParser $parser;
     public BlockchainBalances $balances;
 
+    private $kvs;
+    private $recs;
+    private $feerecs;
+    private $workheight;
+    private $qps;
+    private $mts;
+    private $getSponsorship;
+    private $uid;
+
     public function __construct( $db )
     {
         $this->db = $db;
@@ -72,7 +81,6 @@ class BlockchainParser
         $this->feerecs = [];
         $this->workheight = -1;
         $this->resetMTS(); // debug only
-        $this->indexed = $this->uid !== 0;
         $this->qps = []; // version 3 exchange price multipliers
     }
 
@@ -296,6 +304,8 @@ class BlockchainParser
         }
     }
 
+    private $q_getPTS;
+
     private function getPTS( $from, $to )
     {
         if( !isset( $this->q_getPTS ) )
@@ -310,6 +320,8 @@ class BlockchainParser
 
         return $this->q_getPTS->fetchAll();
     }
+
+    private $lastfees;
 
     private function getFeesAt( $height, $reward )
     {
@@ -352,6 +364,8 @@ class BlockchainParser
         $this->lastfees = [ $height, $ngfees ];
         return [ $fees, $ngfees ];
     }
+
+    private $q_getNGFeesAt;
 
     public function getNGFeesAt( $height )
     {

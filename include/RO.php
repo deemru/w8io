@@ -15,6 +15,8 @@ class RO
         $this->db = new Triples( $db, 'pts' );
     }
 
+    private $getTxKeyByTxId;
+
     public function getTxKeyByTxId( $txid )
     {
         $txid = d58( $txid );
@@ -39,6 +41,8 @@ class RO
 
         return false;
     }
+
+    private $getTxIdByTxKey;
 
     public function getTxIdByTxKey( $txkey )
     {
@@ -112,6 +116,8 @@ class RO
         return $generators;
     }
 
+    private $getTimestampByHeight;
+
     public function getTimestampByHeight( $height )
     {
         if( !isset( $this->getTimestampByHeight ) )
@@ -140,6 +146,8 @@ class RO
         return false;
     }
 
+    private $q_getAddressIdByAddress;
+
     public function getAddressIdByAddress( $address )
     {
         if( !isset( $this->q_getAddressIdByAddress ) )
@@ -159,6 +167,8 @@ class RO
         return false;
     }
 
+    private $q_getAddressIdByAlias;
+
     public function getAddressIdByAlias( $alias )
     {
         if( !isset( $this->q_getAddressIdByAlias ) )
@@ -177,6 +187,8 @@ class RO
 
         return false;
     }
+
+    private $q_getAddressById;
 
     public function getAddressById( $id )
     {
@@ -209,6 +221,8 @@ class RO
         }
     }
 
+    private $getFirstAliasById;
+
     public function getFirstAliasById( $id )
     {
         if( !isset( $this->getFirstAliasById ) )
@@ -227,6 +241,8 @@ class RO
 
         return false;
     }
+
+    private $getAliasById;
 
     public function getAliasById( $id )
     {
@@ -247,6 +263,8 @@ class RO
         return false;
     }
 
+    private $getGroupById;
+
     public function getGroupById( $id )
     {
         if( !isset( $this->getGroupById ) )
@@ -266,6 +284,8 @@ class RO
         return false;
     }
 
+    private $getGroupByName;
+
     public function getGroupByName( $name )
     {
         if( !isset( $this->getGroupByName ) )
@@ -284,6 +304,8 @@ class RO
 
         return false;
     }
+
+    private $q_getBalanceByAddressId;
 
     public function getBalanceByAddressId( $id )
     {
@@ -307,6 +329,8 @@ class RO
         return $balance;
     }
 
+    private $getAssetInfoById;
+
     public function getAssetInfoById( $id )
     {
         if( $id === 0 )
@@ -329,6 +353,8 @@ class RO
         return false;
     }
 
+    private $getFunctionById;
+
     public function getFunctionById( $id )
     {
         if( !isset( $this->getFunctionById ) )
@@ -347,6 +373,8 @@ class RO
 
         return false;
     }
+
+    private $getFunctionByName;
 
     public function getFunctionByName( $name )
     {
@@ -367,6 +395,8 @@ class RO
         return false;
     }
 
+    private $getAssetById;
+
     public function getAssetById( $id )
     {
         if( !isset( $this->getAssetById ) )
@@ -385,6 +415,8 @@ class RO
 
         return false;
     }
+
+    private $getIdByAsset;
 
     public function getIdByAsset( $asset )
     {
@@ -436,6 +468,8 @@ class RO
         
         return $this->db->query( $query )->fetchAll();
     }
+
+    private $getPTSAtHeight;
 
     public function getPTSAtHeight( $height )
     {
