@@ -402,7 +402,20 @@ class BlockchainParser
 
     private function processGeneratorTransaction( $txkey, $tx )
     {
-        [ $fees, $ngfees ] = $this->getFeesAt( w8k2h( $txkey ), $tx['reward'] );
+        if( $tx['dao'] ?? false )
+        {
+            $generator = $tx['generator'];
+            $reward = $tx['reward'];
+            $this->processRewardTransaction( $txkey, [ 'type' => TX_REWARD, 'generator' => GENERATOR, 'recipient' => $generator, 'reward' => $reward ] );
+            foreach( GetDaoAddresses() as $address )
+                $this->processRewardTransaction( $txkey, [ 'type' => TX_REWARD, 'generator' => $generator, 'recipient' => $address, 'reward' => intdiv( $reward, 3 ) ] );
+
+            [ $fees, $ngfees ] = $this->getFeesAt( w8k2h( $txkey ), 0 );
+        }
+        else
+        {
+            [ $fees, $ngfees ] = $this->getFeesAt( w8k2h( $txkey ), $tx['reward'] );
+        }
 
         foreach( $fees as $feeasset => $fee )
         {
@@ -423,6 +436,27 @@ class BlockchainParser
 
         $this->workheight = w8k2h( $txkey ) + 1;
         $this->feerecs = [];
+    }
+
+    private function processRewardTransaction( $txkey, $tx )
+    {
+        $generator = $tx['generator'];
+        if( $generator !== GENERATOR )
+            $generator = $this->getSenderId( $tx['generator'] );
+
+        $this->recs[] = [
+            UID =>      $this->getNewUid(),
+            TXKEY =>    $txkey,
+            TYPE =>     TX_REWARD,
+            A =>        $generator,
+            B =>        $this->getRecipientId( $tx['recipient'] ),
+            ASSET =>    WAVES_ASSET,
+            AMOUNT =>   $tx['reward'],
+            FEEASSET => NO_ASSET,
+            FEE =>      0,
+            ADDON =>    0,
+            GROUP =>    0,
+        ];
     }
 
     private function processFailedTransaction( $txkey, $tx )

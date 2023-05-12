@@ -90,30 +90,28 @@ class RO
 
     public function getGenerators( $blocks, $start = null )
     {
-        if( isset( $start ) )
+        if( !isset( $start ) )
+            $start = $this->getLastHeightTimestamp()[0] - $blocks;
+
+        $query = $this->db->db->prepare( 'SELECT * FROM pts WHERE r1 = ?' );
+        if( $query !== false )
         {
-            $query = $this->db->db->prepare( 'SELECT * FROM pts WHERE r1 = ?' );
-            if( $query !== false )
+            $generators = [];
+            for( $i = 0; $i < $blocks; ++$i )
             {
-                $generators = [];
-                for( $i = 0; $i < $blocks; ++$i )
+                $height = $start + $i;
+                $query->execute( [ w8h2kg( $height ) ] );
+                foreach( $query as $ts )
                 {
-                    $query->execute( [ w8h2kg( $start + $i ) ] );
-                    foreach( $query as $ts )
-                        $generators[(int)$ts[B]][w8k2h((int)$ts[TXKEY])] = $ts;
+                    if( $ts[A] !== -1 )
+                        continue;
+                    $generator = $ts[B];
+                    $generators[$generator][$height] = $ts[AMOUNT] + ( $generators[$generator][$height] ?? 0 );
                 }
-
-                return $generators;
             }
+
+            return $generators;
         }
-
-        $pts = $this->db->query( 'SELECT * FROM pts WHERE r2 = 0 ORDER BY r0 DESC LIMIT ' . $blocks );
-
-        $generators = [];
-        foreach( $pts as $ts )
-            $generators[(int)$ts[B]][w8k2h((int)$ts[TXKEY])] = $ts;
-
-        return $generators;
     }
 
     private $getTimestampByHeight;

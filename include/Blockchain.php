@@ -55,6 +55,11 @@ class Blockchain
         return e58( pack( 'J', (int)$r[1] ) . $r[2] );
     }
 
+    public function height()
+    {
+        return $this->height;
+    }
+
     private function setHeight( $height = null )
     {
         if( !isset( $height ) )
@@ -402,7 +407,7 @@ class Blockchain
 
                 $generator = $block['generator'];
                 $reward = $block['reward'] ?? 0;
-                $parserTxs[w8h2kg( $height )] = [ 'type' => TX_GENERATOR, 'generator' => $generator, 'reward' => $reward ];
+                $parserTxs[w8h2kg( $height )] = [ 'type' => TX_GENERATOR, 'generator' => $generator, 'reward' => $reward, 'dao' => $height >= GetTxHeight_DaoRewards() ];
             }
 
             if( count( $parserTxs ) )

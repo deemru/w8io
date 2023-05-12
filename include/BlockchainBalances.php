@@ -188,6 +188,7 @@ class BlockchainBalances
             case TX_INVOKE:
             case ITX_INVOKE:
             case TX_ETHEREUM:
+            case TX_REWARD:
                 if( $asset === $afee )
                     $procs_a = [ asset_out( $type ) => 1, $asset => -$amount -$fee ];
                 else

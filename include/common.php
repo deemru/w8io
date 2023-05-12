@@ -46,6 +46,7 @@ const TX_EXPRESSION = 19;
 const TX_GENERATOR = 0;
 const TX_MATCHER = -1;
 const TX_SPONSOR = -2;
+const TX_REWARD = -7;
 
 const ITX_ISSUE = -TX_ISSUE;
 const ITX_TRANSFER = -TX_TRANSFER;
@@ -61,6 +62,7 @@ const TYPE_STRINGS =
     TX_SPONSOR => 'sponsor',
     TX_MATCHER => 'matcher',
     TX_GENERATOR => 'fees',
+    TX_REWARD => 'reward',
 
     TX_GENESIS => 'genesis',
     TX_PAYMENT => 'payment',

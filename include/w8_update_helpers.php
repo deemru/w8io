@@ -91,6 +91,37 @@ function GetTxHeight_Sponsorship()
     return $txheight;
 }
 
+function GetTxHeight_DaoRewards()
+{
+    static $height;
+
+    if( !isset( $height ) )
+    {
+        $json = wk()->json_decode( wk()->fetch( '/activation/status' ) );
+        foreach( $json['features'] as $feature )
+            if( $feature['id'] === 19 && $feature['blockchainStatus'] === 'ACTIVATED' )
+            {
+                $height = $feature['activationHeight'];
+                break;
+            }
+    }
+
+    return $height;
+}
+
+function GetDaoAddresses()
+{
+    static $addresses;
+
+    if( !isset( $addresses ) )
+    {
+        $json = wk()->json_decode( wk()->fetch( '/blockchain/rewards' ) );
+        $addresses = [ $json['daoAddress'], $json['xtnBuybackAddress'] ];
+    }
+
+    return $addresses;
+}
+
 function procResetInfo( $parser )
 {
     if( !file_exists( W8IO_DB_DIR . 'scams.txt' ) &&
@@ -99,8 +130,7 @@ function procResetInfo( $parser )
         $assets = $parser->kvAssets;
         $assetInfo = $parser->kvAssetInfo;
 
-        $assets->setHigh();
-        $high = $assets->high;
+        $high = $assets->setHigh();
         for( $i = 1; $i <= $high; ++$i )
         {
             $info = $assetInfo->getValueByKey( $i );
@@ -212,7 +242,7 @@ function procWeight( $blockchain, $parser )
     else
         $last_tickers = [];
 
-    $height = $blockchain->height;
+    $height = $blockchain->height();
     $txheight = w8h2k( $height - 2880 );
     $pts = $parser->db->query( "SELECT * FROM pts WHERE r1 > $txheight" );
 

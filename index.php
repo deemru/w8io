@@ -834,7 +834,7 @@ if( $address === 'GENERATORS' )
             //$balance = $api->correct_balance( $generator, $arg, $arg > WAVES_LEASE_ASSET ? $balance : null );
         $gentotal += $balance;
 
-        foreach( $pts as $height => $ts )
+        foreach( $pts as $height => $amount )
         {
             if( !isset( $from ) || $from > $height )
                 $from = $height;
@@ -906,12 +906,11 @@ if( $address === 'GENERATORS' )
 
         $matrix = array_fill( 0, $Q, 0 );
         $fee = 0;
-        foreach( $pts as $ts )
+        foreach( $pts as $block => $amount )
         {
-            $block = w8k2h( (int)$ts[TXKEY] );
             $target = $Q - 1 - (int)floor( ( $to - $block ) / $q );
             $matrix[$target]++;
-            $fee += (int)$ts[AMOUNT];
+            $fee += $amount;
         }
 
         $feetotal += $fee;
