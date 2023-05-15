@@ -93,7 +93,7 @@ function GetTxHeight_Sponsorship()
 
 function GetTxHeight_DaoRewards()
 {
-    static $height;
+    static $height = PHP_INT_MAX;
 
     if( !isset( $height ) )
     {
