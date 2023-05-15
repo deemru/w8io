@@ -93,10 +93,11 @@ function GetTxHeight_Sponsorship()
 
 function GetTxHeight_DaoRewards()
 {
-    static $height = PHP_INT_MAX;
+    static $height;
 
     if( !isset( $height ) )
     {
+        $height = PHP_INT_MAX;
         $json = wk()->json_decode( wk()->fetch( '/activation/status' ) );
         foreach( $json['features'] as $feature )
             if( $feature['id'] === 19 && in_array( $feature['blockchainStatus'], [ 'ACTIVATED', 'APPROVED' ] ) )
