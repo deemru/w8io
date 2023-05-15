@@ -27,7 +27,7 @@ function GetHeight_NG()
 
     if( !isset( $height ) )
         foreach( wk()->json_decode( wk()->fetch( '/activation/status' ) )['features'] as $feature )
-            if( $feature['id'] === 2 && $feature['blockchainStatus'] === 'ACTIVATED' )
+            if( $feature['id'] === 2 && in_array( $feature['blockchainStatus'], [ 'ACTIVATED', 'APPROVED' ] ) )
             {
                 $height = $feature['activationHeight'] + 1;
                 break;
@@ -43,7 +43,7 @@ function GetTxHeight_RideV4()
     if( !isset( $txheight ) )
     {
         foreach( wk()->json_decode( wk()->fetch( '/activation/status' ) )['features'] as $feature )
-            if( $feature['id'] === 15 && ( $feature['blockchainStatus'] === 'ACTIVATED' || $feature['blockchainStatus'] === 'APPROVED' ) )
+            if( $feature['id'] === 15 && in_array( $feature['blockchainStatus'], [ 'ACTIVATED', 'APPROVED' ] ) )
             {
                 $txheight = $feature['activationHeight'];
                 $txheight = w8h2k( $txheight );
@@ -61,7 +61,7 @@ function GetTxHeight_RideV5()
     if( !isset( $txheight ) )
     {
         foreach( wk()->json_decode( wk()->fetch( '/activation/status' ) )['features'] as $feature )
-            if( $feature['id'] === 16 && ( $feature['blockchainStatus'] === 'ACTIVATED' || $feature['blockchainStatus'] === 'APPROVED' ) )
+            if( $feature['id'] === 16 && in_array( $feature['blockchainStatus'], [ 'ACTIVATED', 'APPROVED' ] ) )
             {
                 $txheight = $feature['activationHeight'];
                 $txheight = w8h2k( $txheight );
@@ -80,7 +80,7 @@ function GetTxHeight_Sponsorship()
     {
         $json = wk()->json_decode( wk()->fetch( '/activation/status' ) );
         foreach( $json['features'] as $feature )
-            if( $feature['id'] === 7 && $feature['blockchainStatus'] === 'ACTIVATED' )
+            if( $feature['id'] === 7 && in_array( $feature['blockchainStatus'], [ 'ACTIVATED', 'APPROVED' ] ) )
             {
                 $txheight = $feature['activationHeight'] + $json['votingInterval'];
                 $txheight = w8h2k( $txheight );
@@ -99,7 +99,7 @@ function GetTxHeight_DaoRewards()
     {
         $json = wk()->json_decode( wk()->fetch( '/activation/status' ) );
         foreach( $json['features'] as $feature )
-            if( $feature['id'] === 19 && $feature['blockchainStatus'] === 'ACTIVATED' )
+            if( $feature['id'] === 19 && in_array( $feature['blockchainStatus'], [ 'ACTIVATED', 'APPROVED' ] ) )
             {
                 $height = $feature['activationHeight'];
                 break;
