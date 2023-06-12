@@ -402,20 +402,18 @@ class BlockchainParser
 
     private function processGeneratorTransaction( $txkey, $tx )
     {
-        if( $tx['dao'] ?? false )
+        $generator = $tx['generator'];
+        $reward = $tx['reward'];
+        $rewardShares = $tx['rewardShares'];
+        if( $reward > 0 )
         {
-            $generator = $tx['generator'];
-            $reward = $tx['reward'];
             $this->processRewardTransaction( $txkey, [ 'type' => TX_REWARD, 'generator' => GENERATOR, 'recipient' => $generator, 'reward' => $reward ] );
-            foreach( GetDaoAddresses() as $address )
-                $this->processRewardTransaction( $txkey, [ 'type' => TX_REWARD, 'generator' => $generator, 'recipient' => $address, 'reward' => intdiv( $reward, 3 ) ] );
+            foreach( $rewardShares as $address => $rewardShare )
+                if( $generator !== $address )
+                    $this->processRewardTransaction( $txkey, [ 'type' => TX_REWARD, 'generator' => $generator, 'recipient' => $address, 'reward' => $rewardShare ] );
+        }
 
-            [ $fees, $ngfees ] = $this->getFeesAt( w8k2h( $txkey ), 0 );
-        }
-        else
-        {
-            [ $fees, $ngfees ] = $this->getFeesAt( w8k2h( $txkey ), $tx['reward'] );
-        }
+        [ $fees, $ngfees ] = $this->getFeesAt( w8k2h( $txkey ), 0 );
 
         foreach( $fees as $feeasset => $fee )
         {

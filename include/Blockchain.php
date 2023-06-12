@@ -407,7 +407,8 @@ class Blockchain
 
                 $generator = $block['generator'];
                 $reward = $block['reward'] ?? 0;
-                $parserTxs[w8h2kg( $height )] = [ 'type' => TX_GENERATOR, 'generator' => $generator, 'reward' => $reward, 'dao' => $height >= GetTxHeight_DaoRewards() ];
+                $rewardShares = $block['rewardShares'] ?? [ $generator => $reward ];
+                $parserTxs[w8h2kg( $height )] = [ 'type' => TX_GENERATOR, 'generator' => $generator, 'reward' => $reward, 'rewardShares' => $rewardShares ];
             }
 
             if( count( $parserTxs ) )

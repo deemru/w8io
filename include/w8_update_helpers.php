@@ -91,38 +91,6 @@ function GetTxHeight_Sponsorship()
     return $txheight;
 }
 
-function GetTxHeight_DaoRewards()
-{
-    static $height;
-
-    if( !isset( $height ) )
-    {
-        $height = PHP_INT_MAX;
-        $json = wk()->json_decode( wk()->fetch( '/activation/status' ) );
-        foreach( $json['features'] as $feature )
-            if( $feature['id'] === 19 && in_array( $feature['blockchainStatus'], [ 'ACTIVATED', 'APPROVED' ] ) )
-            {
-                $height = $feature['activationHeight'];
-                break;
-            }
-    }
-
-    return $height;
-}
-
-function GetDaoAddresses()
-{
-    static $addresses;
-
-    if( !isset( $addresses ) )
-    {
-        $json = wk()->json_decode( wk()->fetch( '/blockchain/rewards' ) );
-        $addresses = [ $json['daoAddress'], $json['xtnBuybackAddress'] ];
-    }
-
-    return $addresses;
-}
-
 function procResetInfo( $parser )
 {
     if( !file_exists( W8IO_DB_DIR . 'scams.txt' ) &&
