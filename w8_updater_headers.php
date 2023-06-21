@@ -123,6 +123,7 @@ for( ;; )
             $i = rollback();
             break;
         }
+        $kvHeaders->reset();
         $kvHeaders->setKeyValue( $i, $headers );
         $kvHeaders->merge();
         $wk->log( $i );
