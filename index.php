@@ -12,7 +12,7 @@ else
 
 $uri = preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $urio . chr( 0 ) );
 if( $uri === '' )
-    $uri = [ 'ACTIVATION', '20', '368' ];
+    $uri = [ 'GENERATORS' ];
 else
 {
     if( $uri[strlen($uri) - 1] === '/' )
