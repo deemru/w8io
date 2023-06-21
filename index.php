@@ -1015,9 +1015,9 @@ if( $address === 'ACTIVATION' )
         echo '        next: ' . $link_prolog . ( $period_number + 1 ) . '">' . ( $period_start + $votingInterval ) . ' .. ' . ( $period_end + $votingInterval ) . '</a>' . PHP_EOL;
         echo '      height: ' . $height . PHP_EOL . PHP_EOL;
 
-        foreach( $activation['features'] as $feature )
+        //foreach( $activation['features'] as $feature )
         {
-            if( intval( $feature['id'] ) === $f )
+            //if( intval( $feature['id'] ) === $f )
             {
                 $votes = [];
                 $totals = [];
