@@ -521,7 +521,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
             {
                 $txkey = '<a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . $date . '</a>';
 
-                if( $type <= ITX_ISSUE )
+                if( $type <= ITX_ISSUE && $type !== TX_REWARD )
                     $fee .= ' <small>invoke</small>';
                 if( $aspam )
                     $fee .= ' <small>spam</small>';
@@ -542,7 +542,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
                 $amount = ' ' . substr( $amount, 2 );
 
             $fee = '';
-            if( $type <= ITX_ISSUE )
+            if( $type <= ITX_ISSUE && $type !== TX_REWARD )
                 $fee .= ' <small>invoke</small>';
             if( $aspam )
                 $fee .= ' <small>spam</small>';
