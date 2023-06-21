@@ -994,7 +994,7 @@ if( $address === 'ACTIVATION' )
     {
         $period_number = $arg !== false ? intval( $arg ) : intdiv( $height, $votingInterval );
 
-        $period_start = $period_number * $votingInterval;
+        $period_start = $period_number * $votingInterval + 1;
         $period_end = $period_start + $votingInterval - 1;
 
         $link_prolog = '<a href="' . W8IO_ROOT . 'ACTIVATION/' . $f . '/';
