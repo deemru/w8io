@@ -12,7 +12,7 @@ else
 
 $uri = preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $urio . chr( 0 ) );
 if( $uri === '' )
-    $uri = [ 'GENERATORS' ];
+    $uri = [ 'ACTIVATION', '20', '368' ];
 else
 {
     if( $uri[strlen($uri) - 1] === '/' )
@@ -951,6 +951,122 @@ if( $address === 'GENERATORS' )
     if( isset( $showtime ) )
         for( $i = $n; $i <= 64; $i++ )
             echo PHP_EOL;
+}
+else
+if( $address === 'ACTIVATION' )
+{
+    prolog();
+    if( $f !== false )
+    {
+        $f = intval( $f );
+        $addon = '/ ' . $f . ' ';
+    }
+    else
+    {
+        $f = false;
+        $addon = '';
+    }
+
+    require_once 'include/RO_headers.php';
+    $RO = new RO_headers;
+
+    $hi = $RO->db->getHigh( 0 );
+    $headers = $RO->kv->getValueByKey( $hi );
+    $height = $headers['height'];
+
+    $activation = wk()->fetch( '/activation/status' );
+    if( $activation === false )
+        exit( 'offline' );
+
+    $activation = wk()->json_decode( $activation );
+    $votingInterval = $activation['votingInterval'];
+
+    echo "ACTIVATION $addon<hr>";
+
+    if( $f === false )
+    {
+        $json = htmlfilter( $activation );
+        $output = json_encode( $json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        $output = str_replace( W8IO_ROOT . 'tx', W8IO_ROOT . 'ACTIVATION', $output );
+        echo $output;
+    }
+    else
+    {
+        $period_number = $arg !== false ? intval( $arg ) : intdiv( $height, $votingInterval );
+
+        $period_start = $period_number * $votingInterval;
+        $period_end = $period_start + $votingInterval - 1;
+
+        $link_prolog = '<a href="' . W8IO_ROOT . 'ACTIVATION/' . $f . '/';
+        echo '    previous: ' . $link_prolog . ( $period_number - 1 ) . '">' . ( $period_start - $votingInterval ) . ' .. ' . ( $period_end - $votingInterval ) . '</a>' . PHP_EOL;
+        echo '     current: ' . $link_prolog . ( $period_number + 0 ) . '">' . ( $period_start ) . ' .. ' . ( $period_end ) . '</a>' . PHP_EOL;
+        echo '        next: ' . $link_prolog . ( $period_number + 1 ) . '">' . ( $period_start + $votingInterval ) . ' .. ' . ( $period_end + $votingInterval ) . '</a>' . PHP_EOL;
+        echo '      height: ' . $height . PHP_EOL . PHP_EOL;
+
+        foreach( $activation['features'] as $feature )
+        {
+            if( intval( $feature['id'] ) === $f )
+            {
+                $votes = [];
+                $totals = [];
+                $lasts = [];
+                $count = 0;
+                if( $period_start === 0 )
+                    $period_start = 1;
+                for( $i = $period_start; $i <= $period_end && $i <= $height; ++$i )
+                {
+                    $headers = $RO->kv->getValueByKey( $i );
+                    $generator = $headers['generator'] ?? '';
+                    $features = $headers['features'] ?? [];
+                    $totals[$generator] = 1 + ( $totals[$generator] ?? 0 );
+                    if( in_array( $f, $features ) )
+                    {
+                        $votes[$generator] = 1 + ( $votes[$generator] ?? 0 );
+                        $lasts[$generator] = true;
+                        ++$count;
+                    }
+                    else
+                        $lasts[$generator] = false;
+                }
+
+                if( $i > $period_start )
+                {
+                    $weight = 0;
+                    $blocks = $i - $period_start;
+                    foreach( $totals as $generator => $total )
+                    {
+                        if( $lasts[$generator] )
+                            $weight += $total / $blocks;
+                    }
+
+                    $blocks_done = $i - $period_start;
+                    $blocks_total = $period_end - $period_start + 1;
+                    $blocks_left = $blocks_total - $blocks_done;
+                    $addon = $blocks_left * $weight;
+                    $forecast = (int)( $count + $addon );
+                    $current_percent = intdiv( 10000 * $count, $blocks_done );
+                    $forecast_percent = intdiv( 10000 * $forecast, $blocks_total );
+                    $future_blocks = (int)( $votingInterval * $weight );
+                    $future_percent = intdiv( 10000 * $future_blocks, $votingInterval );
+
+                    echo '     SUPPORT: ' . w8io_amount( $current_percent, 2, 6, false ) . '% <small>(' . $count . '/' . $blocks_done . ')</small>' . PHP_EOL;
+                    echo '    FORECAST: ' . w8io_amount( $forecast_percent, 2, 6, false ) . '% <small>(' . $forecast . '/' . $blocks_total . ')</small>' . PHP_EOL;
+                    echo '      FUTURE: ' . w8io_amount( $future_percent, 2, 6, false ) . '% <small>(' . $future_blocks . '/' . $votingInterval . ')</small>' . PHP_EOL . PHP_EOL;
+
+                    arsort( $totals );
+
+                    foreach( $totals as $generator => $total )
+                    {
+                        $vote = ( $votes[$generator] ?? 0 );
+                        $percent = intdiv( 10000 * $vote, $total );
+                        $percent_total = intdiv( 10000 * $vote, $blocks_done );
+                        $last = $lasts[$generator] ? '&#183;' : ' ';
+                        echo '    ' . w8io_a( $generator ) . ': ' . w8io_amount( $percent_total, 2, 6, false ) . '% ' . $last . ' <small>'. w8io_amount( $percent, 2, 6, false ) .'% (' . $vote . '/' . $total . ')</small>' . PHP_EOL;
+                    }
+                }
+            }
+        }
+    }
 }
 else if( $f === 'data' )
 {

@@ -194,9 +194,7 @@ class Blockchain
 
     private function blockUnique( $header )
     {
-        if( isset( $header['id'] ) )
-            return $header['id'];
-        return $header['signature'];
+        return $header['id'] ?? $header['signature'];
     }
 
     public function update( $block = null )
