@@ -974,17 +974,15 @@ if( $address === 'ACTIVATION' )
     $headers = $RO->kv->getValueByKey( $hi );
     $height = $headers['height'];
 
-    $activation = wk()->fetch( '/activation/status' );
-    if( $activation === false )
-        exit( 'offline' );
-
-    $activation = wk()->json_decode( $activation );
-    $votingInterval = $activation['votingInterval'];
-
     echo "ACTIVATION $addon<hr>";
 
     if( $f === false )
     {
+        $activation = wk()->fetch( '/activation/status' );
+        if( $activation === false )
+            exit( 'offline' );
+
+        $activation = wk()->json_decode( $activation );
         $json = htmlfilter( $activation );
         $output = json_encode( $json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
         $output = str_replace( W8IO_ROOT . 'tx', W8IO_ROOT . 'ACTIVATION', $output );
@@ -992,6 +990,20 @@ if( $address === 'ACTIVATION' )
     }
     else
     {
+        $cache_file = W8IO_DB_DIR . 'votingInterval';
+        if( file_exists( $cache_file ) )
+            $votingInterval = intval( file_get_contents( $cache_file ) );
+        else
+        {
+            $activation = wk()->fetch( '/activation/status' );
+            if( $activation === false )
+                exit( 'offline' );
+
+            $activation = wk()->json_decode( $activation );
+            $votingInterval = $activation['votingInterval'];
+            file_put_contents( $cache_file, $votingInterval );
+        }
+
         $period_number = $arg !== false ? intval( $arg ) : intdiv( $height, $votingInterval );
 
         $period_start = $period_number * $votingInterval + 1;
