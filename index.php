@@ -1009,11 +1009,45 @@ if( $address === 'ACTIVATION' )
         $period_start = $period_number * $votingInterval + 1;
         $period_end = $period_start + $votingInterval - 1;
 
+        $tt_start = $RO->kv->getValueByKey( $period_start )['timestamp'] ?? false;
+        $tt_end = $RO->kv->getValueByKey( $period_end )['timestamp'] ?? false;
+
+        $past_blocks = 10000;
+        $tt_past = $RO->kv->getValueByKey( $height - $past_blocks )['timestamp'] ?? false;
+        if( $tt_past !== false )
+        {
+            $tt_now = $headers['timestamp'];
+            $block_speed = intdiv( $tt_now - $tt_past, $past_blocks );
+            if( $tt_start === false )
+            {
+                $blocks_left = $period_start - $height;
+                $tt_left = $blocks_left * $block_speed;
+                $tt_start = $tt_now + $tt_left;
+            }
+            if( $tt_end === false )
+            {
+                $blocks_left = $period_end - $height;
+                $tt_left = $blocks_left * $block_speed;
+                $tt_end = $tt_now + $tt_left;
+            }
+        }
+
+        $period_dates = $tt_start === false ? '' :
+            ( ' (' . date( 'Y.m.d H:i', intdiv( $tt_start, 1000 ) + $z * 60 ) . ' .. '
+                   . date( 'Y.m.d H:i', intdiv( $tt_end, 1000 ) + $z * 60 ) . ')' );
+
         $link_prolog = '<a href="' . W8IO_ROOT . 'ACTIVATION/' . $f . '/';
         echo '    previous: ' . $link_prolog . ( $period_number - 1 ) . '">' . ( $period_start - $votingInterval ) . ' .. ' . ( $period_end - $votingInterval ) . '</a>' . PHP_EOL;
-        echo '     current: ' . $link_prolog . ( $period_number + 0 ) . '">' . ( $period_start ) . ' .. ' . ( $period_end ) . '</a>' . PHP_EOL;
+        echo '     current: ' . $link_prolog . ( $period_number + 0 ) . '">' . ( $period_start ) . ' .. ' . ( $period_end ) . '</a>' . $period_dates . PHP_EOL;
         echo '        next: ' . $link_prolog . ( $period_number + 1 ) . '">' . ( $period_start + $votingInterval ) . ' .. ' . ( $period_end + $votingInterval ) . '</a>' . PHP_EOL;
-        echo '      height: ' . $height . PHP_EOL . PHP_EOL;
+        echo '      height: ' . $height . PHP_EOL;
+        $tt_left = $tt_left ?? 0;
+        $days = intdiv( $tt_left, 1000 * 3600 * 24 );
+        $tt_days = $days * 1000 * 3600 * 24;
+        $hours = intdiv( $tt_left - $tt_days, 1000 * 3600 );
+        $tt_hours = $hours * 1000 * 3600;
+        $minutes = intdiv( $tt_left - $tt_days - $tt_hours, 1000 * 60 );
+        echo '        left: ' . $days . 'd ' . $hours . 'h '. $minutes . 'm' . PHP_EOL . PHP_EOL;
 
         //foreach( $activation['features'] as $feature )
         {
