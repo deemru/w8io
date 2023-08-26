@@ -60,6 +60,12 @@ if( $address === 'api' )
 {
     require_once 'include/RO.php';
 
+    function apiexit( $code, $json )
+    {
+        http_response_code( $code );
+        exit( json_encode( $json ) );
+    }
+
     if( strlen( $f ) > 20 )
     {
         $wk = wk();
@@ -96,8 +102,23 @@ if( $address === 'api' )
         $RO = new RO( W8DB );
         $json = $RO->getLastHeightTimestamp();
         if( $json === false )
-            exit( http_response_code( 503 ) . 'E' );
-        exit( json_encode( $json[0] + 1 ) );
+            apiexit( 503, [ 'code' => 503, 'message' => 'database unavailable' ] );
+        apiexit( 200, $json[0] + 1 );
+    }
+    else
+    if( $f === 'alive' )
+    {
+        require_once 'include/RO.php';
+        $RO = new RO( W8DB );
+        $json = $RO->getLastHeightTimestamp();
+        if( $json === false )
+            apiexit( 503, [ 'code' => 503, 'message' => 'database unavailable' ] );
+        $now = (int)microtime( true );
+        $dbts = $json[1];
+        $lag = $now - $dbts;
+        if( $lag > 600 )
+            apiexit( 503, [ 'code' => 503, 'message' => "too big lag: $now - $dbts = $lag > 600" ] );
+        apiexit( 200, $lag );
     }
 
     exit( http_response_code( 404 ) );
