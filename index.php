@@ -95,7 +95,7 @@ if( $address === 'api' )
         require_once 'include/RO.php';
         $RO = new RO( W8DB );
         $json = $RO->getLastHeightTimestamp();
-        if( $json !== false )
+        if( $json === false )
             exit( http_response_code( 503 ) . 'E' );
         exit( json_encode( $json[0] + 1 ) );
     }
