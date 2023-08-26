@@ -136,11 +136,18 @@ function procScam( $parser )
     else
         $last_scam = [];
 
-    $wks = new WavesKit;
-    $wks->setNodeAddress( 'https://raw.githubusercontent.com' );
-    $fresh_scam = $wks->fetch( '/wavesplatform/waves-community/master/Scam%20tokens%20according%20to%20the%20opinion%20of%20Waves%20Community.csv' );
-    if( $fresh_scam === false )
-        return wk()->log( 'w', 'OFFLINE: ' . $wks->getNodeAddress() );
+    if( 0 ) // https://github.com/wavesplatform/waves-community
+    {
+        $wks = new WavesKit;
+        $wks->setNodeAddress( 'https://raw.githubusercontent.com' );
+        $fresh_scam = $wks->fetch( '/wavesplatform/waves-community/master/Scam%20tokens%20according%20to%20the%20opinion%20of%20Waves%20Community.csv' );
+        if( $fresh_scam === false )
+            return wk()->log( 'w', 'OFFLINE: ' . $wks->getNodeAddress() );
+    }
+    else // github last update on Jul 22, 2022
+    {
+        $fresh_scam = file_get_contents( __DIR__ . '/../var/scam.csv' );
+    }
 
     $scam = explode( "\n", $fresh_scam );
     $scam = array_unique( $scam );

@@ -228,7 +228,7 @@ class Blockchain
                     return W8IO_STATUS_NORMAL;
             }
 
-            if( !isset( $header ) || $header['height'] !== $i )
+            if( ( $header['height'] ?? 0 ) !== $i )
             {
                 $header = wk()->getBlockAt( $i, true );
                 if( $header === false )
@@ -283,7 +283,7 @@ class Blockchain
         //$to = min( $height, $from + 1 - 1 );
         for( ; $i <= $to; $i++ )
         {
-            if( !isset( $block ) || $block['height'] !== $i )
+            if( ( $block['height'] ?? 0 ) !== $i )
             {
                 $block = wk()->getBlockAt( $i );
                 if( $block === false )

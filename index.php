@@ -89,8 +89,18 @@ if( $address === 'api' )
 
         exit( $wk->log( 'e', 'bad API call' ) );
     }
+    else
+    if( $f === 'height' )
+    {
+        require_once 'include/RO.php';
+        $RO = new RO( W8DB );
+        $json = $RO->getLastHeightTimestamp();
+        if( $json !== false )
+            exit( http_response_code( 503 ) . 'E' );
+        exit( json_encode( $json[0] + 1 ) );
+    }
 
-    exit;
+    exit( http_response_code( 404 ) );
 }
 
 if( $address === 'j13' )
