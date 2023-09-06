@@ -1432,7 +1432,10 @@ else
                 {
                     if( $out !== '' )
                         $out .= ' &#183; ';
-                    $out .= '<a href="' . W8IO_ROOT . $address . '/t/' . $t . '">' . TYPE_STRINGS[$t] . '</a>&#183;';
+                    if( $t === 12 )
+                        $out .= '<a href="' . W8IO_ROOT . $address . '/data">data</a>&#183;';
+                    else
+                        $out .= '<a href="' . W8IO_ROOT . $address . '/t/' . $t . '">' . TYPE_STRINGS[$t] . '</a>&#183;';
                     if( $ti > 0 )
                         $out .= '<a href="' . W8IO_ROOT . $address . '/ti/' . $t . '">i' . $ti . '</a>';
                     if( $to > 0 )
