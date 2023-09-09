@@ -553,15 +553,13 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
             {
                 $txkey = '<a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . $date . '</a>';
 
-                if( $type <= ITX_ISSUE && $type !== TX_REWARD )
-                    $fee .= ' <small>invoke</small>';
                 if( $aspam )
                     $fee .= ' <small>spam</small>';
 
                 $outs[] = [
                     $act,
-                    ( $isa ? '<b>' : '' ) . '<small>' . $act . $txkey . $blk .
-                    ' </small><a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>' . $amount . $asset . ( $isa ? '</b>' : '' ),
+                    ( $isa && $type > 0 ? '<b>' : '' ) . '<small>' . $act . $txkey . $blk .
+                    ' </small><a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>' . $amount . $asset . ( $isa && $type > 0 ? '</b>' : '' ),
                     $reclen,
                     $addon, $linklen,
                     $tar . $fee,
