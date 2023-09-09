@@ -546,8 +546,9 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
 
         if( $aid )
         {
-            $act = $isa ? '&#183; ' : '&nbsp; ';
+            $act = $isa && $type > 0 ? '&#183; ' : '&nbsp; ';
             $tar = $isa ? ( $isb ? '<>' : w8io_a( $b ) ) : w8io_a( $a );
+            $blk = $type > 0 ? '&nbsp;<a href="' . W8IO_ROOT . 'b/' . $block . '">&#183;</a>' : '&nbsp;&nbsp;';
 
             {
                 $txkey = '<a href="' . W8IO_ROOT . 'tx/' . $ts[TXKEY] . '">' . $date . '</a>';
@@ -559,7 +560,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
 
                 $outs[] = [
                     $act,
-                    ( $isa ? '<b>' : '' ) . '<small>' . $act . $txkey . '&nbsp;<a href="' . W8IO_ROOT . 'b/' . $block . '">&#183;</a>' .
+                    ( $isa ? '<b>' : '' ) . '<small>' . $act . $txkey . $blk .
                     ' </small><a href="' . W8IO_ROOT . $address . '/t/' . $type . '">' . $wtype . '</a>' . $amount . $asset . ( $isa ? '</b>' : '' ),
                     $reclen,
                     $addon, $linklen,
