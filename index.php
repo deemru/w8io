@@ -1285,6 +1285,16 @@ else
                 }
             }
         }
+        else
+        if( $f === 'i' )
+        {
+            $d = 1;
+        }
+        else
+        if( $f === 'o' )
+        {
+            $d = 2;
+        }
         else if( $aid === false && $f === 'g' )
         {
             if( is_numeric( $arg ) )
@@ -1411,6 +1421,7 @@ else
             $full_address_html = $full_address !== $address ? ( ' / <a href="' . W8IO_ROOT . $full_address . '">' . $full_address . '</a>' ) : '';
             //echo "<a href=\"". W8IO_ROOT . $address ."\">$address</a>$full_address @ $height <small>($time) ";
             echo '<a href="' . W8IO_ROOT . $address . '">' . $address . '</a>' . $full_address_html . ' <small>&#183; ';
+            echo '<a href="' . W8IO_ROOT . $address . '/i">i</a><a href="' . W8IO_ROOT . $address . '/o">o</a> &#183; ';
 
             $out = '';
             for( $t = -16; $t <= 19; ++$t )
