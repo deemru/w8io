@@ -8,7 +8,7 @@ $z = (int)( $_COOKIE['z'] ?? 180 ); // TIMEZONE
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $urio = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $urio = '';
+    $urio = '3PAGPDPqnGkyhcihyjMHe9v36Y4hkAh9yDy/o';
 
 $uri = preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $urio . chr( 0 ) );
 if( $uri === '' )
@@ -1223,7 +1223,8 @@ else
     $d = 3;
     $filter = 0;
 
-    if( !empty( $f ) && $arg !== false )
+    if( !empty( $f ) )
+    if( $arg !== false )
     {
         if( $f[0] === 'f' )
         {
@@ -1284,20 +1285,6 @@ else
                     $d = 2;
                 }
             }
-        }
-        else
-        if( $f === 'i' )
-        {
-            $filter = 2;
-            $where = 'r2 > 0';
-            $d = 1;
-        }
-        else
-        if( $f === 'o' )
-        {
-            $filter = 2;
-            $where = 'r2 > 0';
-            $d = 2;
         }
         else if( $aid === false && $f === 'g' )
         {
@@ -1397,6 +1384,18 @@ else
 
             $where = "r10 = $arg";
         }
+    }
+    else
+    if( $f === 'i' )
+    {
+        $where = 'r2 > 0';
+        $d = 1;
+    }
+    else
+    if( $f === 'o' )
+    {
+        $where = 'r2 > 0';
+        $d = 2;
     }
 
     prolog();
