@@ -1288,11 +1288,15 @@ else
         else
         if( $f === 'i' )
         {
+            $filter = 2;
+            $where = '';
             $d = 1;
         }
         else
         if( $f === 'o' )
         {
+            $filter = 2;
+            $where = '';
             $d = 2;
         }
         else if( $aid === false && $f === 'g' )
