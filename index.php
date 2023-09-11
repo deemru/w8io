@@ -1289,14 +1289,14 @@ else
         if( $f === 'i' )
         {
             $filter = 2;
-            $where = '';
+            $where = 'r2 > 0';
             $d = 1;
         }
         else
         if( $f === 'o' )
         {
             $filter = 2;
-            $where = '';
+            $where = 'r2 > 0';
             $d = 2;
         }
         else if( $aid === false && $f === 'g' )
