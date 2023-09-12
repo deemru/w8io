@@ -1386,16 +1386,19 @@ else
         }
     }
     else
-    if( $f === 'i' )
+    if( $aid !== false )
     {
-        $where = 'io';
-        $d = 1;
-    }
-    else
-    if( $f === 'o' )
-    {
-        $where = 'io';
-        $d = 2;
+        if( $f === 'i' )
+        {
+            $where = 'io';
+            $d = 1;
+        }
+        else
+        if( $f === 'o' )
+        {
+            $where = 'io';
+            $d = 2;
+        }
     }
 
     prolog();
