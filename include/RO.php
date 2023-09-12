@@ -448,6 +448,7 @@ class RO
                     $query .= ' UNION';
                 $query .= $prolog . $i . $epilog;
             }
+            $query .= ' ) ORDER BY r0 DESC LIMIT ' . $limit;
 
             return $this->db->query( $query )->fetchAll();
         }
