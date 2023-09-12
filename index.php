@@ -1220,7 +1220,7 @@ else
     $aid = $RO->getAddressIdByString( $address );
 
     $where = false;
-    $d = 3;
+    $d = 3; // 0 - ?; 1 - i; 2 - o; 3 - io;
     $filter = 0;
 
     if( !empty( $f ) )
@@ -1388,13 +1388,13 @@ else
     else
     if( $f === 'i' )
     {
-        $where = 'r2 > 0';
+        $where = 'io';
         $d = 1;
     }
     else
     if( $f === 'o' )
     {
-        $where = 'r2 > 0';
+        $where = 'io';
         $d = 2;
     }
 

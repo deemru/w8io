@@ -437,6 +437,21 @@ class RO
 
     public function getPTSByAddressId( $id, $filter, $limit, $uid, $d )
     {
+        if( $filter === 'io' )
+        {
+            $query = 'SELECT * FROM (';
+            $prolog = ' SELECT * FROM ( SELECT * FROM pts WHERE ' . ( $d === 1 ? 'r4' : 'r3' ) . ' = ' . $id . ' AND r2 = ';
+            $epilog = ( $uid !== false ? ' AND r0 <= ' . $uid : '' ) . ' ORDER BY r0 DESC LIMIT ' . $limit . ' )';
+            for( $i = TX_GENESIS; $i < TX_ETHEREUM; ++$i )
+            {
+                if( $i !== 1 )
+                    $query .= ' UNION';
+                $query .= $prolog . $i . $epilog;
+            }
+
+            return $this->db->query( $query )->fetchAll();
+        }
+
         $wheres = [];
         if( $filter !== false )
             $wheres[] = $filter;
@@ -461,9 +476,13 @@ class RO
         else if( $d === 2 )
             $query = 'SELECT * FROM pts WHERE r3 = ' . $id . $where . ' ORDER BY r0 DESC LIMIT ' . $limit;
         else
-            $query = 'SELECT * FROM ( SELECT * FROM pts WHERE r3 = ' . $id . $where . ' ORDER BY r0 DESC LIMIT ' . $limit . ' ) UNION
-                                      SELECT * FROM pts WHERE r4 = ' . $id . $where . ' ORDER BY r0 DESC LIMIT ' . $limit;
-        
+            $query = '
+SELECT * FROM (
+    SELECT * FROM ( SELECT * FROM pts WHERE r3 = ' . $id . $where . ' ORDER BY r0 DESC LIMIT ' . $limit . ' )
+    UNION
+    SELECT * FROM ( SELECT * FROM pts WHERE r4 = ' . $id . $where . ' ORDER BY r0 DESC LIMIT ' . $limit . ' )
+) ORDER BY r0 DESC LIMIT ' . $limit;
+
         return $this->db->query( $query )->fetchAll();
     }
 
