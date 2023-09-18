@@ -103,7 +103,7 @@ if( $address === 'api' )
         $json = $RO->getLastHeightTimestamp();
         if( $json === false )
             apiexit( 503, [ 'code' => 503, 'message' => 'database unavailable' ] );
-        apiexit( 200, $json[0] + 1 );
+        apiexit( 200, $json[0] );
     }
     else
     if( $f === 'alive' )
@@ -113,12 +113,13 @@ if( $address === 'api' )
         $json = $RO->getLastHeightTimestamp();
         if( $json === false )
             apiexit( 503, [ 'code' => 503, 'message' => 'database unavailable' ] );
-        $now = (int)microtime( true );
+        $now = time();
         $dbts = $json[1];
-        $lag = $now - $dbts;
-        if( $lag > 600 )
-            apiexit( 503, [ 'code' => 503, 'message' => "too big lag: $now - $dbts = $lag > 600" ] );
-        apiexit( 200, $lag );
+        $diff = $now - $dbts;
+        $threshold = $arg === false ? 600 : intval( $arg );
+        if( $diff > $threshold )
+            apiexit( 503, [ 'code' => 503, 'message' => "too big diff: $now - $dbts = $diff > $threshold" ] );
+        apiexit( 200, $diff );
     }
 
     exit( http_response_code( 404 ) );
