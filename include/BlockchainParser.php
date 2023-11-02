@@ -24,9 +24,11 @@ class BlockchainParser
     public Blockchain $blockchain;
     public BlockchainParser $parser;
     public BlockchainBalances $balances;
+    public BlockchainData $data;
 
     private $kvs;
     private $recs;
+    private $datarecs;
     private $feerecs;
     private $workheight;
     private $qps;
@@ -54,14 +56,15 @@ class BlockchainParser
         //$this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r4_r5_index ON pts( r4, r5 )' );
 
         $this->balances = new BlockchainBalances( $this->db );
+        $this->data = new BlockchainData( $this->db );
 
         $this->kvAddresses =     ( new KV( true )  )->setStorage( $this->db, 'addresses', true );
-        $this->kvAliases =       ( new KV( true ) )->setStorage( $this->db, 'aliases', true );
+        $this->kvAliases =       ( new KV( true )  )->setStorage( $this->db, 'aliases', true );
         $this->kvAliasInfo =     ( new KV( false ) )->setStorage( $this->db, 'aliasInfo', true, 'INTEGER PRIMARY KEY', 'INTEGER' );
         $this->kvAssets =        ( new KV( true )  )->setStorage( $this->db, 'assets', true );
         $this->kvAssetInfo =     ( new KV( false ) )->setStorage( $this->db, 'assetInfo', true, 'INTEGER PRIMARY KEY', 'TEXT' );
-        $this->kvGroups =        ( new KV( true ) )->setStorage( $this->db, 'groups', true );
-        $this->kvFunctions =     ( new KV( true ) )->setStorage( $this->db, 'functions', true );
+        $this->kvGroups =        ( new KV( true )  )->setStorage( $this->db, 'groups', true );
+        $this->kvFunctions =     ( new KV( true )  )->setStorage( $this->db, 'functions', true );
 
         $this->sponsorships = new KV;
         $this->leases = new KV;
@@ -78,6 +81,7 @@ class BlockchainParser
 
         $this->setHighs();
         $this->recs = [];
+        $this->datarecs = [];
         $this->feerecs = [];
         $this->workheight = -1;
         $this->resetMTS(); // debug only
@@ -1028,11 +1032,13 @@ class BlockchainParser
 
     private function processDataTransaction( $txkey, $tx )
     {
+        $a = $this->getSenderId( $tx['sender'] );
+
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
             TYPE =>     TX_DATA,
-            A =>        $this->getSenderId( $tx['sender'] ),
+            A =>        $a,
             B =>        MYSELF,
             ASSET =>    NO_ASSET,
             AMOUNT =>   0,
@@ -1041,6 +1047,9 @@ class BlockchainParser
             ADDON =>    0,
             GROUP =>    0,
         ] );
+
+        foreach( $tx['data'] as $data )
+            $this->datarecs[] = [ $txkey, $a, $data ];
     }
 
     private function processSmartAccountTransaction( $txkey, $tx )
@@ -1288,6 +1297,8 @@ class BlockchainParser
                     $this->processInvokeLeaseCancelTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['leases'] as $itx )
                 $this->processInvokeLeaseTransaction( $txkey, $itx, $dApp, $function );
+            foreach( $stateChanges['data'] as $data )
+                $this->datarecs[] = [ $txkey, $dApp, $data ];
         }
         else
         if( $txkey >= GetTxHeight_RideV4() )
@@ -1305,12 +1316,16 @@ class BlockchainParser
             foreach( $stateChanges['transfers'] as $itx )
                 if( $itx['amount'] !== 0 )
                     $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $function );
+            foreach( $stateChanges['data'] as $data )
+                $this->datarecs[] = [ $txkey, $dApp, $data ];
         }
         else
         {
             foreach( $stateChanges['transfers'] as $itx )
                 if( $itx['amount'] !== 0 )
                     $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $function );
+            foreach( $stateChanges['data'] as $data )
+                $this->datarecs[] = [ $txkey, $dApp, $data ];
         }
     }
 
@@ -1452,6 +1467,12 @@ class BlockchainParser
             $this->balances->update( $this->recs );
             $this->recs = [];
 
+            if( count( $this->datarecs ) )
+            {
+                $this->data->update( $this->datarecs );
+                $this->datarecs = [];
+            }
+
             foreach( $this->kvs as $kv )
                 $kv->merge();
         }
@@ -1462,6 +1483,9 @@ class BlockchainParser
         // BALANCES
         $pts = $this->getPTS( $txfrom, PHP_INT_MAX );
         $this->balances->rollback( $pts );
+
+        // DATA
+        $this->data->rollback( $txfrom );
 
         // PTS
         $this->pts->query( 'DELETE FROM pts WHERE r1 >= '. $txfrom );

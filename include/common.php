@@ -171,3 +171,9 @@ function w8dec( $data )
 {
     return base64_decode( str_replace( 'io', 'i', str_replace( [ 'ip', 'is' ], [ '+', '/' ], $data ) ) );
 }
+
+const TYPE_NULL = 0;
+const TYPE_INTEGER = 1;
+const TYPE_BOOLEAN = 2;
+const TYPE_BINARY = 3;
+const TYPE_STRING = 4;

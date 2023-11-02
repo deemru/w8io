@@ -94,6 +94,9 @@ function selftest( $start )
 singleton();
 $upstats = w8_upstats();
 
+//$argv[1] = 'rollback';
+//$argv[2] = '1060000';
+
 if( !isset( $argv[1] ) )
 {
     if( !$upstats['firstrun'] )
@@ -179,6 +182,7 @@ switch( $argv[1] )
         $cmds =
         [
             'CREATE INDEX IF NOT EXISTS pts_r4_r2_index ON pts( r4, r2 )',
+            'CREATE INDEX IF NOT EXISTS data_r3_r4_index ON data( r3, r4 )',
         ];
 
         foreach( $cmds as $cmd )
@@ -271,6 +275,7 @@ function rollback( $block )
     require_once __DIR__ . '/include/Blockchain.php';
     require_once __DIR__ . '/include/BlockchainParser.php';
     require_once __DIR__ . '/include/BlockchainBalances.php';
+    require_once __DIR__ . '/include/BlockchainData.php';
 
     $blockchain = new Blockchain( W8DB );
     $blockchain->rollback( $block + 1 );
@@ -281,6 +286,7 @@ function updater()
     require_once __DIR__ . '/include/Blockchain.php';
     require_once __DIR__ . '/include/BlockchainParser.php';
     require_once __DIR__ . '/include/BlockchainBalances.php';
+    require_once __DIR__ . '/include/BlockchainData.php';
 
     $blockchain = new Blockchain( W8DB );
 
@@ -322,4 +328,3 @@ function updater()
         sleep( $sleep );
     }
 }
-
