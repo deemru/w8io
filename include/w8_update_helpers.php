@@ -127,7 +127,7 @@ function procScam( $parser )
         $last_scam = file_get_contents( $scam_file );
         if( $last_scam === false )
         {
-            w8io_warning( 'file_get_contents() failed' );
+            wk()->log( 'w', 'file_get_contents() failed' );
             return;
         }
 
@@ -207,7 +207,7 @@ function procWeight( $blockchain, $parser )
         $last_tickers = file_get_contents( $tickers_file );
         if( $last_tickers === false )
         {
-            w8io_warning( 'file_get_contents() failed' );
+            wk()->log( 'w', 'file_get_contents() failed' );
             return;
         }
 

@@ -87,11 +87,11 @@ class BlockchainBalances
         {
             $this->q_getUid = $this->balances->db->prepare( 'SELECT r0 FROM balances WHERE r1 = ? AND r2 = ?' );
             if( $this->q_getUid === false )
-                w8io_error( 'getUid' );
+                w8_err( 'getUid' );
         }
 
         if( false === $this->q_getUid->execute( [ $address, $asset ] ) )
-            w8io_error( 'getUid' );
+            w8_err( 'getUid' );
 
         $uid = $this->q_getUid->fetchAll();
         if( isset( $uid[0] ) )
@@ -117,11 +117,11 @@ class BlockchainBalances
         {
             $this->q_insertBalance = $this->balances->db->prepare( 'INSERT INTO balances( r0, r1, r2, r3 ) VALUES( ?, ?, ?, ? )' );
             if( $this->q_insertBalance === false )
-                w8io_error( 'insertBalance' );
+                w8_err( 'insertBalance' );
         }
 
         if( false === $this->q_insertBalance->execute( [ $uid, $address, $asset, $amount ] ) )
-            w8io_error( 'insertBalance' );
+            w8_err( 'insertBalance' );
     }
 
     private $q_updateBalance;
@@ -132,11 +132,11 @@ class BlockchainBalances
         {
             $this->q_updateBalance = $this->balances->db->prepare( 'UPDATE balances SET r3 = r3 + ? WHERE r0 = ?' );
             if( $this->q_updateBalance === false )
-                w8io_error( 'updateBalance' );
+                w8_err( 'updateBalance' );
         }
 
         if( false === $this->q_updateBalance->execute( [ $amount, $uid ] ) )
-            w8io_error( 'updateBalance' );
+            w8_err( 'updateBalance' );
     }
 
     private function commitChanges( $procs, $isRollback = false )
@@ -260,7 +260,7 @@ class BlockchainBalances
                 break;
 
             default:
-                w8io_error( 'unknown tx type = ' . $type );
+                w8_err( 'unknown tx type = ' . $type );
         }
 
         $this->finalizeChanges( $ts[A], $procs_a, $procs );

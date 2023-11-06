@@ -60,11 +60,11 @@ class BlockchainData
         {
             $this->q_uids = $this->data->db->prepare( 'SELECT r7 FROM data WHERE r1 >= ?' );
             if( $this->q_uids === false )
-                w8io_error( 'rollback' );
+                w8_err( 'rollback' );
         }
 
         if( false === $this->q_uids->execute( [ $txfrom ] ) )
-            w8io_error( 'rollback' );
+            w8_err( 'rollback' );
 
         $puids = $this->q_uids->fetchAll();
 
@@ -109,11 +109,11 @@ class BlockchainData
                 {
                     $this->q_getLastUid = $this->data->db->prepare( 'SELECT r0 FROM data WHERE r3 = ? AND r4 = ? ORDER BY r0 DESC LIMIT 1' );
                     if( $this->q_getLastUid === false )
-                        w8io_error( 'setNewUid' );
+                        w8_err( 'setNewUid' );
                 }
 
                 if( false === $this->q_getLastUid->execute( [ $address, $datakey ] ) )
-                    w8io_error( 'setNewUid' );
+                    w8_err( 'setNewUid' );
 
                 $puid = $this->q_getLastUid->fetchAll();
                 if( isset( $puid[0] ) )
@@ -135,11 +135,11 @@ class BlockchainData
         {
             $this->q_insertData = $this->data->db->prepare( 'INSERT INTO data( r0, r1, r2, r3, r4, r5, r6, r7 ) VALUES( ?, ?, ?, ?, ?, ?, ?, ? )' );
             if( $this->q_insertData === false )
-                w8io_error( 'insertBalance' );
+                w8_err( 'insertBalance' );
         }
 
         if( false === $this->q_insertData->execute( [ $uid, $txkey, $active, $address, $key, $value, $type, $puid ] ) )
-            w8io_error( 'insertBalance' );
+            w8_err( 'insertBalance' );
     }
 
     private $q_updateData;
@@ -150,11 +150,11 @@ class BlockchainData
         {
             $this->q_updateData = $this->data->db->prepare( 'UPDATE data SET r2 = ? WHERE r0 = ?' );
             if( $this->q_updateData === false )
-                w8io_error( 'updateData' );
+                w8_err( 'updateData' );
         }
 
         if( false === $this->q_updateData->execute( [ $active, $uid ] ) )
-            w8io_error( 'updateData' );
+            w8_err( 'updateData' );
     }
 
     public function update( $datarecs )
@@ -201,11 +201,11 @@ class BlockchainData
                     $type = TYPE_BINARY;
                     $value = base64_decode( substr( $value, 7 ) );
                     if( $value === false )
-                        w8io_error( 'base64_decode' );
+                        w8_err( 'base64_decode' );
                     $value = $this->kvValues->getForcedKeyByValue( $value );
                 }
                 else
-                    w8io_error( 'unknown type: ' . $type );
+                    w8_err( 'unknown type: ' . $type );
             }
 
             $puid = $this->setNewUid( $address, $key, $uid );

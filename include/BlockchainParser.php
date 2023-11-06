@@ -206,15 +206,15 @@ class BlockchainParser
             return $this->kvAddresses->getForcedKeyByValue( $addressOrAlias );
 
         if( substr( $addressOrAlias, 0, 6 ) !== 'alias:')
-            w8io_error( 'unexpected $addressOrAlias = ' . $addressOrAlias );
+            w8_err( 'unexpected $addressOrAlias = ' . $addressOrAlias );
 
         $id = $this->kvAliases->getKeyByValue( substr( $addressOrAlias, 8 ) );
         if( $id === false )
-            w8io_error( 'getRecipientId' );
+            w8_err( 'getRecipientId' );
 
         $id = $this->kvAliasInfo->getValueByKey( $id );
         if( $id === false )
-            w8io_error( 'getRecipientId' );
+            w8_err( 'getRecipientId' );
 
         return $id;
     }
@@ -380,11 +380,11 @@ class BlockchainParser
         {
             $this->q_getNGFeesAt = $this->pts->db->prepare( "SELECT * FROM pts WHERE r1 == ?" );
             if( $this->q_getNGFeesAt === false )
-                w8io_error( 'getNGFeesAt' );
+                w8_err( 'getNGFeesAt' );
         }
 
         if( $this->q_getNGFeesAt->execute( [ w8h2kg( $height ) ] ) === false )
-            w8io_error( 'getNGFeesAt' );
+            w8_err( 'getNGFeesAt' );
 
         $pts = $this->q_getNGFeesAt->fetchAll();
         if( count( $pts ) < 1 )
@@ -501,7 +501,7 @@ class BlockchainParser
                         break;
 
                     default:
-                        w8io_error( 'unknown failed payload type: ' . $payload['type'] );
+                        w8_err( 'unknown failed payload type: ' . $payload['type'] );
                 }
                 break;
             case TX_EXCHANGE:
@@ -685,7 +685,7 @@ class BlockchainParser
             case '7': $qp = 10; break;
             case '8': $qp = 1; break;
             default:
-                w8io_error();
+                w8_err();
         }
         $qps = [ 100000000 * $qp, $qp ];
         $this->qps[$asset] = $qps;
@@ -695,7 +695,7 @@ class BlockchainParser
     private function processExchangeTransaction( $txkey, $tx )
     {
         if( isset( $tx['feeAssetId'] ) )
-            w8io_error();
+            w8_err();
 
         if( $tx['order1']['orderType'] === 'buy' )
         {
@@ -1365,7 +1365,7 @@ class BlockchainParser
                 return $this->processInvokeTransaction( $txkey, $tx, null, true );
 
             default:
-                w8io_error( 'unknown payload type: ' . $payload['type'] );
+                w8_err( 'unknown payload type: ' . $payload['type'] );
         }
     }
 
@@ -1453,7 +1453,7 @@ class BlockchainParser
                 $this->processEthereumTransaction( $txkey, $tx ); break;
 
             default:
-                w8io_error( 'unknown' );
+                w8_err( 'unknown' );
         }
 
         //$this->mts[$type] += microtime( true ) - $tt;
