@@ -13,6 +13,7 @@ class BlockchainBalances
     private Triples $db;
     private $uid;
     private $parser;
+    private $empty;
 
     public function __construct( $db )
     {
@@ -24,16 +25,17 @@ class BlockchainBalances
 //          [ 0,                     1,         1,         0 ] );
             [ 0,                     0,         0,         0 ] );
 
-        // uids
-        $this->balances->db->exec( 'CREATE INDEX IF NOT EXISTS balances_r1_r2_index ON balances( r1, r2 )' );
-
-        // DELAY_INDEX
-        // CREATE INDEX balances_r1_index ON balances( r1 )
-        // CREATE INDEX balances_r2_index ON balances( r2 )
-        //$this->balances->db->exec( 'CREATE INDEX IF NOT EXISTS balances_r2_r3_index ON balances( r2, r3 )' );
+        $indexer =
+        [
+            'CREATE INDEX IF NOT EXISTS balances_r1_index ON balances( r1 )',
+            'CREATE INDEX IF NOT EXISTS balances_r2_index ON balances( r2 )',
+            'CREATE INDEX IF NOT EXISTS balances_r2_r3_index ON balances( r2, r3 )',
+            'CREATE INDEX IF NOT EXISTS balances_r1_r2_index ON balances( r1, r2 )',
+        ];
 
         $this->uids = new KV;
         $this->setUid();
+        $this->empty = $this->uid === 0;
     }
 
     public function cacheHalving()
@@ -83,17 +85,21 @@ class BlockchainBalances
         if( $uid !== false )
             return [ $uid, true ];
 
-        if( !isset( $this->q_getUid ) )
+        if( !$this->empty )
         {
-            $this->q_getUid = $this->balances->db->prepare( 'SELECT r0 FROM balances WHERE r1 = ? AND r2 = ?' );
-            if( $this->q_getUid === false )
+            if( !isset( $this->q_getUid ) )
+            {
+                $this->q_getUid = $this->balances->db->prepare( 'SELECT r0 FROM balances WHERE r1 = ? AND r2 = ?' );
+                if( $this->q_getUid === false )
+                    w8_err( 'getUid' );
+            }
+
+            if( false === $this->q_getUid->execute( [ $address, $asset ] ) )
                 w8_err( 'getUid' );
+
+            $uid = $this->q_getUid->fetchAll();
         }
 
-        if( false === $this->q_getUid->execute( [ $address, $asset ] ) )
-            w8_err( 'getUid' );
-
-        $uid = $this->q_getUid->fetchAll();
         if( isset( $uid[0] ) )
         {
             $uid = (int)$uid[0][0];

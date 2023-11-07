@@ -46,14 +46,18 @@ class BlockchainParser
           //[ 0,                     1,         1,         1,         1,         1,         0,         0,         0,         0,         1 ] );
             [ 0,                     1,         0,         0,         0,         0,         0,         0,         0,         0,         0 ] );
 
-        // CREATE INDEX pts_r3_index ON pts( r3 )
-        // CREATE INDEX pts_r4_index ON pts( r4 )
-        // CREATE INDEX pts_r5_index ON pts( r5 )
-        // CREATE INDEX pts_r5_index ON pts( r10 )
-        //$this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r3_r2_index ON pts( r3, r2 )' );
-        //$this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r4_r2_index ON pts( r4, r2 )' );
-        //$this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r3_r5_index ON pts( r3, r5 )' );
-        //$this->pts->query( 'CREATE INDEX IF NOT EXISTS pts_r4_r5_index ON pts( r4, r5 )' );
+        $indexer =
+        [
+            'CREATE INDEX IF NOT EXISTS pts_r2_index ON pts( r2 )',
+            'CREATE INDEX IF NOT EXISTS pts_r3_index ON pts( r3 )',
+            'CREATE INDEX IF NOT EXISTS pts_r4_index ON pts( r4 )',
+            'CREATE INDEX IF NOT EXISTS pts_r5_index ON pts( r5 )',
+            'CREATE INDEX IF NOT EXISTS pts_r10_index ON pts( r10 )',
+            'CREATE INDEX IF NOT EXISTS pts_r3_r2_index ON pts( r3, r2 )',
+            'CREATE INDEX IF NOT EXISTS pts_r4_r2_index ON pts( r4, r2 )',
+            'CREATE INDEX IF NOT EXISTS pts_r3_r5_index ON pts( r3, r5 )',
+            'CREATE INDEX IF NOT EXISTS pts_r4_r5_index ON pts( r4, r5 )',
+        ];
 
         $this->balances = new BlockchainBalances( $this->db );
         $this->data = new BlockchainData( $this->db );

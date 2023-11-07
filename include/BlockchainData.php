@@ -26,9 +26,11 @@ class BlockchainData
             [ 'INTEGER PRIMARY KEY', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER' ],
             [ 0,                     1,         0,         0,         0,         0,         0,         0 ] );
 
-        // INDEX
-        //$this->data->db->exec( 'CREATE INDEX IF NOT EXISTS data_r2_r3_index ON data( r2, r3 )' );
-        //$this->data->db->exec( 'CREATE INDEX IF NOT EXISTS data_r3_r4_index ON data( r3, r4 )' );
+        $indexer =
+        [
+            'CREATE INDEX IF NOT EXISTS data_r3_r2_index ON data( r3, r2 )',
+            'CREATE INDEX IF NOT EXISTS data_r3_r4_index ON data( r3, r4 )',
+        ];
 
         $this->kvKeys = ( new KV( true ) )->setStorage( $this->db, 'datakeys', true );
         $this->kvValues = ( new KV( true ) )->setStorage( $this->db, 'datavalues', true );

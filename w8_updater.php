@@ -151,6 +151,7 @@ switch( $argv[1] )
             'CREATE INDEX IF NOT EXISTS balances_r1_index ON balances( r1 )',
             'CREATE INDEX IF NOT EXISTS balances_r2_index ON balances( r2 )',
             'CREATE INDEX IF NOT EXISTS balances_r2_r3_index ON balances( r2, r3 )',
+            'CREATE INDEX IF NOT EXISTS balances_r1_r2_index ON balances( r1, r2 )',
 
             'CREATE INDEX IF NOT EXISTS pts_r2_index ON pts( r2 )',
             'CREATE INDEX IF NOT EXISTS pts_r3_index ON pts( r3 )',
@@ -161,6 +162,9 @@ switch( $argv[1] )
             'CREATE INDEX IF NOT EXISTS pts_r4_r2_index ON pts( r4, r2 )',
             'CREATE INDEX IF NOT EXISTS pts_r3_r5_index ON pts( r3, r5 )',
             'CREATE INDEX IF NOT EXISTS pts_r4_r5_index ON pts( r4, r5 )',
+
+            'CREATE INDEX IF NOT EXISTS data_r3_r2_index ON data( r3, r2 )',
+            'CREATE INDEX IF NOT EXISTS data_r3_r4_index ON data( r3, r4 )',
         ];
         
         foreach( $cmds as $cmd )
@@ -181,6 +185,7 @@ switch( $argv[1] )
         $db = W8IO_DB_PATH;
         $cmds =
         [
+            'CREATE INDEX IF NOT EXISTS balances_r1_r2_index ON balances( r1, r2 )',
             'CREATE INDEX IF NOT EXISTS pts_r4_r2_index ON pts( r4, r2 )',
             'CREATE INDEX IF NOT EXISTS data_r3_r4_index ON data( r3, r4 )',
         ];
