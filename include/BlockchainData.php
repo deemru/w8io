@@ -119,7 +119,7 @@ class BlockchainData
 
                 $puid = $this->q_getLastUid->fetchAll();
                 if( isset( $puid[0] ) )
-                    $puid = (int)$puid[0][0];
+                    $puid = $puid[0][0];
                 else
                     $puid = 0;
             }

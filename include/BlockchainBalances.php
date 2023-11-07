@@ -102,7 +102,7 @@ class BlockchainBalances
 
         if( isset( $uid[0] ) )
         {
-            $uid = (int)$uid[0][0];
+            $uid = $uid[0][0];
             $update = true;
         }
         else

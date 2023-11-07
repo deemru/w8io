@@ -52,7 +52,7 @@ class Blockchain
         if( $r === false )
             return false;
 
-        return e58( pack( 'J', (int)$r[1] ) . $r[2] );
+        return e58( pack( 'J', $r[1] ) . $r[2] );
     }
 
     public function height()
@@ -154,7 +154,7 @@ class Blockchain
 
         $txids = [];
         foreach( $this->q_getTxIdsFromTo as $r )
-            $txids[(int)$r[0]] = e58( pack( 'J', (int)$r[1] ) . $r[2] );
+            $txids[$r[0]] = e58( pack( 'J', $r[1] ) . $r[2] );
 
         return $txids;
     }
