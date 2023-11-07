@@ -63,6 +63,112 @@ class RO
         return false;
     }
 
+    private $getKVsByAddress;
+
+    public function getKVsByAddress( $aid )
+    {
+        if( !isset( $this->getKVsByAddress ) )
+        {
+            $this->getKVsByAddress = $this->db->db->prepare( 'SELECT * FROM data WHERE r3 = ? AND r2 = 1 ORDER BY r0 DESC LIMIT 1000' );
+            if( $this->getKVsByAddress === false )
+                w8_err();
+        }
+
+        if( false === $this->getKVsByAddress->execute( [ $aid ] ) )
+            w8_err();
+
+        return $this->getKVsByAddress;
+    }
+
+    private $getValueByKeyAddress;
+
+    public function getValueByAddressKey( $aid, $kid )
+    {
+        if( !isset( $this->getValueByKeyAddress ) )
+        {
+            $this->getValueByKeyAddress = $this->db->db->prepare( 'SELECT * FROM data WHERE r3 = ? AND r4 = ? ORDER BY r0 DESC LIMIT 1' );
+            if( $this->getValueByKeyAddress === false )
+                w8_err();
+        }
+
+        if( false === $this->getValueByKeyAddress->execute( [ $aid, $kid ] ) )
+            w8_err();
+
+        $value = $this->getValueByKeyAddress->fetchAll();
+        return $value[0] ?? false;
+    }
+
+    private $getIdByKey;
+
+    public function getIdByKey( $key )
+    {
+        if( !isset( $this->getIdByKey ) )
+        {
+            $this->getIdByKey = $this->db->db->prepare( 'SELECT r0 FROM datakeys WHERE r1 = ?' );
+            if( $this->getIdByKey === false )
+                w8_err();
+        }
+
+        if( false === $this->getIdByKey->execute( [ $key ] ) )
+            w8_err();
+
+        $id = $this->getIdByKey->fetchAll();
+        if( isset( $id[0] ) )
+            return $id[0][0];
+        return false;
+    }
+
+    private $getKeyById;
+
+    public function getKeyById( $id )
+    {
+        if( !isset( $this->getKeyById ) )
+        {
+            $this->getKeyById = $this->db->db->prepare( 'SELECT r1 FROM datakeys WHERE r0 = ?' );
+            if( $this->getKeyById === false )
+                w8_err();
+        }
+
+        if( false === $this->getKeyById->execute( [ $id ] ) )
+            w8_err();
+
+        return $this->getKeyById->fetchAll()[0][0];
+    }
+
+    private $getValueById;
+
+    public function getValueByTypeId( $type, $id )
+    {
+        if( $type === TYPE_INTEGER )
+            return $id;
+        else
+        if( $type === TYPE_BOOLEAN )
+            return $id === 1 ? true : false;
+        else
+        if( $type === TYPE_NULL )
+            return null;
+        
+        if( !isset( $this->getValueById ) )
+        {
+            $this->getValueById = $this->db->db->prepare( 'SELECT r1 FROM datavalues WHERE r0 = ?' );
+            if( $this->getValueById === false )
+                w8_err();
+        }
+
+        if( false === $this->getValueById->execute( [ $id ] ) )
+            w8_err();
+
+        $value = $this->getValueById->fetchAll()[0][0];
+
+        if( $type === TYPE_STRING )
+            return $value;
+        else
+        if( $type === TYPE_BINARY )
+            return 'base64:' . base64_encode( $value );
+
+        w8_err( 'unknown type ' . $type );
+    }
+
     public function getAddressIdByString( $string )
     {
         switch( $string )

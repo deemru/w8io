@@ -174,13 +174,15 @@ class BlockchainData
             $value = $data['value'];
             if( $value === null )
             {
-                $value = 0;
                 $type = TYPE_NULL;
+                $value = 0;
+                $active = 0;
             }
             else
             {
                 $type = $data['type'];
                 $value = $data['value'];
+                $active = 1;
 
                 if( $type === 'string' )
                 {
@@ -217,7 +219,7 @@ class BlockchainData
             if( $puid !== 0 )
                 $this->updateData( $puid, 0 );
 
-            $this->insertData( $uid, $txkey, 1, $address, $key, $value, $type, $puid );
+            $this->insertData( $uid, $txkey, $active, $address, $key, $value, $type, $puid );
         }
 
         foreach( $this->kvs as $kv )

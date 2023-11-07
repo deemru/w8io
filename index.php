@@ -8,7 +8,7 @@ $z = (int)( $_COOKIE['z'] ?? 180 ); // TIMEZONE
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $urio = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $urio = '3PAGPDPqnGkyhcihyjMHe9v36Y4hkAh9yDy/o';
+    $urio = '3PNikM6yp4NqcSU8guxQtmR5onr2D4e8yTJ/data';
 
 $uri = preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $urio . chr( 0 ) );
 if( $uri === '' )
@@ -1139,30 +1139,54 @@ if( $address === 'ACTIVATION' )
 }
 else if( $f === 'data' )
 {
-    $urio = explode( '/', $urio );
-    $arg = $arg === false ? false : $urio[2];
-    $arg2 = $arg2 === false ? false : $urio[3];
-    $arg3 = $arg3 === false ? false : $urio[4];
-    $data = false;
-    if( $arg !== false && $arg2 === false )
-    {
-        $data = wk()->fetch( '/addresses/data/' . $address . '/' . $arg, false, null, [ 404 ] );
-        if( $data !== false )
-            $data = [ wk()->json_decode( $data ) ];
-    }
+    require_once 'include/RO.php';
+    $RO = new RO( W8DB );
 
-    if( $data === false )
+    $aid = $RO->getAddressIdByString( $address );
+    if( $aid === false )
+        exit( 'unknown address' );
+
+    $data = [];
+    if( $arg !== false ) // less filter for data keys
     {
-        $regexp = '';
-        if( $arg3 !== false )
-            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg2 ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg3 ) ) ) . '.*';
-        else if( $arg2 !== false )
-            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg2 ) ) ) . '.*';
-        else if( $arg !== false )
-            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*';
-        $data = wk()->fetch( '/addresses/data/' . $address . $regexp );
-        if( $data !== false )
-            $data = wk()->json_decode( $data );
+        $urio = explode( '/', $urio );
+        $arg = $urio[2];
+        if( $arg2 === false )
+        {
+            $key = urldecode( $arg );
+            $kid = $RO->getIdByKey( $key );
+            if( $kid !== false )
+            {
+                $value = $RO->getValueByAddressKey( $aid, $kid );
+                if( $value !== false )
+                {
+                    [ $r0, $r1, $r2, $r3, $r4, $r5, $r6, $r7 ] = $value;
+                    if( $r6 !== TYPE_NULL )
+                    {
+                        $value = $RO->getValueByTypeId( $r6, $r5 );
+                        $data[$key] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value ];
+                    }
+                }
+            }
+        }
+        else
+        {
+            $arg2 = $urio[3];
+            $arg3 = $arg3 === false ? false : $urio[4];
+        }       
+    }
+    else
+    {
+        $rs = $RO->getKVsByAddress( $aid );
+        foreach( $rs as [ $r0, $r1, $r2, $r3, $r4, $r5, $r6, $r7 ] )
+        {
+            if( $r6 === TYPE_NULL )
+                continue;
+
+            $key = $RO->getKeyById( $r4 );
+            $value = $RO->getValueByTypeId( $r6, $r5 );
+            $data[] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value ];
+        }
     }
 
     prolog();
@@ -1209,6 +1233,65 @@ else if( $f === 'data' )
     }
 
     echo '</pre>';
+/*
+    echo '<pre>';
+
+    $data = false;
+    if( $arg !== false && $arg2 === false )
+    {
+        $data = wk()->fetch( '/addresses/data/' . $address . '/' . $arg, false, null, [ 404 ] );
+        if( $data !== false )
+            $data = [ wk()->json_decode( $data ) ];
+    }
+
+    if( $data === false )
+    {
+        $regexp = '';
+        if( $arg3 !== false )
+            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg2 ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg3 ) ) ) . '.*';
+        else if( $arg2 !== false )
+            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg2 ) ) ) . '.*';
+        else if( $arg !== false )
+            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*';
+        $data = wk()->fetch( '/addresses/data/' . $address . $regexp );
+        if( $data !== false )
+            $data = wk()->json_decode( $data );
+    }
+
+    if( $data === false )
+    {
+        if( strpos( wk()->lastLog, 'timed out' ) )
+            echo 'timed out';
+        else
+            echo 'error';
+    }
+    else if( count( $data ) === 0 )
+        echo 'not found';
+    else
+    {
+        echo '{';
+        $n = 0;
+        foreach( $data as $r )
+        {
+            $k = htmlentities( $r['key'] );
+            $t = $r['type'];
+            if( $t === 'string' )
+                $v = '"' . htmlentities( $r['value'] ) . '"';
+            else if( $t === 'binary' )
+                $v = '"' . $r['value'] . '"';
+            else if( $t === 'boolean' )
+                $v = $r['value'] ? 'true' : 'false';
+            else
+                $v = $r['value'];
+            if( ++$n > 1 )
+                echo ',';
+            echo '<br>    "' . $datauri . urlencode( $k ) . '">' . $k . '</a>": ' . $v;
+        }
+        echo '<br>}';
+    }
+
+    echo '</pre>';
+*/
 }
 else
 {

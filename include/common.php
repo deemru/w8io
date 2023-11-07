@@ -177,3 +177,12 @@ const TYPE_INTEGER = 1;
 const TYPE_BOOLEAN = 2;
 const TYPE_BINARY = 3;
 const TYPE_STRING = 4;
+
+const DATA_TYPE_STRINGS =
+[
+    TYPE_NULL => 'null',
+    TYPE_INTEGER => 'integer',
+    TYPE_BOOLEAN => 'boolean',
+    TYPE_BINARY => 'binary',
+    TYPE_STRING => 'string',
+];

@@ -7,12 +7,11 @@ if( file_exists( 'config.php' ) )
 else
     require_once 'config.sample.php';
 
-$db = new \deemru\Triples( W8DB, 'pts' );
+$db = new \deemru\Triples( W8DB, 'data' );
 
-$patches = $db->query( 'SELECT * FROM pts WHERE r2 = 14 UNION SELECT * FROM PTS WHERE r2 = -14' );
+$patches = $db->query( 'SELECT r0 FROM data WHERE r6 = 0' );
 
 foreach( $patches as $patch )
 {
-    if( $patch[4] !== $patch[5] )
-        $db->query( 'UPDATE pts SET r4 = r5 WHERE r0 = ' . $patch[0] );
+    $db->query( 'UPDATE data SET r2 = 0 WHERE r0 = ' . $patch[0] );
 }
