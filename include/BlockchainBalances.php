@@ -25,6 +25,7 @@ class BlockchainBalances
 //          [ 0,                     1,         1,         0 ] );
             [ 0,                     0,         0,         0 ] );
 
+/*
         $indexer =
         [
             'CREATE INDEX IF NOT EXISTS balances_r1_index ON balances( r1 )',
@@ -32,6 +33,7 @@ class BlockchainBalances
             'CREATE INDEX IF NOT EXISTS balances_r2_r3_index ON balances( r2, r3 )',
             'CREATE INDEX IF NOT EXISTS balances_r1_r2_index ON balances( r1, r2 )',
         ];
+*/
 
         $this->uids = new KV;
         $this->setUid();
