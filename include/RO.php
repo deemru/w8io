@@ -147,7 +147,7 @@ class RO
         else
         if( $type === TYPE_NULL )
             return null;
-        
+
         if( !isset( $this->getValueById ) )
         {
             $this->getValueById = $this->db->db->prepare( 'SELECT r1 FROM datavalues WHERE r0 = ?' );
