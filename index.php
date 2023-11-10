@@ -308,7 +308,7 @@ function w8io_get_data( $address, $aid, $begin, $limit )
         $data[] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value ];
     }
 
-    return [ $data, $lazy ?? false ];
+    return [ $data ?? [], $lazy ?? false ];
 }
 
 function w8io_print_data( $datauri, $data, $lazy )
@@ -1263,82 +1263,9 @@ else if( $f === 'data' )
         echo ' &#183; ' . $datauri . $arg2 . '">' . htmlentities( urldecode( $arg2 ) ) . '</a>';
     if( $arg3 !== false )
         echo ' &#183; ' . $datauri . $arg3 . '">' . htmlentities( urldecode( $arg3 ) ) . '</a>';
-    echo '<br><br>' . PHP_EOL . '<pre>{';
-
-    if( $data === false )
-    {
-        if( strpos( wk()->lastLog, 'timed out' ) )
-            echo 'timed out';
-        else
-            echo 'error';
-    }
-    else if( count( $data ) === 0 )
-        echo 'not found';
-    else
-    {
-        w8io_print_data( $datauri, $data, $lazy ?? false );
-    }
-
+    echo '<br>' . PHP_EOL . '<pre>{';
+    w8io_print_data( $datauri, $data, $lazy ?? false );
     echo PHP_EOL . '</pre>';
-/*
-    echo '<pre>';
-
-    $data = false;
-    if( $arg !== false && $arg2 === false )
-    {
-        $data = wk()->fetch( '/addresses/data/' . $address . '/' . $arg, false, null, [ 404 ] );
-        if( $data !== false )
-            $data = [ wk()->json_decode( $data ) ];
-    }
-
-    if( $data === false )
-    {
-        $regexp = '';
-        if( $arg3 !== false )
-            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg2 ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg3 ) ) ) . '.*';
-        else if( $arg2 !== false )
-            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*' . urlencode( preg_quote( urldecode( $arg2 ) ) ) . '.*';
-        else if( $arg !== false )
-            $regexp = '?matches=.*' . urlencode( preg_quote( urldecode( $arg ) ) ) . '.*';
-        $data = wk()->fetch( '/addresses/data/' . $address . $regexp );
-        if( $data !== false )
-            $data = wk()->json_decode( $data );
-    }
-
-    if( $data === false )
-    {
-        if( strpos( wk()->lastLog, 'timed out' ) )
-            echo 'timed out';
-        else
-            echo 'error';
-    }
-    else if( count( $data ) === 0 )
-        echo 'not found';
-    else
-    {
-        echo '{';
-        $n = 0;
-        foreach( $data as $r )
-        {
-            $k = htmlentities( $r['key'] );
-            $t = $r['type'];
-            if( $t === 'string' )
-                $v = '"' . htmlentities( $r['value'] ) . '"';
-            else if( $t === 'binary' )
-                $v = '"' . $r['value'] . '"';
-            else if( $t === 'boolean' )
-                $v = $r['value'] ? 'true' : 'false';
-            else
-                $v = $r['value'];
-            if( ++$n > 1 )
-                echo ',';
-            echo '<br>    "' . $datauri . urlencode( $k ) . '">' . $k . '</a>": ' . $v;
-        }
-        echo '<br>}';
-    }
-
-    echo '</pre>';
-*/
 }
 else
 {
@@ -1561,6 +1488,7 @@ else
             echo '<a href="' . W8IO_ROOT . $address . '/i">i</a><a href="' . W8IO_ROOT . $address . '/o">o</a> &#183; ';
 
             $out = '';
+            $data = false;
             for( $t = -16; $t <= 19; ++$t )
             {
                 $ti = asset_in( $t );
@@ -1571,10 +1499,17 @@ else
                 {
                     if( $out !== '' )
                         $out .= ' &#183; ';
-                    if( $t === 12 )
+                    if( $t === TX_DATA )
+                    {
                         $out .= '<a href="' . W8IO_ROOT . $address . '/data">data</a>&#183;';
+                        $data = true;
+                    }
                     else
+                    {
+                        if( $t === TX_SMART_ACCOUNT && $data === false )
+                            $out .= '<a href="' . W8IO_ROOT . $address . '/data">data</a> &#183; ';
                         $out .= '<a href="' . W8IO_ROOT . $address . '/t/' . $t . '">' . TYPE_STRINGS[$t] . '</a>&#183;';
+                    }
                     if( $ti > 0 )
                         $out .= '<a href="' . W8IO_ROOT . $address . '/ti/' . $t . '">i' . $ti . '</a>';
                     if( $to > 0 )
