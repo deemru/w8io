@@ -91,6 +91,21 @@ if( $address === 'api' )
                 echo '</pre>';
                 return;
             }
+            case 'd':
+            {
+                $RO = new RO( W8DB );
+
+                $address = $call['a'];
+                $aid = $call['i'];
+                $begin = $call['b'];
+                $limit = $call['l'];
+
+                echo '<pre>';
+                [ $data, $lazy ] = w8io_get_data( $address, $aid, $begin, $limit );
+                w8io_print_data( '<a href="' . W8IO_ROOT . $address . '/data/', $data, $lazy );
+                echo '</pre>';
+                return;
+            }
         }
 
         exit( $wk->log( 'e', 'bad API call' ) );
@@ -260,6 +275,65 @@ function prolog()
     <body>
         <pre>
 ', empty( $address ) ? '' : ( 'w8 &#183; ' . prettyAddress( $address ) ), $L ? '-l' : '-n' );
+}
+
+function w8io_get_data( $address, $aid, $begin, $limit )
+{
+    global $RO;
+
+    $rs = $RO->getKVsByAddress( $aid, $begin, $limit + 1 );
+    $n = 0;
+    foreach( $rs as [ $r0, $r1, $r2, $r3, $r4, $r5, $r6, $r7 ] )
+    {
+        if( ++$n > $limit )
+        {
+            $wk = wk();
+            $call = [
+                'f' => 'd',
+                'a' => $address,
+                'i' => $aid,
+                'b' => $r0,
+                'l' => $limit,
+            ];
+            $call = W8IO_ROOT . 'api/' . w8enc( $wk->encryptash( json_encode( $call ) ) );
+            $lazy = '</pre><pre class="lazyload" url="' . $call . '">...';
+            break;
+        }
+
+        if( $r6 === TYPE_NULL )
+            continue;
+
+        $key = $RO->getKeyById( $r4 );
+        $value = $RO->getValueByTypeId( $r6, $r5 );
+        $data[] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value ];
+    }
+
+    return [ $data, $lazy ?? false ];
+}
+
+function w8io_print_data( $datauri, $data, $lazy )
+{
+    $n = 0;
+    foreach( $data as $r )
+    {
+        $k = htmlentities( $r['key'] );
+        $t = $r['type'];
+        if( $t === 'string' )
+            $v = '"' . htmlentities( $r['value'] ) . '"';
+        else if( $t === 'binary' )
+            $v = '"' . $r['value'] . '"';
+        else if( $t === 'boolean' )
+            $v = $r['value'] ? 'true' : 'false';
+        else
+            $v = $r['value'];
+        if( ++$n > 1 )
+            echo ',';
+        echo PHP_EOL . '    "' . $datauri . urlencode( $k ) . '">' . $k . '</a>": ' . $v;
+    }
+    if( $lazy === false )
+        echo PHP_EOL . '}';
+    else
+        echo PHP_EOL . $lazy;
 }
 
 function w8io_print_distribution( $f, $aid, $info, $n )
@@ -1177,16 +1251,7 @@ else if( $f === 'data' )
     }
     else
     {
-        $rs = $RO->getKVsByAddress( $aid );
-        foreach( $rs as [ $r0, $r1, $r2, $r3, $r4, $r5, $r6, $r7 ] )
-        {
-            if( $r6 === TYPE_NULL )
-                continue;
-
-            $key = $RO->getKeyById( $r4 );
-            $value = $RO->getValueByTypeId( $r6, $r5 );
-            $data[] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value ];
-        }
+        [ $data, $lazy ] = w8io_get_data( $address, $aid, PHP_INT_MAX, 1000 );
     }
 
     prolog();
@@ -1198,7 +1263,7 @@ else if( $f === 'data' )
         echo ' &#183; ' . $datauri . $arg2 . '">' . htmlentities( urldecode( $arg2 ) ) . '</a>';
     if( $arg3 !== false )
         echo ' &#183; ' . $datauri . $arg3 . '">' . htmlentities( urldecode( $arg3 ) ) . '</a>';
-    echo '<br><br><pre>';
+    echo '<br><br>' . PHP_EOL . '<pre>{';
 
     if( $data === false )
     {
@@ -1211,28 +1276,10 @@ else if( $f === 'data' )
         echo 'not found';
     else
     {
-        echo '{';
-        $n = 0;
-        foreach( $data as $r )
-        {
-            $k = htmlentities( $r['key'] );
-            $t = $r['type'];
-            if( $t === 'string' )
-                $v = '"' . htmlentities( $r['value'] ) . '"';
-            else if( $t === 'binary' )
-                $v = '"' . $r['value'] . '"';
-            else if( $t === 'boolean' )
-                $v = $r['value'] ? 'true' : 'false';
-            else
-                $v = $r['value'];
-            if( ++$n > 1 )
-                echo ',';
-            echo '<br>    "' . $datauri . urlencode( $k ) . '">' . $k . '</a>": ' . $v;
-        }
-        echo '<br>}';
+        w8io_print_data( $datauri, $data, $lazy ?? false );
     }
 
-    echo '</pre>';
+    echo PHP_EOL . '</pre>';
 /*
     echo '<pre>';
 

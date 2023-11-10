@@ -65,16 +65,16 @@ class RO
 
     private $getKVsByAddress;
 
-    public function getKVsByAddress( $aid )
+    public function getKVsByAddress( $aid, $begin, $limit )
     {
         if( !isset( $this->getKVsByAddress ) )
         {
-            $this->getKVsByAddress = $this->db->db->prepare( 'SELECT * FROM data WHERE r3 = ? AND r2 = 1 ORDER BY r0 DESC LIMIT 1000' );
+            $this->getKVsByAddress = $this->db->db->prepare( 'SELECT * FROM data WHERE r3 = ? AND r2 = 1 AND r0 <= ? ORDER BY r0 DESC LIMIT ?' );
             if( $this->getKVsByAddress === false )
                 w8_err();
         }
 
-        if( false === $this->getKVsByAddress->execute( [ $aid ] ) )
+        if( false === $this->getKVsByAddress->execute( [ $aid, $begin, $limit ] ) )
             w8_err();
 
         return $this->getKVsByAddress;
