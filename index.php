@@ -283,7 +283,7 @@ function w8io_get_data( $address, $aid, $begin, $limit )
 
     $rs = $RO->getKVsByAddress( $aid, $begin, $limit + 1 );
     $n = 0;
-    foreach( $rs as [ $r0, $r1, $r2, $r3, $r4, $r5, $r6, $r7 ] )
+    foreach( $rs as [ $r0, /*$r1*/, /*$r2*/, /*$r3*/, $r4, $r5, $r6 ] )
     {
         if( ++$n > $limit )
         {
