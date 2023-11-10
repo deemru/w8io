@@ -1247,10 +1247,9 @@ else if( $f === 'data' )
                     }
                 }
             }
-            else
-            {
+
+            if( count( $data ) === 0 )
                 [ $data, $lazy ] = w8io_get_data( $address, $aid, PHP_INT_MAX, 1000, $key );
-            }
         }
         else
         {
