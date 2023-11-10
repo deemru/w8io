@@ -99,9 +99,10 @@ if( $address === 'api' )
                 $aid = $call['i'];
                 $begin = $call['b'];
                 $limit = $call['l'];
+                $string = $call['s'];
 
                 echo '<pre>';
-                [ $data, $lazy ] = w8io_get_data( $address, $aid, $begin, $limit );
+                [ $data, $lazy ] = w8io_get_data( $address, $aid, $begin, $limit, $string );
                 w8io_print_data( '<a href="' . W8IO_ROOT . $address . '/data/', $data, $lazy );
                 echo '</pre>';
                 return;
@@ -277,7 +278,7 @@ function prolog()
 ', empty( $address ) ? '' : ( 'w8 &#183; ' . prettyAddress( $address ) ), $L ? '-l' : '-n' );
 }
 
-function w8io_get_data( $address, $aid, $begin, $limit )
+function w8io_get_data( $address, $aid, $begin, $limit, $string )
 {
     global $RO;
 
@@ -294,6 +295,7 @@ function w8io_get_data( $address, $aid, $begin, $limit )
                 'i' => $aid,
                 'b' => $r0,
                 'l' => $limit,
+                's' => $string,
             ];
             $call = W8IO_ROOT . 'api/' . w8enc( $wk->encryptash( json_encode( $call ) ) );
             $lazy = '</pre><pre class="lazyload" url="' . $call . '">...';
@@ -304,8 +306,11 @@ function w8io_get_data( $address, $aid, $begin, $limit )
             continue;
 
         $key = $RO->getKeyById( $r4 );
-        $value = $RO->getValueByTypeId( $r6, $r5 );
-        $data[] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value ];
+        if( $string === '' || false !== strpos( $key, $string ) )
+        {
+            $value = $RO->getValueByTypeId( $r6, $r5 );
+            $data[] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value ];
+        }
     }
 
     return [ $data ?? [], $lazy ?? false ];
@@ -1242,6 +1247,10 @@ else if( $f === 'data' )
                     }
                 }
             }
+            else
+            {
+                [ $data, $lazy ] = w8io_get_data( $address, $aid, PHP_INT_MAX, 1000, $key );
+            }
         }
         else
         {
@@ -1251,7 +1260,7 @@ else if( $f === 'data' )
     }
     else
     {
-        [ $data, $lazy ] = w8io_get_data( $address, $aid, PHP_INT_MAX, 1000 );
+        [ $data, $lazy ] = w8io_get_data( $address, $aid, PHP_INT_MAX, 1000, '' );
     }
 
     prolog();
