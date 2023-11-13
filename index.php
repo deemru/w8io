@@ -308,7 +308,7 @@ function w8io_get_data( $address, $aid, $begin, $limit, $string )
         $key = $RO->getKeyById( $r4 );
         if( $string === '' || false !== strpos( $key, $string ) )
         {
-            $value = $RO->getValueByTypeId( $r6, $r5 );
+            $value = $RO->getValueByTypeId( $r5, $r6 );
             $data[] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value ];
         }
     }
@@ -1236,14 +1236,14 @@ else if( $f === 'data' )
             $kid = $RO->getIdByKey( $key );
             if( $kid !== false )
             {
-                $value = $RO->getValueByAddressKey( $aid, $kid );
+                $value = $RO->getValueTypeByAddressKey( $aid, $kid );
                 if( $value !== false )
                 {
-                    [ $r0, $r1, $r2, $r3, $r4, $r5, $r6, $r7 ] = $value;
-                    if( $r6 !== TYPE_NULL )
+                    [ $value, $type ] = $value;
+                    if( $type !== TYPE_NULL )
                     {
-                        $value = $RO->getValueByTypeId( $r6, $r5 );
-                        $data[$key] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value ];
+                        $value = $RO->getValueByTypeId( $value, $type );
+                        $data[$key] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$type], 'value' => $value ];
                     }
                 }
             }

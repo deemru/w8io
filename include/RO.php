@@ -80,21 +80,21 @@ class RO
         return $this->getKVsByAddress;
     }
 
-    private $getValueByKeyAddress;
+    private $getValueTypeByAddressKey;
 
-    public function getValueByAddressKey( $aid, $kid )
+    public function getValueTypeByAddressKey( $aid, $kid )
     {
-        if( !isset( $this->getValueByKeyAddress ) )
+        if( !isset( $this->getValueTypeByAddressKey ) )
         {
-            $this->getValueByKeyAddress = $this->db->db->prepare( 'SELECT * FROM data WHERE r3 = ? AND r4 = ? ORDER BY r0 DESC LIMIT 1' );
-            if( $this->getValueByKeyAddress === false )
+            $this->getValueTypeByAddressKey = $this->db->db->prepare( 'SELECT r5, r6 FROM data WHERE r3 = ? AND r4 = ? ORDER BY r0 DESC LIMIT 1' );
+            if( $this->getValueTypeByAddressKey === false )
                 w8_err();
         }
 
-        if( false === $this->getValueByKeyAddress->execute( [ $aid, $kid ] ) )
+        if( false === $this->getValueTypeByAddressKey->execute( [ $aid, $kid ] ) )
             w8_err();
 
-        $value = $this->getValueByKeyAddress->fetchAll();
+        $value = $this->getValueTypeByAddressKey->fetchAll();
         return $value[0] ?? false;
     }
 
@@ -137,7 +137,7 @@ class RO
 
     private $getValueById;
 
-    public function getValueByTypeId( $type, $id )
+    public function getValueByTypeId( $id, $type )
     {
         if( $type === TYPE_INTEGER )
             return $id;

@@ -8,7 +8,7 @@ use deemru\KV;
 class BlockchainData
 {
     private Triples $data;
-    private KV $actives;
+    private $actives;
     private KV $kvKeys;
     private KV $kvValues;
     private $kvs;
@@ -21,10 +21,10 @@ class BlockchainData
     {
         $this->db = $db;
         $this->data = new Triples( $this->db, 'data', 1,
-            // uid                 | txkey    | active   | address  | key      | value    | type     | puid
-            // r0                  | r1       | r2       | r3       | r4       | r5       | r6       | r7
-            [ 'INTEGER PRIMARY KEY', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER' ],
-            [ 0,                     1,         0,         0,         0,         0,         0,         0 ] );
+            // uid                 | txkey    | active   | address  | key      | value    | type
+            // r0                  | r1       | r2       | r3       | r4       | r5       | r6
+            [ 'INTEGER PRIMARY KEY', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER' ],
+            [ 0,                     1,         0,         0,         0,         0,         0 ] );
 
 /*
         $indexer =
@@ -42,14 +42,14 @@ class BlockchainData
             $this->kvValues,
         ];
 
-        $this->actives = new KV;
+        $this->actives = [];
         $this->setUid();
         $this->empty = $this->uid === 0;
     }
 
     public function cacheHalving()
     {
-        $this->actives->cacheHalving();
+        $this->actives = [];
         foreach( $this->kvs as $kv )
             $kv->cacheHalving();
     }
@@ -62,7 +62,7 @@ class BlockchainData
     {
         if( !isset( $this->q_uids ) )
         {
-            $this->q_uids = $this->data->db->prepare( 'SELECT r7 FROM data WHERE r1 >= ?' );
+            $this->q_uids = $this->data->db->prepare( 'SELECT r3, r4 FROM data WHERE r1 >= ?' );
             if( $this->q_uids === false )
                 w8_err( 'rollback' );
         }
@@ -70,18 +70,24 @@ class BlockchainData
         if( false === $this->q_uids->execute( [ $txfrom ] ) )
             w8_err( 'rollback' );
 
-        $puids = $this->q_uids->fetchAll();
+        $akeys = $this->q_uids->fetchAll();
 
-        if( count( $puids ) )
+        if( count( $akeys ) )
         {
             $this->data->query( 'DELETE FROM data WHERE r1 >= '. $txfrom );
             $this->setUid();
-            $this->actives->reset();
+            $this->actives = [];
 
-            foreach( $puids as [ $puid ] )
+            $updated = [];
+            foreach( $akeys as [ $address, $key ] )
             {
-                if( $puid !== 0 && $puid <= $this->uid )
-                    $this->updateData( $puid, 1 );
+                if( !isset( $updated[$address][$key] ) )
+                {
+                    $updated[$address][$key] = true;
+                    $luid = $this->getLastUid( $address, $key );
+                    if( $luid !== 0 )
+                        $this->updateData( $luid, 1 );
+                }
             }
         }
     }
@@ -99,50 +105,49 @@ class BlockchainData
 
     private $q_getLastUid;
 
-    private function setNewUid( $address, $datakey, $uid )
+    private function getLastUid( $address, $key )
     {
-        $key = $address . '_' . $datakey;
-        $puid = $this->actives->getValueByKey( $key );
-        if( $puid === false )
+        if( !isset( $this->q_getLastUid ) )
         {
-            if( $this->empty )
-                $puid = 0;
-            else
-            {
-                if( !isset( $this->q_getLastUid ) )
-                {
-                    $this->q_getLastUid = $this->data->db->prepare( 'SELECT r0 FROM data WHERE r3 = ? AND r4 = ? ORDER BY r0 DESC LIMIT 1' );
-                    if( $this->q_getLastUid === false )
-                        w8_err( 'setNewUid' );
-                }
-
-                if( false === $this->q_getLastUid->execute( [ $address, $datakey ] ) )
-                    w8_err( 'setNewUid' );
-
-                $puid = $this->q_getLastUid->fetchAll();
-                if( isset( $puid[0] ) )
-                    $puid = $puid[0][0];
-                else
-                    $puid = 0;
-            }
+            $this->q_getLastUid = $this->data->db->prepare( 'SELECT r0 FROM data WHERE r3 = ? AND r4 = ? ORDER BY r0 DESC LIMIT 1' );
+            if( $this->q_getLastUid === false )
+                w8_err( 'getLastUid' );
         }
 
-        $this->actives->setKeyValue( $key, $uid );
-        return $puid;
+        if( false === $this->q_getLastUid->execute( [ $address, $key ] ) )
+            w8_err( 'getLastUid' );
+
+        $luid = $this->q_getLastUid->fetchAll();
+        return $luid[0][0] ?? 0;
+    }
+
+    private function setNewUid( $address, $key, $uid ) // set and return last uid
+    {
+        $luid = $this->actives[$address][$key] ?? false;
+        if( $luid === false )
+        {
+            if( $this->empty )
+                $luid = 0;
+            else
+                $luid = $this->getLastUid( $address, $key );
+        }
+
+        $this->actives[$address][$key] = $uid;
+        return $luid;
     }
 
     private $q_insertData;
 
-    private function insertData( $uid, $txkey, $active, $address, $key, $value, $type, $puid )
+    private function insertData( $uid, $txkey, $active, $address, $key, $value, $type )
     {
         if( !isset( $this->q_insertData ) )
         {
-            $this->q_insertData = $this->data->db->prepare( 'INSERT INTO data( r0, r1, r2, r3, r4, r5, r6, r7 ) VALUES( ?, ?, ?, ?, ?, ?, ?, ? )' );
+            $this->q_insertData = $this->data->db->prepare( 'INSERT INTO data( r0, r1, r2, r3, r4, r5, r6 ) VALUES( ?, ?, ?, ?, ?, ?, ? )' );
             if( $this->q_insertData === false )
                 w8_err( 'insertBalance' );
         }
 
-        if( false === $this->q_insertData->execute( [ $uid, $txkey, $active, $address, $key, $value, $type, $puid ] ) )
+        if( false === $this->q_insertData->execute( [ $uid, $txkey, $active, $address, $key, $value, $type ] ) )
             w8_err( 'insertBalance' );
     }
 
@@ -152,7 +157,8 @@ class BlockchainData
     {
         if( !isset( $this->q_updateData ) )
         {
-            $this->q_updateData = $this->data->db->prepare( 'UPDATE data SET r2 = ? WHERE r0 = ?' );
+            // update only types != TYPE_NULL
+            $this->q_updateData = $this->data->db->prepare( 'UPDATE data SET r2 = ? WHERE r0 = ? AND r6 != 0' );
             if( $this->q_updateData === false )
                 w8_err( 'updateData' );
         }
@@ -214,12 +220,12 @@ class BlockchainData
                     w8_err( 'unknown type: ' . $type );
             }
 
-            $puid = $this->setNewUid( $address, $key, $uid );
+            $luid = $this->setNewUid( $address, $key, $uid );
 
-            if( $puid !== 0 )
-                $this->updateData( $puid, 0 );
+            if( $luid !== 0 )
+                $this->updateData( $luid, 0 );
 
-            $this->insertData( $uid, $txkey, $active, $address, $key, $value, $type, $puid );
+            $this->insertData( $uid, $txkey, $active, $address, $key, $value, $type );
         }
 
         foreach( $this->kvs as $kv )
