@@ -32,7 +32,7 @@ function singleton()
     {
         $singleton = new \secqru_flock( W8IO_DB_DIR . 'w8io_headers.lock' );
         if( false === $singleton->open() )
-            exit( wk()->log( 'e', 'flock failed, already running?' ) );
+            w8_err( 'flock failed, already running?' );
         return true;
     }
     return false;

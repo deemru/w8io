@@ -15,9 +15,9 @@ function selftest( $start )
     $height = wk()->height() - 1;
     $local_height = $RO->getLastHeightTimestamp()[0];
     if( $local_height < $height )
-        exit( wk()->log( 'e', $local_height . ' < ' . $height . ' (needs update)' ) );
+        w8_err( $local_height . ' < ' . $height . ' (needs update)' );
     if( $local_height !== $height )
-        exit( wk()->log( 'e', $local_height . ' !== ' . $height . ' (needs rollback ' . $height . ')' ) );
+        w8_err( $local_height . ' !== ' . $height . ' (needs rollback ' . $height . ')' );
 
     for( $a = $start;; ++$a )
     {
@@ -87,7 +87,7 @@ function selftest( $start )
 
         wk()->log( 's', $a .': ' . $assetId . ' (' . $asset . ') ' . ( $i - $e ) . ' OK' . ( $e > 0 ? ( ' (' . $e . ' ERROR)' ) : '' ) );
     }
-    exit( 'done' );
+    wk()->log( 'i', 'done' );
 }
 
 singleton();
@@ -127,7 +127,7 @@ switch( $argv[1] )
     case 'rollback':
     {
         if( !isset( $argv[2] ) )
-            exit( 'rollback needs block number' );
+            w8_err( 'rollback needs block number' );
         $block = (int)$argv[2];
         wk()->log( 'w8_rollback to ' . $block );
         rollback( $block );
@@ -236,7 +236,7 @@ switch( $argv[1] )
     }
     default:
     {
-        exit( wk()->log( 'e', 'unknown command:' . $argv[1] ) );
+        w8_err( 'unknown command:' . $argv[1] );
     }
 }
 
@@ -248,7 +248,7 @@ function singleton()
     {
         $singleton = new \secqru_flock( W8IO_DB_DIR . 'w8io.lock' );
         if( false === $singleton->open() )
-            exit( wk()->log( 'e', 'flock failed, already running?' ) );
+            w8_err( 'flock failed, already running?' );
         return true;
     }
     return false;
