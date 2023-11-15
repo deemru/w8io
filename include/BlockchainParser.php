@@ -39,7 +39,7 @@ class BlockchainParser
     public function __construct( $db )
     {
         $this->db = $db;
-        $this->pts = new Triples( $this->db , 'pts', 1,
+        $this->pts = new Triples( $this->db, 'pts', 1,
             // uid                 | txkey    | type     | a        | b        | asset    | amount   | feeasset | fee      | addon    | group
             // r0                  | r1       | r2       | r3       | r4       | r5       | r6       | r7       | r8       | r9       | r10
             [ 'INTEGER PRIMARY KEY', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER', 'INTEGER' ],
@@ -1514,4 +1514,3 @@ class BlockchainParser
         $this->flush();
     }
 }
-

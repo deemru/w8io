@@ -944,7 +944,7 @@ if( $address === 'GENERATORS' )
                 $to = $height;
         }
 
-        $infos[$generator] = array( 'balance' => $balance, 'pts' => $pts );
+        $infos[$generator] = [ 'balance' => $balance, 'pts' => $pts ];
     }
 
     $fromtime = $RO->getTimestampByHeight( $from );

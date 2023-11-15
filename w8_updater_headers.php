@@ -88,10 +88,7 @@ function rollback()
         $db->query( 'DELETE from headers WHERE r0 > ' . $i );
         $hi = $i;
         if( $hi === 0 )
-        {
-            $wk->log( 'e', 'fork @ GENESIS' );
-            exit;
-        }
+            w8_err( 'fork @ GENESIS' );
     }
 
     return $hi;
@@ -132,4 +129,3 @@ for( ;; )
     if( $i >= $height )
         sleep( 17 );
 }
-
