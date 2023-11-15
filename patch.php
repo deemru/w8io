@@ -19,7 +19,7 @@ if( 0 )
 
 if( 10 )
 {
-    $cmds = 
+    $cmds =
     [
         'ALTER TABLE data DROP COLUMN r7',
     ];
