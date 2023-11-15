@@ -1296,13 +1296,13 @@ class BlockchainParser
                     $this->processInvokeBurnTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['sponsorFees'] as $itx )
                 $this->processInvokeSponsorshipTransaction( $txkey, $itx, $dApp, $function );
-            foreach( $stateChanges['transfers'] as $itx )
-                if( $itx['amount'] !== 0 )
-                    $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['leaseCancels'] as $itx )
                     $this->processInvokeLeaseCancelTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['leases'] as $itx )
                 $this->processInvokeLeaseTransaction( $txkey, $itx, $dApp, $function );
+            foreach( $stateChanges['transfers'] as $itx )
+                if( $itx['amount'] !== 0 )
+                    $this->processInvokeTransferTransaction( $txkey, $itx, $dApp, $function );
             foreach( $stateChanges['data'] as $data )
                 $this->datarecs[] = [ $txkey, $dApp, $data ];
         }
