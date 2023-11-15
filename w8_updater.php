@@ -62,7 +62,6 @@ function selftest( $start )
         $balances = $RO->db->query( 'SELECT * FROM balances WHERE r2 = ' . $aid );
         $i = 0;
         $e = 0;
-        $checked_items = [];
         foreach( $balances as $balance )
         {
             if( ++$i % 10000 === 0 )
@@ -146,7 +145,7 @@ switch( $argv[1] )
     case 'indexer':
     {
         $db = W8IO_DB_PATH;
-        $cmds = 
+        $cmds =
         [
             'CREATE INDEX IF NOT EXISTS balances_r1_index ON balances( r1 )',
             'CREATE INDEX IF NOT EXISTS balances_r2_index ON balances( r2 )',
@@ -166,7 +165,7 @@ switch( $argv[1] )
             'CREATE INDEX IF NOT EXISTS data_r3_r2_index ON data( r3, r2 )',
             'CREATE INDEX IF NOT EXISTS data_r3_r4_index ON data( r3, r4 )',
         ];
-        
+
         foreach( $cmds as $cmd )
         {
             $tt = microtime( true );

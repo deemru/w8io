@@ -272,7 +272,7 @@ function procWeight( $blockchain, $parser )
             {
                 $weights_usdn[$asset] = $amount + ( isset( $weights_usdn[$asset] ) ? $weights_usdn[$asset] : 0 );
                 $total_usdn += $amount;
-            }                
+            }
         }
         else
         {
@@ -329,7 +329,7 @@ function procWeight( $blockchain, $parser )
         $info = $assetInfo->getValueByKey( $asset );
         if( $info === false )
             w8_err();
-        
+
         if( $num !== 2 || $info[1] !== chr( 1 ) )
             $info[1] = $weight;
 
@@ -343,7 +343,7 @@ function procWeight( $blockchain, $parser )
         $info = $assetInfo->getValueByKey( $asset );
         if( $info === false )
             w8_err();
-        
+
         if( $info[1] !== chr( 1 ) )
             $info[1] = $weight;
 

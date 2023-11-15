@@ -76,7 +76,7 @@ function rollback()
                 break;
             offline();
         }
-        
+
         if( blockUnique( $checkpoint ) === blockUnique( $headers ) )
             break;
         $wk->log( 'w', 'fork @ '. $i );

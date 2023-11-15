@@ -790,8 +790,6 @@ class BlockchainParser
             $addon = intdiv( $price, $qa[1] );
         }
 
-        
-
         // SELLER -> BUYER
         {
             $this->appendTS( [
@@ -808,6 +806,7 @@ class BlockchainParser
                 GROUP =>    $this->getGroupExchange( '>', $basset, $sasset ),
             ] );
         }
+
         // BUYER -> SELLER
         {
             $this->appendTS( [
@@ -850,7 +849,7 @@ class BlockchainParser
     {
         $asset = $tx['assetId'];
         $asset = isset( $asset ) ? $this->getAssetId( $asset ) : WAVES_ASSET;
-        
+
         $sender = $this->getSenderId( $tx['sender'] );
         $recipient = $this->getRecipientId( $tx['recipient'] );
 

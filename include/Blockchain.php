@@ -97,42 +97,6 @@ class Blockchain
         return e58( $q[1] );
     }
 
-    public function selfcheck()
-    {
-        return;
-        $height = 2210000;
-        $hs = [];
-        for( $i = 1; $i <= $height; ++$i )
-        {
-            $block = wk()->getBlockAt( $i, true );
-            $hs[] = [ $i, d58( $this->blockUnique( $block ) ), intdiv( $block['timestamp'], 1000 ) ];
-            if( $i % 10000 === 0 )
-                $this->hs->merge( $hs );
-        }
-        $this->hs->merge( $hs );
-        exit( 'ok');
-        //return;
-        $to = $this->height;
-        //$from = $to - 100;
-        $from = 402000;
-        //$from = 1;
-
-        for( $i = $from; $i <= $to; $i++ )
-        {
-            $myUnique = $this->getMyUniqueAt( $i );
-            $their = wk()->getBlockAt( $i, true );
-            if( $myUnique !== $this->blockUnique( $their ) ||
-                //$my['reference'] !== $their['reference'] ||
-                $their['transactionCount'] !== ( $realCount = count( $txids = $this->getTxIdsAtHeight( $i ) ) ) )
-            {
-                wk()->log( 'e', 'fail @ ' . $i );
-                exit;
-            }            
-            wk()->log( 'ok @ ' . $i );
-        }
-        exit;
-    }
-
     public function getTxIdsAtHeight( $height )
     {
         $from = w8h2k( $height );
@@ -171,7 +135,7 @@ class Blockchain
             $this->parser->rollback( $txfrom );
             $this->hs->query( 'DELETE FROM hs WHERE r0 >= ' . $from );
             $this->ts->query( 'DELETE FROM ts WHERE r0 >= ' . $txfrom );
-        }                    
+        }
         $this->db->commit();
         wk()->log( 'i', $this->height . ' >> ' . ( $from - 1 ) . ' (rollback) (' . (int)( 1000 * ( microtime( true ) - $tt ) ) . ' ms)' );
 
@@ -237,7 +201,7 @@ class Blockchain
                     return W8IO_STATUS_OFFLINE;
                 }
             }
-            
+
             $blockUnique = $this->getMyUniqueAt( $i );
 
             // STABLE BLOCK
@@ -255,10 +219,10 @@ class Blockchain
                     $rollback = true;
                     $fixate = w8h2k( $from );
                 }
-                
+
                 break;
             }
-            
+
             // BLOCK UPDATE
             if( $i === $from )
             {
@@ -291,7 +255,7 @@ class Blockchain
                     wk()->log( 'w', 'OFFLINE: cannot get block' );
                     return W8IO_STATUS_OFFLINE;
                 }
-            }            
+            }
 
             if( $reference !== $block['reference'] )
             {
@@ -318,7 +282,7 @@ class Blockchain
                 {
                     $tx = $txs[$j];
                     $txid = $tx['id'];
-                    
+
                     if( isset( $update ) )
                     {
                         if( !isset( $txids ) )
@@ -359,7 +323,7 @@ class Blockchain
                 wk()->log( ( $i - 1 ) . ' (' . $txCount . ')' );
                 $txCount = 0;
             }
-            
+
             $txCount += $n;
         }
 
@@ -420,9 +384,9 @@ class Blockchain
                 $this->setTxHeight( $txheight );
             else
                 $this->setTxHeight( $this->txheight );
-            
+
             $this->lastBlock = $newHdrs[$height];
-        }            
+        }
         $this->db->commit();
 
         $this->lastUp = microtime( true );
