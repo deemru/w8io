@@ -353,4 +353,3 @@ function procWeight( $blockchain, $parser )
     file_put_contents( $tickers_file, json_encode( $tickers ) );
     $assetInfo->merge();
 }
-
