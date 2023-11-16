@@ -54,8 +54,6 @@ class BlockchainData
             $kv->cacheHalving();
     }
 
-    //$this->pts->query( 'DELETE FROM pts WHERE r1 >= '. $txfrom );
-
     private $q_uids;
 
     public function rollback( $txfrom )

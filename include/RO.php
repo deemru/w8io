@@ -80,6 +80,43 @@ class RO
         return $this->getKVsByAddress;
     }
 
+    private $getKVsByTxKey;
+
+    public function getKVsByTxKey( $txkey )
+    {
+        if( !isset( $this->getKVsByTxKey ) )
+        {
+            $this->getKVsByTxKey = $this->db->db->prepare( 'SELECT * FROM data WHERE r1 = ? ORDER BY r0 ASC' );
+            if( $this->getKVsByTxKey === false )
+                w8_err();
+        }
+
+        if( false === $this->getKVsByTxKey->execute( [ $txkey ] ) )
+            w8_err();
+
+        return $this->getKVsByTxKey;
+    }
+
+    private $getPreviousKV;
+
+    public function getPreviousKV( $aid, $key, $from )
+    {
+        if( !isset( $this->getPreviousKV ) )
+        {
+            $this->getPreviousKV = $this->db->db->prepare( 'SELECT * FROM data WHERE r3 = ? AND r4 = ? AND r0 < ? ORDER BY r0 DESC LIMIT 1' );
+            if( $this->getPreviousKV === false )
+                w8_err();
+        }
+
+        if( false === $this->getPreviousKV->execute( [ $aid, $key, $from ] ) )
+            w8_err();
+
+        $id = $this->getPreviousKV->fetchAll();
+        if( isset( $id[0] ) )
+            return $id[0];
+        return false;
+    }
+
     private $getValueTypeByAddressKey;
 
     public function getValueTypeByAddressKey( $aid, $kid )
@@ -296,33 +333,34 @@ class RO
 
     public function getAddressById( $id )
     {
-        switch( $id )
+        static $cache =
+        [
+            GENESIS => 'GENESIS',
+            GENERATOR => 'GENERATOR',
+            MATCHER => 'MATCHER',
+            MYSELF => 'SELF',
+            SPONSOR => 'SPONSOR',
+            MASS => 'MASS',
+        ];
+
+        $cached = $cache[$id] ?? null;
+        if( $cached !== null )
+            return $cached;
+
+        if( !isset( $this->q_getAddressById ) )
         {
-            case GENESIS: return 'GENESIS';
-            case GENERATOR: return 'GENERATOR';
-            case MATCHER: return 'MATCHER';
-            case MYSELF: return 'SELF';
-            case SPONSOR: return 'SPONSOR';
-            case MASS: return 'MASS';
-            default:
-            {
-                if( !isset( $this->q_getAddressById ) )
-                {
-                    $this->q_getAddressById = $this->db->db->prepare( 'SELECT r1 FROM addresses WHERE r0 = ?' );
-                    if( $this->q_getAddressById === false )
-                        w8_err();
-                }
-
-                if( false === $this->q_getAddressById->execute( [ $id ] ) )
-                    w8_err();
-
-                $r = $this->q_getAddressById->fetchAll();
-                if( isset( $r[0] ) )
-                    return $r[0][0];
-
-                return false;
-            }
+            $this->q_getAddressById = $this->db->db->prepare( 'SELECT r1 FROM addresses WHERE r0 = ?' );
+            if( $this->q_getAddressById === false )
+                w8_err();
         }
+
+        if( false === $this->q_getAddressById->execute( [ $id ] ) )
+            w8_err();
+
+        $r = $this->q_getAddressById->fetchAll();
+        $r = $r[0][0] ?? false;
+        $cache[$id] = $r;
+        return $r;
     }
 
     private $getFirstAliasById;

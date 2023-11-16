@@ -8,7 +8,7 @@ $z = (int)( $_COOKIE['z'] ?? 180 ); // TIMEZONE
 if( isset( $_SERVER['REQUEST_URI'] ) )
     $urio = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
 else
-    $urio = '3PNikM6yp4NqcSU8guxQtmR5onr2D4e8yTJ/data';
+    $urio = 'tx/3xeUBGCstPJzeTEj2ts8XTTVbenfihWN5j69y7CTXhrF';
 
 $uri = preg_filter( '/[^a-zA-Z0-9_.@\-\/]+/', '', $urio . chr( 0 ) );
 if( $uri === '' )
@@ -339,6 +339,20 @@ function w8io_print_data( $datauri, $data, $lazy )
         echo PHP_EOL . '}';
     else
         echo PHP_EOL . $lazy;
+}
+
+function w8io_get_txkey_data( $txkey )
+{
+    global $RO;
+
+    $rs = $RO->getKVsByTxKey( $txkey );
+    foreach( $rs as $r )
+    {
+        $prev = $RO->getPreviousKV( $r[3], $r[4], $r[0] );
+        $data[] = [ $r, $prev ];
+    }
+
+    return $data ?? [];
 }
 
 function w8io_print_distribution( $f, $aid, $info, $n )
@@ -815,6 +829,22 @@ function htmlscript( $tx )
     return $result;
 }
 
+function w8io_tv_string( $t, $v )
+{
+    if( $t === TYPE_STRING )
+        return '"' . htmlentities( $v ) . '"';
+    else if( $t === TYPE_INTEGER )
+        return $v;
+    else if( $t === TYPE_BINARY )
+        return '"' . $v . '"';
+    else if( $t === TYPE_BOOLEAN )
+        return $v ? 'true' : 'false';
+    else if( $t === TYPE_NULL )
+        return 'null';
+    else
+        w8_err( "w8io_tv_string( $t, $v )" );
+}
+
 if( $address === 'tx' && $f !== false )
 {
     if( strlen( $f ) >= 32 )
@@ -833,6 +863,51 @@ if( $address === 'tx' && $f !== false )
             else
             {
                 w8io_print_transactions( false, 'r1 = ' . $txid, false, 1000, 'txs', 3 );
+
+                $data = w8io_get_txkey_data( $txid );
+                if( count( $data ) > 0 )
+                {
+                    echo '<small>';
+                    $lastaid = null;
+                    $txkeyuri = '</a>: <a href="' . W8IO_ROOT . 'tx/';
+                    foreach( $data as [ $r, $pr ] )
+                    {
+                        $aid = $r[3];
+                        if( $lastaid !== $aid )
+                        {
+                            $address = $RO->getAddressById( $r[3] );
+                            $datauri = '<a href="' . W8IO_ROOT . $address . '">' . $address . '</a>: <a href="' . W8IO_ROOT . $address . '/data/';
+                            $lastaid = $aid;
+                        }
+
+                        $k = $RO->getKeyById( $r[4] );
+                        $v = $RO->getValueByTypeId( $r[5], $r[6] );
+                        $t = $r[6];
+                        if( $pr === false )
+                        {
+                            $prev = '</a>: ';
+                        }
+                        else
+                        if( $pr[5] === $r[5] && $pr[6] === $r[6] )
+                        {
+                            $pv = $v;
+                            $pt = $t;
+                            $prev = $txkeyuri . $pr[1] . '">' . w8io_tv_string( $pt, $pv ) . '</a> == ';
+                        }
+                        else
+                        {
+                            $pv = $RO->getValueByTypeId( $pr[5], $pr[6] );
+                            $pt = $pr[6];
+                            $prev = $txkeyuri . $pr[1] . '">' . w8io_tv_string( $pt, $pv ) . '</a> -> ';
+                        }
+                        {
+                            $k = htmlentities( $k );
+                            echo PHP_EOL . $datauri . urlencode( $k ) . '">' . $k . $prev . w8io_tv_string( $t, $v );
+                        }
+                    }
+
+                    echo PHP_EOL . '</small>';
+                }
 
                 if( !empty( $tx['script'] ) )
                     $addon = htmlscript( $tx );
