@@ -867,7 +867,6 @@ if( $address === 'tx' && $f !== false )
                 $data = w8io_get_txkey_data( $txid );
                 if( count( $data ) > 0 )
                 {
-                    echo '<small>';
                     $lastaid = null;
                     $txkeyuri = '</a>: <a href="' . W8IO_ROOT . 'tx/';
                     foreach( $data as [ $r, $pr ] )
@@ -906,7 +905,7 @@ if( $address === 'tx' && $f !== false )
                         }
                     }
 
-                    echo PHP_EOL . '</small>';
+                    echo PHP_EOL;
                 }
 
                 if( !empty( $tx['script'] ) )
