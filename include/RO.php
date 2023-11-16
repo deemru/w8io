@@ -86,7 +86,7 @@ class RO
     {
         if( !isset( $this->getKVsByTxKey ) )
         {
-            $this->getKVsByTxKey = $this->db->db->prepare( 'SELECT * FROM data WHERE r1 = ? ORDER BY r0 ASC' );
+            $this->getKVsByTxKey = $this->db->db->prepare( 'SELECT * FROM data WHERE r1 = ? ORDER BY r0 DESC' );
             if( $this->getKVsByTxKey === false )
                 w8_err();
         }
