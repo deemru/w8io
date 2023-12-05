@@ -854,6 +854,16 @@ if( $address === 'tx' && $f !== false )
         $RO = new RO( W8DB );
         $txid = $RO->getTxKeyByTxId( $f );
         if( $txid === false )
+        {
+            $txid = $RO->getIdByAsset( $f );
+            if( $txid !== false )
+            {
+                $txid = $RO->getFirstTxByAssetId( $txid );
+                $f = $RO->getTxIdByTxKey( $txid );
+            }
+        }
+
+        if( $txid === false )
             echo json_encode( [ 'error' => "getTxKeyByTxId( $f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
         else
         {

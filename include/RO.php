@@ -363,6 +363,27 @@ class RO
         return $r;
     }
 
+    private $getFirstTxByAssetId;
+
+    public function getFirstTxByAssetId( $id )
+    {
+        if( !isset( $this->getFirstTxByAssetId ) )
+        {
+            $this->getFirstTxByAssetId = $this->db->db->prepare( 'SELECT r1 FROM pts WHERE r5 = ? ORDER BY r0 ASC LIMIT 1' );
+            if( $this->getFirstTxByAssetId === false )
+                w8_err();
+        }
+
+        if( false === $this->getFirstTxByAssetId->execute( [ $id ] ) )
+            w8_err();
+
+        $r = $this->getFirstTxByAssetId->fetchAll();
+        if( isset( $r[0] ) )
+            return $r[0][0];
+
+        return false;
+    }
+
     private $getFirstAliasById;
 
     public function getFirstAliasById( $id )
