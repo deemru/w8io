@@ -117,21 +117,21 @@ class RO
         return false;
     }
 
-    private $getValueTypeByAddressKey;
+    private $getTxKeyValueTypeByAddressKey;
 
-    public function getValueTypeByAddressKey( $aid, $kid )
+    public function getTxKeyValueTypeByAddressKey( $aid, $kid )
     {
-        if( !isset( $this->getValueTypeByAddressKey ) )
+        if( !isset( $this->getTxKeyValueTypeByAddressKey ) )
         {
-            $this->getValueTypeByAddressKey = $this->db->db->prepare( 'SELECT r5, r6 FROM data WHERE r3 = ? AND r4 = ? ORDER BY r0 DESC LIMIT 1' );
-            if( $this->getValueTypeByAddressKey === false )
+            $this->getTxKeyValueTypeByAddressKey = $this->db->db->prepare( 'SELECT r1, r5, r6 FROM data WHERE r3 = ? AND r4 = ? ORDER BY r0 DESC LIMIT 1' );
+            if( $this->getTxKeyValueTypeByAddressKey === false )
                 w8_err();
         }
 
-        if( false === $this->getValueTypeByAddressKey->execute( [ $aid, $kid ] ) )
+        if( false === $this->getTxKeyValueTypeByAddressKey->execute( [ $aid, $kid ] ) )
             w8_err();
 
-        $value = $this->getValueTypeByAddressKey->fetchAll();
+        $value = $this->getTxKeyValueTypeByAddressKey->fetchAll();
         return $value[0] ?? false;
     }
 

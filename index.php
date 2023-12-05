@@ -336,7 +336,15 @@ function w8io_print_data( $datauri, $data, $lazy )
         echo PHP_EOL . '    "' . $datauri . urlencode( $k ) . '">' . $k . '</a>": ' . $v;
     }
     if( $lazy === false )
+    {
         echo PHP_EOL . '}';
+
+        if( isset( $r['txid'] ) )
+        {
+            $txid = $r['txid'];
+            echo PHP_EOL . PHP_EOL . 'Last modified: <a href="' . W8IO_ROOT . 'tx/' . $txid . '">' . $txid . '</a>';
+        }
+    }
     else
         echo PHP_EOL . $lazy;
 }
@@ -1320,15 +1328,12 @@ else if( $f === 'data' )
             $kid = $RO->getIdByKey( $key );
             if( $kid !== false )
             {
-                $value = $RO->getValueTypeByAddressKey( $aid, $kid );
+                $value = $RO->getTxKeyValueTypeByAddressKey( $aid, $kid );
                 if( $value !== false )
                 {
-                    [ $value, $type ] = $value;
-                    if( $type !== TYPE_NULL )
-                    {
-                        $value = $RO->getValueByTypeId( $value, $type );
-                        $data[$key] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$type], 'value' => $value ];
-                    }
+                    [ $txkey, $value, $type ] = $value;
+                    $value = $type === TYPE_NULL ? 'null' : $RO->getValueByTypeId( $value, $type );
+                    $data[$key] = [ 'txid' => $RO->getTxIdByTxKey( $txkey ), 'key' => $key, 'type' => DATA_TYPE_STRINGS[$type], 'value' => $value ];
                 }
             }
 
