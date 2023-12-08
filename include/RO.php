@@ -80,6 +80,23 @@ class RO
         return $this->getKVsByAddress;
     }
 
+    private $getKVsByAddressKey;
+
+    public function getKVsByAddressKey( $aid, $kid, $begin, $limit )
+    {
+        if( !isset( $this->getKVsByAddressKey ) )
+        {
+            $this->getKVsByAddressKey = $this->db->db->prepare( 'SELECT * FROM data WHERE r3 = ? AND r4 = ? AND r0 <= ? ORDER BY r0 DESC LIMIT ?' );
+            if( $this->getKVsByAddressKey === false )
+                w8_err();
+        }
+
+        if( false === $this->getKVsByAddressKey->execute( [ $aid, $kid, $begin, $limit ] ) )
+            w8_err();
+
+        return $this->getKVsByAddressKey;
+    }
+
     private $getKVsByTxKey;
 
     public function getKVsByTxKey( $txkey )

@@ -103,7 +103,28 @@ if( $address === 'api' )
 
                 echo '<pre>';
                 [ $data, $lazy ] = w8io_get_data( $address, $aid, $begin, $limit, $string );
-                w8io_print_data( '<a href="' . W8IO_ROOT . $address . '/data/', $data, $lazy );
+                $datauri = '<a href="' . W8IO_ROOT . $address . '/data/';
+                $txuri = '<a href="' . W8IO_ROOT . 'tx/';
+                w8io_print_data( $datauri, $txuri, $data, $lazy );
+                echo '</pre>';
+                return;
+            }
+            case 'k':
+            {
+                $RO = new RO( W8DB );
+
+                $address = $call['a'];
+                $key = $call['k'];
+                $aid = $call['i'];
+                $kid = $call['d'];
+                $begin = $call['b'];
+                $limit = $call['l'];
+
+                echo '<pre>';
+                [ $data, $lazy ] = w8io_get_data_key( $address, $key, $aid, $kid, $begin, $limit );
+                $datauri = '<a href="' . W8IO_ROOT . $address . '/data/';
+                $txuri = '<a href="' . W8IO_ROOT . 'tx/';
+                w8io_print_data( $datauri, $txuri, $data, $lazy );
                 echo '</pre>';
                 return;
             }
@@ -284,7 +305,7 @@ function w8io_get_data( $address, $aid, $begin, $limit, $string )
 
     $rs = $RO->getKVsByAddress( $aid, $begin, $limit + 1 );
     $n = 0;
-    foreach( $rs as [ $r0, /*$r1*/, /*$r2*/, /*$r3*/, $r4, $r5, $r6 ] )
+    foreach( $rs as [ $r0, $r1, /*$r2*/, /*$r3*/, $r4, $r5, $r6 ] )
     {
         if( ++$n > $limit )
         {
@@ -309,16 +330,49 @@ function w8io_get_data( $address, $aid, $begin, $limit, $string )
         if( $string === '' || false !== strpos( $key, $string ) )
         {
             $value = $RO->getValueByTypeId( $r5, $r6 );
-            $data[] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value ];
+            $data[] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value, 'txkey' => $r1 ];
         }
     }
 
     return [ $data ?? [], $lazy ?? false ];
 }
 
-function w8io_print_data( $datauri, $data, $lazy )
+function w8io_get_data_key( $address, $key, $aid, $kid, $begin, $limit )
+{
+    global $RO;
+
+    $rs = $RO->getKVsByAddressKey( $aid, $kid, $begin, $limit + 1 );
+    $n = 0;
+    foreach( $rs as [ $r0, $r1, /*$r2*/, /*$r3*/, /*$r4*/, $r5, $r6 ] )
+    {
+        if( ++$n > $limit )
+        {
+            $wk = wk();
+            $call = [
+                'f' => 'k',
+                'a' => $address,
+                'k' => $key,
+                'i' => $aid,
+                'd' => $kid,
+                'b' => $r0,
+                'l' => $limit,
+            ];
+            $call = W8IO_ROOT . 'api/' . w8enc( $wk->encryptash( json_encode( $call ) ) );
+            $lazy = '</pre><pre class="lazyload" url="' . $call . '">...';
+            break;
+        }
+
+        $value = $r6 === TYPE_NULL ? 'null' : $RO->getValueByTypeId( $r5, $r6 );
+        $data[] = [ 'key' => $key, 'type' => DATA_TYPE_STRINGS[$r6], 'value' => $value, 'txkey' => $r1 ];
+    }
+
+    return [ $data ?? [], $lazy ?? false ];
+}
+
+function w8io_print_data( $datauri, $txuri, $data, $lazy )
 {
     $n = 0;
+    $c = count( $data );
     foreach( $data as $r )
     {
         $k = htmlentities( $r['key'] );
@@ -331,9 +385,8 @@ function w8io_print_data( $datauri, $data, $lazy )
             $v = $r['value'] ? 'true' : 'false';
         else
             $v = $r['value'];
-        if( ++$n > 1 )
-            echo ',';
-        echo PHP_EOL . '    "' . $datauri . urlencode( $k ) . '">' . $k . '</a>": ' . $v;
+        $comma = ( $lazy === false && ++$n >= $c ) ? '' : ',';
+        echo PHP_EOL . '    "' . $datauri . urlencode( $k ) . '">' . $k . '</a>": ' . $txuri . $r['txkey'] .'">' . $v . '</a>' . $comma;
     }
     if( $lazy === false )
     {
@@ -1330,11 +1383,7 @@ else if( $f === 'data' )
             {
                 $value = $RO->getTxKeyValueTypeByAddressKey( $aid, $kid );
                 if( $value !== false )
-                {
-                    [ $txkey, $value, $type ] = $value;
-                    $value = $type === TYPE_NULL ? 'null' : $RO->getValueByTypeId( $value, $type );
-                    $data[$key] = [ 'txid' => $RO->getTxIdByTxKey( $txkey ), 'key' => $key, 'type' => DATA_TYPE_STRINGS[$type], 'value' => $value ];
-                }
+                    [ $data, $lazy ] = w8io_get_data_key( $address, $key, $aid, $kid, PHP_INT_MAX, 1000 );
             }
 
             if( count( $data ) === 0 )
@@ -1353,6 +1402,7 @@ else if( $f === 'data' )
 
     prolog();
     $datauri = '<a href="' . W8IO_ROOT . $address . '/data/';
+    $txuri = '<a href="' . W8IO_ROOT . 'tx/';
     echo '<a href="' . W8IO_ROOT . $address . '">' . $address . '</a> &#183; ' . $datauri . '">data</a>';
     if( $arg !== false )
         echo ' &#183; ' . $datauri . $arg . '">' . htmlentities( urldecode( $arg ) ) . '</a>';
@@ -1361,7 +1411,12 @@ else if( $f === 'data' )
     if( $arg3 !== false )
         echo ' &#183; ' . $datauri . $arg3 . '">' . htmlentities( urldecode( $arg3 ) ) . '</a>';
     echo '<br>' . PHP_EOL . '<pre>{';
-    w8io_print_data( $datauri, $data, $lazy ?? false );
+    if( isset( $value ) && $value !== false )
+    {
+        w8io_print_data( $datauri, $txuri, [$data[0]], false );
+        echo PHP_EOL . '</pre><br>Changelog:<br><br><pre>{';
+    }
+    w8io_print_data( $datauri, $txuri, $data, $lazy ?? false );
     echo PHP_EOL . '</pre>';
 }
 else
