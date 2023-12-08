@@ -124,7 +124,7 @@ if( $address === 'api' )
                 [ $data, $lazy ] = w8io_get_data_key( $address, $key, $aid, $kid, $begin, $limit );
                 $datauri = '<a href="' . W8IO_ROOT . $address . '/data/';
                 $txuri = '<a href="' . W8IO_ROOT . 'tx/';
-                w8io_print_data( $datauri, $txuri, $data, $lazy );
+                w8io_print_data( $datauri, $txuri, $data, $lazy, true, $RO );
                 echo '</pre>';
                 return;
             }
@@ -369,10 +369,12 @@ function w8io_get_data_key( $address, $key, $aid, $kid, $begin, $limit )
     return [ $data ?? [], $lazy ?? false ];
 }
 
-function w8io_print_data( $datauri, $txuri, $data, $lazy )
+function w8io_print_data( $datauri, $txuri, $data, $lazy, $changelog = false, $RO = null )
 {
     $n = 0;
     $c = count( $data );
+    $lastblock = 0;
+    global $z;
     foreach( $data as $r )
     {
         $k = htmlentities( $r['key'] );
@@ -386,18 +388,24 @@ function w8io_print_data( $datauri, $txuri, $data, $lazy )
         else
             $v = $r['value'];
         $comma = ( $lazy === false && ++$n >= $c ) ? '' : ',';
-        echo PHP_EOL . '    "' . $datauri . urlencode( $k ) . '">' . $k . '</a>": ' . $txuri . $r['txkey'] .'">' . $v . '</a>' . $comma;
-    }
-    if( $lazy === false )
-    {
-        echo PHP_EOL . '}';
 
-        if( isset( $r['txid'] ) )
+        if( $changelog )
         {
-            $txid = $r['txid'];
-            echo PHP_EOL . PHP_EOL . 'Last modified: <a href="' . W8IO_ROOT . 'tx/' . $txid . '">' . $txid . '</a>';
+            $txkey = $r['txkey'];
+            $block = w8k2h( $txkey );
+            if( $lastblock !== $block )
+            {
+                $lastblock = $block;
+                $date = date( 'Y.m.d H:i', $RO->getTimestampByHeight( $block ) + $z * 60 );
+            }
+            echo PHP_EOL . '    "' . $txuri . $txkey .'">' . $date . '</a>": ' . $v . $comma;
         }
+        else
+            echo PHP_EOL . '    "' . $datauri . urlencode( $k ) . '">' . $k . '</a>": ' . $txuri . $r['txkey'] .'">' . $v . '</a>' . $comma;
     }
+
+    if( $lazy === false )
+        echo PHP_EOL . '}';
     else
         echo PHP_EOL . $lazy;
 }
@@ -1415,8 +1423,10 @@ else if( $f === 'data' )
     {
         w8io_print_data( $datauri, $txuri, [$data[0]], false );
         echo PHP_EOL . '</pre><br>Changelog:<br><br><pre>{';
+        w8io_print_data( $datauri, $txuri, $data, $lazy ?? false, true, $RO );
     }
-    w8io_print_data( $datauri, $txuri, $data, $lazy ?? false );
+    else
+        w8io_print_data( $datauri, $txuri, $data, $lazy ?? false );
     echo PHP_EOL . '</pre>';
 }
 else
