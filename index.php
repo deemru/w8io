@@ -1383,11 +1383,11 @@ else if( $f === 'data' )
             {
                 $value = $RO->getTxKeyValueTypeByAddressKey( $aid, $kid );
                 if( $value !== false )
-                    [ $data, $lazy ] = w8io_get_data_key( $address, $key, $aid, $kid, PHP_INT_MAX, 1000 );
+                    [ $data, $lazy ] = w8io_get_data_key( $address, $key, $aid, $kid, PHP_INT_MAX, 100 );
             }
 
             if( count( $data ) === 0 )
-                [ $data, $lazy ] = w8io_get_data( $address, $aid, PHP_INT_MAX, 1000, $key );
+                [ $data, $lazy ] = w8io_get_data( $address, $aid, PHP_INT_MAX, 100, $key );
         }
         else
         {
@@ -1397,7 +1397,7 @@ else if( $f === 'data' )
     }
     else
     {
-        [ $data, $lazy ] = w8io_get_data( $address, $aid, PHP_INT_MAX, 1000, '' );
+        [ $data, $lazy ] = w8io_get_data( $address, $aid, PHP_INT_MAX, 100, '' );
     }
 
     prolog();
