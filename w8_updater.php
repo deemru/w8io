@@ -32,7 +32,7 @@ function selftest( $start )
                 break;
         }
 
-        $aid = $assetId === 'WAVES' ? 0 : $RO->getIdByAsset( $assetId );
+        $aid = $assetId === 'WAVES' ? WAVES_ASSET : $RO->getIdByAsset( $assetId );
         $info = $RO->getAssetInfoById( $aid );
 
         $decimals = ( $decimals = $info[0] ) === 'N' ? 0 : (int)$decimals;
@@ -41,7 +41,7 @@ function selftest( $start )
         $node_items = [];
         $after = '';
         $i = 0;
-        for( ;; )
+        for( ; $a !== WAVES_ASSET; )
         {
             $data = wk()->fetch( '/assets/' . $assetId . '/distribution/' . $height . '/limit/1000' . $after );
             $data = wk()->json_decode( $data );
@@ -74,7 +74,10 @@ function selftest( $start )
             $amount = (int)$balance[3];
 
             $address = $RO->getAddressById( $aid );
-            $chainAmount = $node_items[$address] ?? 0;
+            if( $a === WAVES_ASSET )
+                $chainAmount = wk()->balance( $address, $assetId );
+            else
+                $chainAmount = $node_items[$address] ?? 0;
 
             if( $chainAmount !== $amount )
                 wk()->log( 'e', ++$e . ') ' . $address . ': ' . w8io_amount( $chainAmount, $decimals ) . ' !== ' . w8io_amount( $amount, $decimals ) );
