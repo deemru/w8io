@@ -8,7 +8,7 @@ else
     require_once __DIR__ . '/config.sample.php';
 require_once __DIR__ . '/include/w8_update_helpers.php';
 
-function selftest( $start )
+function selftest( $start, $apikey )
 {
     require_once 'include/RO.php';
     $RO = new RO( W8DB );
@@ -41,7 +41,13 @@ function selftest( $start )
         $node_items = [];
         $after = '';
         $i = 0;
-        for( ; $a !== WAVES_ASSET; )
+        if( $a === WAVES_ASSET )
+        {
+            $data = wk()->fetch( '/debug/stateWaves/' . $height, false, null, null, [ "X-API-Key: $apikey" ] );
+            $node_items = wk()->json_decode( $data );
+        }
+        else
+        for( ;; )
         {
             $data = wk()->fetch( '/assets/' . $assetId . '/distribution/' . $height . '/limit/1000' . $after );
             $data = wk()->json_decode( $data );
@@ -74,10 +80,7 @@ function selftest( $start )
             $amount = (int)$balance[3];
 
             $address = $RO->getAddressById( $aid );
-            if( $a === WAVES_ASSET )
-                $chainAmount = wk()->balance( $address, $assetId );
-            else
-                $chainAmount = $node_items[$address] ?? 0;
+            $chainAmount = $node_items[$address] ?? 0;
 
             if( $chainAmount !== $amount )
                 wk()->log( 'e', ++$e . ') ' . $address . ': ' . w8io_amount( $chainAmount, $decimals ) . ' !== ' . w8io_amount( $amount, $decimals ) );
@@ -139,10 +142,11 @@ switch( $argv[1] )
     }
     case 'selftest':
     {
-        $start = $argv[2] ?? 0;
+        $start = (int)( $argv[2] ?? 0 );
+        $apikey = $argv[3] ?? "";
         wk()->setBestNode();
         wk()->log( wk()->getNodeAddress() );
-        selftest( $start );
+        selftest( $start, $apikey );
         break;
     }
     case 'indexer':
