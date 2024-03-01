@@ -665,7 +665,7 @@ function w8io_print_transactions( $aid, $where, $uid, $count, $address, $d )
 
                 $link = ' <a href="' . W8IO_ROOT . 'txs/g/' . $groupId . '">';
                 $linklen = strlen( $link ) + 3;
-                $addon = $link . $addon . '()</a>';
+                $addon = $link . htmlentities( $addon ) . '()</a>';
                 $maxlen2 = max( $maxlen2, strlen( $addon ) - $linklen );
 
                 $tdb[$groupId] = [ $link, $linklen, $addon, $maxlen2 ];
