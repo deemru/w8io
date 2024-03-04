@@ -830,9 +830,10 @@ function htmlfilter( $kv )
     return $fkv;
 }
 
-function htmlscript( $tx )
+function htmlscript( $tx, $txkey, $txid, $compacted )
 {
-    $decompile = wk()->fetch( '/utils/script/decompile', true, $tx['script'] );
+    $headers = $compacted ? [ 'compacted: true' ] : null;
+    $decompile = wk()->fetch( '/utils/script/decompile', true, $tx['script'], null, $headers );
     if( $decompile === false )
         return;
     $decompile = wk()->json_decode( $decompile );
@@ -845,35 +846,41 @@ function htmlscript( $tx )
     $a = $RO->getAddressIdByAddress( $tx['sender'] );
     if( $a === false )
         return;
-    $txkey = $RO->getTxKeyByTxId( $tx['id'] );
+
     if( $tx['type'] === 15 )
     {
         $assetId = $RO->getIdByAsset( $tx['assetId'] );
         $prevScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 15 AND r5 = ' . $assetId . ' AND r1 < ' . $txkey . ' ORDER BY r0 DESC LIMIT 1' );
+        $nextScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 15 AND r5 = ' . $assetId . ' AND r1 > ' . $txkey . ' ORDER BY r0 ASC LIMIT 1' );
     }
-    else if( $tx['type'] === 13 )
+    else
+    if( $tx['type'] === 13 )
     {
         $prevScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 13 AND r1 < ' . $txkey . ' ORDER BY r0 DESC LIMIT 1' );
+        $nextScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 13 AND r1 > ' . $txkey . ' ORDER BY r0 ASC LIMIT 1' );
     }
     else
         return;
+
+    $viewMode = 'View: ' . ( $compacted ? ( '<a href="' . W8IO_ROOT . 'tx/' . $txid . '">original</a> | compacted' ) : ( 'original | <a href="' . W8IO_ROOT . 'tx/' . $txid . '/compacted">compacted</a>' ) );
+
     $r = $prevScript->fetchAll();
     if( !isset( $r[0][1] ) )
     {
         $decompile2 = '';
-        $result = 'Previous script: none' . PHP_EOL . PHP_EOL;
+        $result = $viewMode . PHP_EOL . 'Prev: none' . PHP_EOL;
     }
     else
     {
-        $tx = $RO->getTxIdByTxKey( $r[0][1] );
-        $tx = wk()->getTransactionById( $tx );
-        $result = 'Previous script: ' . ( $tx === false ? 'ERROR' : w8io_txid( $tx['id'], $tx ) ) . PHP_EOL . PHP_EOL;
+        $txidPrev = $RO->getTxIdByTxKey( $r[0][1] );
+        $result = $viewMode . PHP_EOL . 'Prev: ' . ( $tx === false ? 'ERROR' : w8io_txid( $txidPrev, null ) ) . PHP_EOL;
 
-        if( empty( $tx['script'] ) )
+        $txPrev = wk()->getTransactionById( $txidPrev );
+        if( empty( $txPrev['script'] ) )
             $decompile2 = '';
         else
         {
-            $decompile = wk()->fetch( '/utils/script/decompile', true, $tx['script'] );
+            $decompile = wk()->fetch( '/utils/script/decompile', true, $txPrev['script'], null, $headers );
             if( $decompile === false )
                 return;
             $decompile = wk()->json_decode( $decompile );
@@ -881,6 +888,17 @@ function htmlscript( $tx )
                 return;
             $decompile2 = $decompile['script'];
         }
+    }
+
+    $r = $nextScript->fetchAll();
+    if( !isset( $r[0][1] ) )
+    {
+        $result .= 'Next: none' . PHP_EOL . PHP_EOL;
+    }
+    else
+    {
+        $txidNext = $RO->getTxIdByTxKey( $r[0][1] );
+        $result .= 'Next: ' . w8io_txid( $txidNext, null ) . PHP_EOL . PHP_EOL;
     }
 
     if( $decompile1 === $decompile2 )
@@ -988,7 +1006,7 @@ if( $address === 'tx' && $f !== false )
                 }
 
                 if( !empty( $tx['script'] ) )
-                    $addon = htmlscript( $tx );
+                    $addon = htmlscript( $tx, $txid, $f, $arg === 'compacted' );
                 $tx = htmlfilter( $tx );
                 echo '<br>' . json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
                 if( isset( $addon ) )
