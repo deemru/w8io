@@ -833,13 +833,19 @@ function htmlfilter( $kv )
 function htmlscript( $tx, $txkey, $txid, $compacted )
 {
     $headers = $compacted ? [ 'compacted: true' ] : null;
-    $decompile = wk()->fetch( '/utils/script/decompile', true, $tx['script'], null, $headers );
-    if( $decompile === false )
-        return;
-    $decompile = wk()->json_decode( $decompile );
-    if( $decompile === false )
-        return;
-    $decompile1 = $decompile['script'];
+
+    if( empty( $tx['script'] ) )
+        $decompile1 = '';
+    else
+    {
+        $decompile = wk()->fetch( '/utils/script/decompile', true, $tx['script'], null, $headers );
+        if( $decompile === false )
+            return;
+        $decompile = wk()->json_decode( $decompile );
+        if( $decompile === false )
+            return;
+        $decompile1 = $decompile['script'];
+    }
 
     require_once 'include/RO.php';
     $RO = new RO( W8DB );
@@ -847,20 +853,17 @@ function htmlscript( $tx, $txkey, $txid, $compacted )
     if( $a === false )
         return;
 
-    if( $tx['type'] === 15 )
-    {
-        $assetId = $RO->getIdByAsset( $tx['assetId'] );
-        $prevScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 15 AND r5 = ' . $assetId . ' AND r1 < ' . $txkey . ' ORDER BY r0 DESC LIMIT 1' );
-        $nextScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 15 AND r5 = ' . $assetId . ' AND r1 > ' . $txkey . ' ORDER BY r0 ASC LIMIT 1' );
-    }
-    else
     if( $tx['type'] === 13 )
     {
         $prevScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 13 AND r1 < ' . $txkey . ' ORDER BY r0 DESC LIMIT 1' );
         $nextScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 13 AND r1 > ' . $txkey . ' ORDER BY r0 ASC LIMIT 1' );
     }
     else
-        return;
+    {
+        $assetId = $RO->getIdByAsset( $tx['assetId'] );
+        $prevScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 15 AND r5 = ' . $assetId . ' AND r1 < ' . $txkey . ' ORDER BY r0 DESC LIMIT 1' );
+        $nextScript = $RO->db->query( 'SELECT * FROM pts WHERE r3 = ' . $a . ' AND r2 = 15 AND r5 = ' . $assetId . ' AND r1 > ' . $txkey . ' ORDER BY r0 ASC LIMIT 1' );
+    }
 
     $viewMode = 'View: ' . ( $compacted ? ( '<a href="' . W8IO_ROOT . 'tx/' . $txid . '">original</a> | compacted' ) : ( 'original | <a href="' . W8IO_ROOT . 'tx/' . $txid . '/compacted">compacted</a>' ) );
 
@@ -1005,7 +1008,7 @@ if( $address === 'tx' && $f !== false )
                     echo PHP_EOL;
                 }
 
-                if( !empty( $tx['script'] ) )
+                if( in_array( $tx['type'], [ 13, 15 ] ) )
                     $addon = htmlscript( $tx, $txid, $f, $arg === 'compacted' );
                 $tx = htmlfilter( $tx );
                 echo '<br>' . json_encode( $tx, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
