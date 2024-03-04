@@ -835,7 +835,7 @@ function htmlscript( $tx, $txkey, $txid, $compacted )
     $headers = $compacted ? [ 'compacted: true' ] : null;
 
     if( empty( $tx['script'] ) )
-        $decompile1 = '';
+        $decompile1 = '# no script';
     else
     {
         $decompile = wk()->fetch( '/utils/script/decompile', true, $tx['script'], null, $headers );
@@ -880,7 +880,7 @@ function htmlscript( $tx, $txkey, $txid, $compacted )
 
         $txPrev = wk()->getTransactionById( $txidPrev );
         if( empty( $txPrev['script'] ) )
-            $decompile2 = '';
+            $decompile2 = '# no script';
         else
         {
             $decompile = wk()->fetch( '/utils/script/decompile', true, $txPrev['script'], null, $headers );
@@ -904,17 +904,15 @@ function htmlscript( $tx, $txkey, $txid, $compacted )
         $result .= 'Next: ' . w8io_txid( $txidNext, null ) . PHP_EOL . PHP_EOL;
     }
 
+    $result .= '<style>' . \Jfcherng\Diff\DiffHelper::getStyleSheet() . '</style>';
     if( $decompile1 === $decompile2 )
     {
-        $result .= 'Diff: no diff';
+        $decompile1 = '# ' . $txid . "\n\n" . $decompile1;
+        $decompile2 = '# ' . $txidPrev . "\n\n" . $decompile2;
     }
     else
-    {
-        $result .= '<style>' . \Jfcherng\Diff\DiffHelper::getStyleSheet() . '</style>';
         $result .= 'Diff: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'Inline', [], [ 'detailLevel' => 'word' ] ) . PHP_EOL;
-        if( !empty( $decompile2 ) )
-            $result .= 'Full: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'Inline', [ 'context' => \Jfcherng\Diff\Differ::CONTEXT_ALL ], [ 'detailLevel' => 'word' ] );
-    }
+    $result .= 'Full: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'Inline', [ 'context' => \Jfcherng\Diff\Differ::CONTEXT_ALL ], [ 'detailLevel' => 'word' ] );
 
     return $result;
 }
