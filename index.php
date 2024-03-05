@@ -905,14 +905,9 @@ function htmlscript( $tx, $txkey, $txid, $compacted )
     }
 
     $result .= '<style>' . \Jfcherng\Diff\DiffHelper::getStyleSheet() . '</style>';
-    if( $decompile1 === $decompile2 )
-    {
-        $decompile1 = '# ' . $txid . "\n\n" . $decompile1;
-        $decompile2 = '# ' . $txidPrev . "\n\n" . $decompile2;
-    }
-    else
+    if( $decompile1 !== $decompile2 )
         $result .= 'Diff: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'Inline', [], [ 'detailLevel' => 'word' ] ) . PHP_EOL;
-    $result .= 'Full: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'Inline', [ 'context' => \Jfcherng\Diff\Differ::CONTEXT_ALL ], [ 'detailLevel' => 'word' ] );
+    $result .= 'Full: ' . PHP_EOL . \Jfcherng\Diff\DiffHelper::calculate( $decompile2, $decompile1, 'Inline', [ 'context' => \Jfcherng\Diff\Differ::CONTEXT_ALL, 'fullContextIfIdentical' => true ], [ 'detailLevel' => 'word' ] );
 
     return $result;
 }
