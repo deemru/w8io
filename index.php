@@ -870,7 +870,7 @@ function htmlscript( $tx, $txkey, $txid, $compacted )
     $r = $prevScript->fetchAll();
     if( !isset( $r[0][1] ) )
     {
-        $decompile2 = '';
+        $decompile2 = '# no script';
         $result = $viewMode . PHP_EOL . 'Prev: none' . PHP_EOL;
     }
     else
