@@ -1,6 +1,6 @@
 body, table
 {
-    font-size: 14pt; font-family: Inconsolata, monospace;
+    font: 14pt Inconsolata, monospace;
     background-color: #FFFFFF;
     color: #000000;
     border-collapse: collapse;
@@ -8,11 +8,7 @@ body, table
 }
 pre
 {
-    font-family: Inconsolata, monospace;
-    font-style: normal;
-    font-weight: 400;
-    font-stretch: 100%;
-    font-size: 14pt;
+    font: 14pt Inconsolata, monospace;
     margin: 0;
     unicode-bidi: bidi-override;
 }
