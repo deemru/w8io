@@ -352,7 +352,9 @@ function prolog()
 
     $L = (int)( $_COOKIE['L'] ?? 0 ) === 1;
     $title = 'w8 &#183; ' . prettyAddress( $address );
-    if( $f !== false && ( is_numeric( $f ) || strlen( $f ) >= 32 || $f === 'Waves' ) )
+    if( $f !== false &&
+        ( $address !== 'GENERATORS' || $f !== 1472 ) &&
+        ( is_numeric( $f ) || strlen( $f ) >= 32 || $f === 'Waves' ) )
         $title .= ' &#183; ' . prettyAddress( $f );
     echo sprintf( '
 <!DOCTYPE html>
