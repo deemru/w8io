@@ -228,6 +228,17 @@ if( $address === 'api' )
         }
         apiexit( 200, $json );
     }
+    else
+    if( $f === 'alias' && $arg !== false )
+    {
+        $address = $arg;
+        require_once 'include/RO.php';
+        $RO = new RO( W8DB );
+        $aid = $RO->getAddressIdByString( $address );
+        if( $aid === false )
+            apiexit( 404, [ 'code' => 404, 'message' => 'address not found' ] );
+        apiexit( 200, $RO->getFirstAliasById( $aid ) );
+    }
 
     exit( http_response_code( 404 ) );
 }
