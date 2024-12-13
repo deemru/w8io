@@ -222,20 +222,12 @@ function procWeight( $blockchain, $parser )
     $txheight = w8h2k( $height - 2880 );
     $pts = $parser->db->query( "SELECT * FROM pts WHERE r1 > $txheight" );
 
-    $assets = $parser->kvAssets;
     $assetInfo = $parser->kvAssetInfo;
 
-    $usdn = $assets->getKeyByValue( 'DG2xFkPdDwKUoBkzGAhQtLpSGzfXLiCYPEzeKH2Ad24p' );
-
-    $weights_waves = [];
-    $total_waves = 0;
-    $weights_usdn = [];
-    $total_usdn = 0;
-
-    $lastTxKey = 0;
+    $fromto = [];
     $lastAsset = 0;
     $lastAmount = 0;
-    $isWaves = true;
+    $lastTxKey = false;
     foreach( $pts as $ts )
     {
         if( $ts[TYPE] !== TX_EXCHANGE )
@@ -247,72 +239,59 @@ function procWeight( $blockchain, $parser )
         $asset = $ts[ASSET];
         $amount = $ts[AMOUNT];
 
-        if( $lastTxKey === $txkey )
+        if( $lastTxKey === false )
         {
-            if( $asset === 0 || $asset === $usdn )
-            {
-                $isWaves = $asset === 0;
-                $asset = $lastAsset;
-            }
-            else
-            {
-                if( $lastAsset !== 0 && $lastAsset !== $usdn )
-                    continue;
-
-                $isWaves = $lastAsset === 0;
-                $amount = $lastAmount;
-            }
-
-            if( $isWaves )
-            {
-                $weights_waves[$asset] = $amount + ( isset( $weights_waves[$asset] ) ? $weights_waves[$asset] : 0 );
-                $total_waves += $amount;
-            }
-            else
-            {
-                $weights_usdn[$asset] = $amount + ( isset( $weights_usdn[$asset] ) ? $weights_usdn[$asset] : 0 );
-                $total_usdn += $amount;
-            }
-        }
-        else
-        {
-            $lastTxKey = $txkey;
             $lastAsset = $asset;
             $lastAmount = $amount;
+            $lastTxKey = $txkey;
+            continue;
         }
+        else
+        if( $lastTxKey === $txkey )
+        {
+            $fromto[$asset][$lastAsset] = $lastAmount + ( $fromto[$asset][$lastAsset] ?? 0 );
+            $fromto[$lastAsset][$asset] = $amount + ( $fromto[$lastAsset][$asset] ?? 0 );
+            $lastTxKey = false;
+            continue;
+        }
+
+        $lastTxKey = false;
     }
 
-    if( isset( $weights_usdn[0] ) )
+    $rates = [ 0 => 1 ];
+    foreach( $fromto as $asset => $trades )
     {
-        $weights_usdn[$usdn] = $weights_usdn[0] * 2;
-        unset( $weights_usdn[0] );
+        if( $asset === WAVES_ASSET )
+            continue;
+        $waves_volume = $fromto[$asset][WAVES_ASSET] ?? false;
+        if( $waves_volume === false )
+            continue;
+        $asset_volume = $fromto[WAVES_ASSET][$asset];
+        $rate = $waves_volume / $asset_volume;
+        $rates[$asset] = $rate;
     }
-
-    foreach( $weights_waves as $asset => $weight )
-        $weights_waves[$asset] = $weight / $total_waves;
-    foreach( $weights_usdn as $asset => $weight )
-        $weights_usdn[$asset] = $weight / $total_usdn;
 
     $weights = [];
-    foreach( $weights_waves as $asset => $weight )
+    foreach( $fromto as $asset => $trades )
     {
-        $weights[$asset] = $weight;
-        if( isset( $weights_usdn[$asset] ) )
+        foreach( $trades as $price => $volume )
         {
-            $weights[$asset] += $weights_usdn[$asset];
-            unset( $weights_usdn[$asset] );
+            $rate = $rates[$price] ?? false;
+            if( $rate === false )
+                continue;
+
+            $weights[$asset] = $volume * $rate + ( $weights[$asset] ?? 0 );
         }
     }
-    foreach( $weights_usdn as $asset => $weight )
-        $weights[$asset] = $weight;
 
+    unset( $weights[WAVES_ASSET] );
     arsort( $weights );
 
     $tickers = [];
     $num = 255;
     foreach( $weights as $asset => $weight )
     {
-        if( $weight < 0.00001 )
+        if( $weight < 100000000 )
             break;
         $tickers[$asset] = $num;
         if( $num > 2 )
