@@ -1496,14 +1496,20 @@ if( $address === 'ACTIVATION' )
                     $generator = $headers['generator'] ?? '';
                     $features = $headers['features'] ?? [];
                     $totals[$generator] = 1 + ( $totals[$generator] ?? 0 );
+                    $lasts[$generator] = $lasts[$generator] ?? 0;
+                    $active = $lasts[$generator] & 1;
                     if( in_array( $f, $features ) )
                     {
                         $votes[$generator] = 1 + ( $votes[$generator] ?? 0 );
-                        $lasts[$generator] = true;
+                        if( $active === 0 )
+                            $lasts[$generator] += 3;
                         ++$count;
                     }
                     else
-                        $lasts[$generator] = false;
+                    {
+                        if( $active === 1 )
+                            $lasts[$generator] += 1;
+                    }
                 }
 
                 if( $i > $period_start )
@@ -1512,7 +1518,12 @@ if( $address === 'ACTIVATION' )
                     $blocks = $i - $period_start;
                     foreach( $totals as $generator => $total )
                     {
-                        if( $lasts[$generator] )
+                        $active = $lasts[$generator] & 1;
+                        $switches = $lasts[$generator] >> 1;
+                        if( $switches > 3 )
+                            $weight += $votes[$generator] / $blocks;
+                        else
+                        if( $active === 1 )
                             $weight += $total / $blocks;
                     }
 
@@ -1534,10 +1545,18 @@ if( $address === 'ACTIVATION' )
 
                     foreach( $totals as $generator => $total )
                     {
+                        $active = $lasts[$generator] & 1;
+                        $switches = $lasts[$generator] >> 1;
                         $vote = ( $votes[$generator] ?? 0 );
                         $percent = intdiv( 10000 * $vote, $total );
                         $percent_total = intdiv( 10000 * $vote, $blocks_done );
-                        $last = $lasts[$generator] ? '&#183;' : ' ';
+                        if( $switches > 3 )
+                            $last = '&#187;';
+                        else
+                        if( $active === 1 )
+                            $last = '&#183;';
+                        else
+                            $last = ' ';
                         echo '    ' . w8io_a( $generator ) . ': ' . w8io_amount( $percent_total, 2, 6, false ) . '% ' . $last . ' <small>'. w8io_amount( $percent, 2, 6, false ) .'% (' . $vote . '/' . $total . ')</small>' . PHP_EOL;
                     }
                 }
