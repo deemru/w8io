@@ -1109,7 +1109,7 @@ if( $address === 'tx' && $f !== false )
             echo json_encode( [ 'error' => "getTxKeyByTxId( $f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
         else
         {
-            $tx = wk()->getTransactionById( $f );
+            $tx = mwk()->getTransactionById( $f );
             if( $tx === false )
                 echo json_encode( [ 'error' => "getTransactionById( $f ) failed" ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
             else
