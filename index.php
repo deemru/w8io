@@ -1032,7 +1032,7 @@ function htmlscript( $tx, $txkey, $txid, $compacted )
         $txidPrev = $RO->getTxIdByTxKey( $r[0][1] );
         $result = $viewMode . PHP_EOL . 'Prev: ' . ( $tx === false ? 'ERROR' : w8io_txid( $txidPrev, null ) ) . PHP_EOL;
 
-        $txPrev = wk()->getTransactionById( $txidPrev );
+        $txPrev = mwk()->getTransactionById( $txidPrev );
         if( empty( $txPrev['script'] ) )
             $decompile2 = '# no script';
         else
@@ -1207,7 +1207,7 @@ if( $address === 'b' )
 {
     prolog();
     $height = (int)$f;
-    $block = wk()->getBlockAt( $height );
+    $block = mwk()->getBlockAt( $height );
 
     if( $block === false )
     {
