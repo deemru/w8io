@@ -1437,28 +1437,21 @@ class BlockchainParser
         }
     }
 
-    private function processExpressionTransaction( $txkey, $tx )
+    private function processCommitToGenerationTransaction( $txkey, $tx )
     {
-        $sender = $this->getSenderId( $tx['sender'] );
-
         $this->appendTS( [
             UID =>      $this->getNewUid(),
             TXKEY =>    $txkey,
-            TYPE =>     TX_EXPRESSION,
-            A =>        $sender,
+            TYPE =>     TX_COMMIT,
+            A =>        $this->getSenderId( $tx['sender'] ),
             B =>        MYSELF,
             ASSET =>    NO_ASSET,
             AMOUNT =>   0,
             FEEASSET => $tx[FEEASSET],
             FEE =>      $tx[FEE],
             ADDON =>    0,
-            GROUP =>    $this->getGroupFunction( $sender, EXPRESSION_FUNCTION, TX_EXPRESSION ),
+            GROUP =>    0,
         ] );
-
-        if( !isset( $tx['stateChanges'] ) )
-            w8_err( 'processExpressionTransaction: no stateChanges in tx ' . $tx['id'] . ' (txkey=' . $txkey . ')' );
-
-        return $this->processStateChanges( $txkey, $tx['stateChanges'], $sender, EXPRESSION_FUNCTION );
     }
 
     public function processTransaction( $txkey, $tx )
@@ -1520,8 +1513,8 @@ class BlockchainParser
                 $this->processInvokeTransaction( $txkey, $tx ); break;
             case TX_UPDATE_ASSET_INFO:
                 $this->processUpdateAssetInfoTransaction( $txkey, $tx ); break;
-            case TX_EXPRESSION:
-                $this->processExpressionTransaction( $txkey, $tx ); break;
+            case TX_COMMIT:
+                $this->processCommitToGenerationTransaction( $txkey, $tx ); break;
             case TX_ETHEREUM:
                 $this->processEthereumTransaction( $txkey, $tx ); break;
 

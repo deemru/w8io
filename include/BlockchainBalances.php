@@ -249,7 +249,7 @@ class BlockchainBalances
             case ITX_SPONSORSHIP:
             case TX_SMART_ASSET:
             case TX_UPDATE_ASSET_INFO:
-            case TX_EXPRESSION:
+            case TX_COMMIT:
                 $procs_a = [ asset_out( $type ) => 1, $afee => -$fee ];
                 break;
 

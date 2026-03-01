@@ -41,7 +41,7 @@ const TX_SMART_ASSET = 15;
 const TX_INVOKE = 16;
 const TX_UPDATE_ASSET_INFO = 17;
 const TX_ETHEREUM = 18;
-const TX_EXPRESSION = 19;
+const TX_COMMIT = 19;
 
 const TX_GENERATOR = 0;
 const TX_MATCHER = -1;
@@ -56,6 +56,9 @@ const ITX_LEASE = -TX_LEASE;
 const ITX_LEASE_CANCEL = -TX_LEASE_CANCEL;
 const ITX_SPONSORSHIP = -TX_SPONSORSHIP;
 const ITX_INVOKE = -TX_INVOKE;
+
+const TX_MINIMAL_TYPE = ITX_INVOKE;
+const TX_MAXIMAL_TYPE = TX_COMMIT;
 
 const TYPE_STRINGS =
 [
@@ -90,7 +93,7 @@ const TYPE_STRINGS =
     ITX_INVOKE => 'invoke',
     TX_UPDATE_ASSET_INFO => 'rename',
     TX_ETHEREUM => 'ethereum',
-    TX_EXPRESSION => 'expression',
+    TX_COMMIT => 'commit',
 ];
 
 const WAVES_ASSET = 0;
@@ -101,8 +104,6 @@ const SPONSOR_ASSET = -3;
 const FAILED_GROUP = -1;
 const ELIDED_GROUP = -3;
 const ETHEREUM_TRANSFER_GROUP = -2;
-
-const EXPRESSION_FUNCTION = -1;
 
 function w8k2i( $key ){ return $key & 0xFFFFFFFF; }
 function w8k2h( $key ){ return $key >> 32; }

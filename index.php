@@ -1853,7 +1853,7 @@ else
 
             $out = '';
             $data = false;
-            for( $t = -16; $t <= 19; ++$t )
+            for( $t = TX_MINIMAL_TYPE; $t <= TX_MAXIMAL_TYPE; ++$t )
             {
                 $ti = asset_in( $t );
                 $ti = $balance[$ti] ?? 0;
