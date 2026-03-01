@@ -1455,6 +1455,9 @@ class BlockchainParser
             GROUP =>    $this->getGroupFunction( $sender, EXPRESSION_FUNCTION, TX_EXPRESSION ),
         ] );
 
+        if( !isset( $tx['stateChanges'] ) )
+            w8_err( 'processExpressionTransaction: no stateChanges in tx ' . $tx['id'] . ' (txkey=' . $txkey . ')' );
+
         return $this->processStateChanges( $txkey, $tx['stateChanges'], $sender, EXPRESSION_FUNCTION );
     }
 
