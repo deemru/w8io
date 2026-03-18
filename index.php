@@ -6,7 +6,7 @@ require_once 'config.php';
 $z = (int)( $_COOKIE['z'] ?? 180 ); // TIMEZONE
 
 if( isset( $_SERVER['REQUEST_URI'] ) )
-    $urio = substr( $_SERVER['REQUEST_URI'], strlen( W8IO_ROOT ) );
+    $urio = substr( strtok( $_SERVER['REQUEST_URI'], '?' ), strlen( W8IO_ROOT ) );
 else
     $urio = 'tx/3xeUBGCstPJzeTEj2ts8XTTVbenfihWN5j69y7CTXhrF';
 
