@@ -1462,6 +1462,9 @@ class BlockchainParser
         if( $type === TX_GENESIS )
             return $this->processGenesisTransaction( $txkey, $tx );
 
+        if( ( $tx['applicationStatus'] ?? null ) === 'elided' )
+            return $this->processElidedTransaction( $txkey, $tx );
+
         $this->applySponsorship( $txkey, $tx );
 
         if( isset( $tx['applicationStatus'] ) )
@@ -1471,8 +1474,6 @@ class BlockchainParser
                     break;
                 case 'script_execution_failed':
                     return $this->processFailedTransaction( $txkey, $tx );
-                case 'elided':
-                    return $this->processElidedTransaction( $txkey, $tx );
                 default:
                     w8_err( 'applicationStatus unknown: ' . $tx['applicationStatus'] );
             }
